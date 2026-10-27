@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Client Book">
+<meta name="theme-color" content="#1f3a5f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Client Book</title>
+<style>
+:root {
+  --bg: #f4f2ee; --card: #fff; --ink: #1c2430; --muted: #6b7380; --line: #e4e0d8;
+  --accent: #1f3a5f; --accent-2: #2f5d8f; --accent-soft: #e8eef6;
+  --ok: #2f7a4d; --ok-soft: #e6f3eb; --warn: #8a6100; --warn-soft: #fbf1d9;
+  --err: #a33a2b; --err-soft: #f8e5e1; --radius: 12px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+a { color: var(--accent-2); text-decoration: none; }
+h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+h2 { margin: 0 0 14px; font-size: 17px; font-weight: 650; }
+h2 small { color: var(--muted); font-weight: 500; margin-left: 6px; font-size: 14px; }
+h3 { font-size: 15px; margin: 18px 0 10px; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.none { color: #a7acb4; }
+.pre { white-space: pre-wrap; word-break: break-word; }
+.nowrap { white-space: nowrap; }
+.due { color: var(--err); font-weight: 600; }
+
+/* top bar */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; gap: 10px; align-items: center;
+  padding: calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left));
+  background: var(--accent); color: #fff; }
+.back { background: none; border: 0; color: #fff; font-size: 34px; line-height: 1; padding: 0 6px 4px 0; cursor: pointer; min-height: 44px; }
+.brand { color: #fff; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.mark { background: #fff; color: var(--accent); border-radius: 6px; padding: 2px 6px; font-size: 13px; }
+.search { position: relative; flex: 1; min-width: 0; }
+.search input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 0; font-size: 16px; min-height: 44px; }
+.suggest { position: absolute; left: 0; right: 0; top: 50px; background: #fff; border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2); overflow: hidden; }
+.suggest a { display: flex; flex-direction: column; padding: 11px 14px; color: var(--ink); border-bottom: 1px solid var(--line); }
+.suggest a span { color: var(--muted); font-size: 13px; }
+.suggest a.on, .suggest a:active { background: var(--accent-soft); }
+
+.wrap { max-width: 1180px; margin: 0 auto;
+  padding: 18px calc(16px + env(safe-area-inset-right)) calc(60px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  padding: 10px 16px; min-height: 44px; border-radius: 10px; font: inherit; font-size: 15px; cursor: pointer; white-space: nowrap; }
+.btn:active { background: #f1efe9; }
+.btn.primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+.btn.primary:active { background: var(--accent); }
+.btn.light { background: #fff; color: var(--accent); border-color: #fff; font-weight: 600; }
+.btn.ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); padding: 10px 12px; }
+.btn.danger { color: var(--err); border-color: #e9c9c3; }
+.btn.small { padding: 6px 12px; min-height: 36px; font-size: 14px; }
+.link { background: none; border: 0; padding: 6px 4px; color: var(--accent-2); cursor: pointer; font: inherit; }
+.link.danger { color: var(--err); }
+.icon { background: none; border: 0; color: #a7acb4; cursor: pointer; font-size: 16px; min-width: 40px; min-height: 40px; border-radius: 8px; }
+.icon:active { color: var(--err); background: var(--err-soft); }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 50;
+  max-width: min(560px, 92vw); padding: 12px 18px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.18); font-size: 15px; }
+.toast.ok { background: #1f3a2c; color: #fff; }
+.toast.warn { background: var(--warn-soft); color: var(--warn); border: 1px solid #ecd9a5; }
+.toast.error { background: var(--err); color: #fff; }
+.banner { background: var(--accent-soft); padding: 12px 14px; border-radius: 10px; margin: 0 0 12px; }
+.banner.warn { background: var(--warn-soft); color: var(--warn); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+/* dashboard */
+.dash { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+ul.mini, ul.results { list-style: none; margin: 0; padding: 0; }
+ul.mini li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+ul.mini li:last-child { border-bottom: 0; }
+ul.results li a { display: flex; flex-direction: column; padding: 12px 0; border-bottom: 1px solid var(--line); }
+ul.results li a span { color: var(--muted); font-size: 14px; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.row-between h2 { margin: 0; white-space: nowrap; }
+.filter { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; width: 280px; max-width: 60%; }
+
+/* tables */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.list { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.list th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+table.list td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.list tr:last-child td { border-bottom: 0; }
+table.list td a { display: block; }
+
+/* forms */
+.form fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 16px 0 8px; min-width: 0; }
+.form legend { font-weight: 650; padding-right: 10px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 18px; }
+.grid label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.grid label.wide { grid-column: 1 / -1; }
+label > span { font-size: 14px; font-weight: 600; }
+em { font-style: normal; font-weight: 500; font-size: 12px; color: #a7acb4; margin-left: 4px; }
+em.req { color: var(--err); }
+input, select, textarea { font: inherit; font-size: 16px; padding: 10px 12px; min-height: 44px; border: 1px solid #d6d2c9; border-radius: 10px;
+  background: #fff; color: var(--ink); width: 100%; -webkit-appearance: none; appearance: none; }
+select { background-image: linear-gradient(45deg, transparent 50%, #6b7380 50%), linear-gradient(135deg, #6b7380 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+input[type=date] { min-height: 44px; }
+textarea { resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent-2); }
+.actions { display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); margin-top: 10px; }
+.extra-row { display: grid; grid-template-columns: 220px 1fr auto; gap: 10px; margin-bottom: 10px; align-items: start; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.inline-form input, .inline-form select { width: auto; }
+.inline-form .grow { flex: 1; min-width: 220px; }
+.inline-form label { display: flex; align-items: center; gap: 8px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+details > summary { list-style: none; margin-top: 12px; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] > summary { margin-bottom: 12px; }
+
+/* profile */
+.hero { display: flex; gap: 16px; align-items: center; }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: grid; place-items: center; font-size: 28px; font-weight: 700; flex: none; }
+.who { flex: 1; min-width: 0; }
+.who p { margin: 4px 0 0; }
+.stamps { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--muted); }
+.stamps b { color: var(--ink); font-weight: 600; }
+.stamps .due b { color: var(--err); }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+dl.details { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 22px; margin: 0; }
+dl.details .f.wide { grid-column: 1 / -1; }
+dl.details dt { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+dl.details dd { margin: 2px 0 0; word-break: break-word; }
+dl.extras { margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.remarks { background: #faf8f3; border-left: 3px solid var(--accent-2); padding: 12px 14px; border-radius: 0 10px 10px 0; }
+.nric { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.note-add { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.note { border-top: 1px solid var(--line); padding: 12px 0; }
+.note-head { display: flex; justify-content: space-between; align-items: center; }
+.note-edit { display: none; flex-direction: column; gap: 10px; align-items: flex-start; }
+.note.editing .note-edit { display: flex; }
+.note.editing .note-text { display: none; }
+ul.family { list-style: none; padding: 0; margin: 0; }
+ul.family li { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+ul.family li a { flex: 1; display: flex; flex-direction: column; padding: 10px 14px; color: var(--ink); min-width: 0; }
+ul.family li a:active { background: var(--accent-soft); border-radius: 10px 0 0 10px; }
+ul.family .rel { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent-2); font-weight: 700; }
+ul.family b { color: var(--accent-2); }
+.family-add { border-top: 1px solid var(--line); margin-top: 12px; }
+.or { margin: 14px 0 8px; }
+.danger-zone { text-align: center; }
+.stat { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 6px; }
+.steps { margin: 8px 0 0; padding-left: 20px; }
+.steps li { margin-bottom: 6px; }
+
+@media (max-width: 900px) {
+  .dash { grid-template-columns: minmax(0, 1fr); }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .col-side { order: -1; }
+}
+@media (max-width: 640px) {
+  .brand-text { display: none; }
+  .hero { flex-wrap: wrap; }
+  .extra-row { grid-template-columns: 1fr auto; }
+  .extra-row textarea { grid-column: 1 / 2; }
+  .filter { width: 160px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button id="back" class="back" hidden aria-label="Back" onclick="goBack()">‹</button>
+  <a class="brand" href="#/"><span class="mark">CB</span><span class="brand-text">Client Book</span></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search name, NRIC, phone, workplace…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <div id="suggest" class="suggest" hidden></div>
+  </div>
+  <a class="btn light" href="#/new">+ New</a>
+  <a class="btn ghost" href="#/data" title="Backup &amp; data" aria-label="Backup and data">⇅</a>
+</header>
+<main id="app" class="wrap"></main>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+'use strict';
+/* =========================================================================
+   Data layout — identical sheets and columns to the computer version's
+   clients.xlsx, so the two can share one Excel file.
+   ========================================================================= */
+const SHEETS = {
+  'Clients': ['ID', 'Name', 'Gender', 'NRIC', 'Date of Birth', 'Phone', 'Email', 'Address',
+              'Occupation', 'Workplace', 'Income Range', 'How We Met', 'First Met', 'Last Met',
+              'Next Follow-up', 'Remarks', 'Created', 'Last Updated'],
+  'Family': ['Client ID', 'Related ID', 'Relationship'],
+  'Extra Details': ['Client ID', 'Field', 'Value'],
+  'Notes': ['ID', 'Client ID', 'Added', 'Note'],
+  'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
+  'Policies': ['ID', 'Client ID', 'Product', 'Insurer', 'Policy No', 'Start Date', 'Premium',
+               'Frequency', 'Status', 'Notes'],
+};
+const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
+              'Interactions': 'interactions', 'Policies': 'policies' };
+const DATE_F = new Set(['Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date']);
+const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
+const NUM_F = new Set(['Premium']);
+const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
+
+const GENDERS = ['Male', 'Female'];
+const INCOME_RANGES = ['Below $3k / month', '$3k – $6k / month', '$6k – $10k / month', '$10k – $20k / month', 'Above $20k / month'];
+const HOW_MET = ['Referral', 'Friend / family', 'Colleague', 'Roadshow', 'Event / seminar', 'Social media', 'Cold call', 'Walk-in', 'Other'];
+const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event', 'Call', 'Message', 'Email', 'Other'];
+const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']);
+const POLICY_STATUS = ['In force', 'Pending', 'Lapsed', 'Surrendered', 'Matured', 'Claimed'];
+const FREQUENCIES = ['Monthly', 'Quarterly', 'Half-yearly', 'Yearly', 'Single'];
+const EXTRA_SUGGESTIONS = ['Nickname', 'Preferred language', 'Hobbies', 'Favourite food', 'Dietary needs', "Kids' school",
+  'Pets', 'Car', 'Wedding anniversary', 'Preferred contact time', 'Social media', 'Referred by', 'Referred to', 'Life goals', 'Concerns'];
+
+// "Related person is the client's <key>": [reverse key, male label, female label, neutral label]
+const RELATIONS = {
+  'spouse': ['spouse', 'Husband', 'Wife', 'Spouse'],
+  'parent': ['child', 'Father', 'Mother', 'Parent'],
+  'child': ['parent', 'Son', 'Daughter', 'Child'],
+  'sibling': ['sibling', 'Brother', 'Sister', 'Sibling'],
+  'grandparent': ['grandchild', 'Grandfather', 'Grandmother', 'Grandparent'],
+  'grandchild': ['grandparent', 'Grandson', 'Granddaughter', 'Grandchild'],
+  'parent-in-law': ['child-in-law', 'Father-in-law', 'Mother-in-law', 'Parent-in-law'],
+  'child-in-law': ['parent-in-law', 'Son-in-law', 'Daughter-in-law', 'Child-in-law'],
+  'sibling-in-law': ['sibling-in-law', 'Brother-in-law', 'Sister-in-law', 'Sibling-in-law'],
+  'uncle/aunt': ['niece/nephew', 'Uncle', 'Aunt', 'Uncle / Aunt'],
+  'niece/nephew': ['uncle/aunt', 'Nephew', 'Niece', 'Niece / Nephew'],
+  'cousin': ['cousin', 'Cousin', 'Cousin', 'Cousin'],
+  'other': ['other', 'Other', 'Other', 'Other relative'],
+};
+
+// Only Name is required.
+const SECTIONS = [
+  ['Personal', [
+    { label: 'Name', type: 'text', required: true },
+    { label: 'Gender', type: 'select', options: GENDERS },
+    { label: 'NRIC', type: 'text', placeholder: 'S1234567A', caps: 'characters' },
+    { label: 'Date of Birth', type: 'date' },
+  ]],
+  ['Contact', [
+    { label: 'Phone', type: 'tel' },
+    { label: 'Email', type: 'email' },
+    { label: 'Address', type: 'textarea', wide: true },
+  ]],
+  ['Work', [
+    { label: 'Occupation', type: 'text', autofill: true },
+    { label: 'Workplace', type: 'text', autofill: true },
+    { label: 'Income Range', type: 'select', options: INCOME_RANGES },
+  ]],
+  ['How we know each other', [
+    { label: 'How We Met', type: 'text', autofill: true, wide: true, placeholder: 'e.g. Referral from Jason, roadshow at Tampines Mall…' },
+    { label: 'First Met', type: 'date' },
+    { label: 'Last Met', type: 'date' },
+    { label: 'Next Follow-up', type: 'date' },
+  ]],
+  ['Special remarks', [
+    { label: 'Remarks', type: 'textarea', wide: true, rows: 6,
+      placeholder: 'Anything worth remembering — personality, preferences, health notes, family situation, plans… Write as much as you like.' },
+  ]],
+];
+const FORM_FIELDS = SECTIONS.flatMap(([, fs]) => fs.map(f => f.label));
+
+/* =========================================================================
+   Small helpers
+   ========================================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const isISO = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
+const blank = h => (DATE_F.has(h) || STAMP_F.has(h) || NUM_F.has(h)) ? null : '';
+const byName = (a, b) => String(a.Name || '').localeCompare(String(b.Name || ''), undefined, { sensitivity: 'base' });
+
+function todayISO() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function nowStamp() { const d = new Date(); return `${todayISO()}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function parseISO(s) { const m = isISO(s) && /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; }
+function today() { return parseISO(todayISO()); }
+function fmtDate(s) {
+  const d = parseISO(s); if (!d) return s || '';
+  let out = `${pad(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+  if (s.length > 10) out += ', ' + s.slice(11, 16);
+  return out;
+}
+function daysFrom(a, b) { return Math.round((b - a) / 864e5); }
+function ago(s) {
+  const d = parseISO(s); if (!d) return '';
+  const n = daysFrom(d, today());
+  if (n < 0) return `in ${-n} day${n === -1 ? '' : 's'}`;
+  if (n === 0) return 'today';
+  if (n < 31) return `${n} day${n > 1 ? 's' : ''} ago`;
+  if (n < 365) { const m = Math.floor(n / 30); return `${m} month${m > 1 ? 's' : ''} ago`; }
+  const y = Math.floor(n / 365); return `${y} year${y > 1 ? 's' : ''} ago`;
+}
+function ageOf(dob, on) {
+  const d = parseISO(dob); if (!d) return null; on = on || today();
+  const before = on.getMonth() < d.getMonth() || (on.getMonth() === d.getMonth() && on.getDate() < d.getDate());
+  return on.getFullYear() - d.getFullYear() - (before ? 1 : 0);
+}
+function nextBirthday(dob, t) {
+  const d = parseISO(dob);
+  const make = y => { const x = new Date(y, d.getMonth(), d.getDate()); return x.getMonth() !== d.getMonth() ? new Date(y, 2, 1) : x; };
+  let nb = make(t.getFullYear()); if (nb < t) nb = make(t.getFullYear() + 1); return nb;
+}
+function maskNric(v) { v = v || ''; return v.length < 5 ? v : v[0] + '•'.repeat(v.length - 5) + v.slice(-4); }
+function money(v) { return typeof v === 'number' ? '$' + v.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (v || ''); }
+function nextId(rows, prefix) {
+  let n = 0; const re = new RegExp('^' + prefix + '(\\d+)$');
+  for (const r of rows) { const m = re.exec(String(r.ID || '')); if (m) n = Math.max(n, +m[1]); }
+  return prefix + String(n + 1).padStart(4, '0');
+}
+
+/* =========================================================================
+   Storage — kept on this device (IndexedDB, falls back to localStorage)
+   ========================================================================= */
+function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], meta: { lastExport: null, lastChange: null } }; }
+let db = emptyDb();
+let _idb;
+function openIdb() {
+  if (!_idb) _idb = new Promise((res, rej) => {
+    const r = indexedDB.open('clientbook', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  return _idb;
+}
+async function kvGet(k) {
+  try {
+    const d = await openIdb();
+    return await new Promise((res, rej) => { const q = d.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  } catch (e) {
+    try { const v = localStorage.getItem('cb_' + k); return v ? JSON.parse(v) : undefined; } catch (_) { return undefined; }
+  }
+}
+async function kvSet(k, v) {
+  try {
+    const d = await openIdb();
+    await new Promise((res, rej) => { const tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); });
+  } catch (e) {
+    localStorage.setItem('cb_' + k, JSON.stringify(v));
+  }
+}
+let askedPersist = false;
+async function persist() {
+  db.meta.lastChange = nowStamp();
+  await kvSet('db', JSON.parse(JSON.stringify(db)));
+  if (!askedPersist && navigator.storage && navigator.storage.persist) { askedPersist = true; navigator.storage.persist().catch(() => {}); }
+}
+
+/* =========================================================================
+   Data helpers
+   ========================================================================= */
+const getClient = id => db.clients.find(c => c.ID === id);
+const touch = c => { if (c) c['Last Updated'] = nowStamp(); };
+const extrasOf = id => db.extras.filter(e => e['Client ID'] === id);
+function setExtras(id, list) { db.extras = db.extras.filter(e => e['Client ID'] !== id).concat(list.map(e => ({ 'Client ID': id, Field: e.Field, Value: e.Value }))); }
+function relLabel(key, gender) { const r = RELATIONS[key]; if (!r) return key ? key[0].toUpperCase() + key.slice(1) : 'Relative'; return gender === 'Male' ? r[1] : gender === 'Female' ? r[2] : r[3]; }
+function addLink(a, b, key) {
+  const rev = (RELATIONS[key] || ['other'])[0];
+  db.family = db.family.filter(f => !((f['Client ID'] === a && f['Related ID'] === b) || (f['Client ID'] === b && f['Related ID'] === a)));
+  db.family.push({ 'Client ID': a, 'Related ID': b, Relationship: key }, { 'Client ID': b, 'Related ID': a, Relationship: rev });
+}
+function familyOf(id) {
+  const order = Object.keys(RELATIONS);
+  return db.family.filter(f => f['Client ID'] === id).map(f => {
+    const c = getClient(f['Related ID']); return c && { c, key: f.Relationship, label: relLabel(f.Relationship, c.Gender), age: ageOf(c['Date of Birth']) };
+  }).filter(Boolean).sort((x, y) => ((order.indexOf(x.key) + 100) % 100 - (order.indexOf(y.key) + 100) % 100) || byName(x.c, y.c));
+}
+function distinct(values, starters = []) {
+  const counts = new Map(), spell = new Map();
+  for (let v of [...values, ...starters]) {
+    v = String(v ?? '').trim(); if (!v) continue; const k = v.toLowerCase();
+    counts.set(k, (counts.get(k) || 0) + 1);
+    if (!spell.has(k)) spell.set(k, new Map());
+    spell.get(k).set(v, (spell.get(k).get(v) || 0) + 1);
+  }
+  return [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b))
+    .map(k => [...spell.get(k).entries()].sort((a, b) => b[1] - a[1])[0][0]);
+}
+function suggestions() {
+  return {
+    'Occupation': distinct(db.clients.map(c => c.Occupation)),
+    'Workplace': distinct(db.clients.map(c => c.Workplace)),
+    'How We Met': distinct(db.clients.map(c => c['How We Met']), HOW_MET),
+    'Field': distinct(db.extras.map(e => e.Field), EXTRA_SUGGESTIONS),
+    'Product': distinct(db.policies.map(p => p.Product)),
+    'Insurer': distinct(db.policies.map(p => p.Insurer)),
+  };
+}
+const datalist = (id, opts) => `<datalist id="${id}">${opts.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`;
+function searchClients(q) {
+  const ql = q.toLowerCase().trim(), tokens = ql.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+  const ex = {}; for (const e of db.extras) (ex[e['Client ID']] ||= []).push(`${e.Field} ${e.Value}`);
+  return db.clients.map(c => {
+    const hay = ['Name', 'NRIC', 'Phone', 'Email', 'Workplace', 'Occupation', 'ID'].map(f => c[f] || '').join(' ').toLowerCase()
+      + ' ' + (ex[c.ID] || []).join(' ').toLowerCase()
+      + ' ' + String(c.Phone || '').replace(/\D/g, '');
+    if (!tokens.every(t => hay.includes(t))) return null;
+    const n = String(c.Name || '').toLowerCase();
+    return { c, rank: n.startsWith(ql) ? 0 : n.includes(ql) ? 1 : 2 };
+  }).filter(Boolean).sort((a, b) => a.rank - b.rank || byName(a.c, b.c)).map(x => x.c);
+}
+
+/* =========================================================================
+   Navigation
+   ========================================================================= */
+let pendingToast = null, pendingAnchor = null, hooks = [];
+function route() {
+  const h = location.hash.slice(1) || '/'; const [path, qs] = h.split('?');
+  return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
+}
+function go(dest, msg, anchor, replace, kind = 'ok') {
+  pendingToast = msg ? { msg, kind } : null; pendingAnchor = anchor || null;
+  const cur = location.hash || '#/';
+  if (dest === cur || (!dest)) render();
+  else if (replace) location.replace(dest);
+  else location.hash = dest;
+}
+function goBack() { if (history.length > 1) history.back(); else location.hash = '#/'; }
+async function commit(msg, dest, anchor, replace = false, kind = 'ok') {
+  try { await persist(); }
+  catch (err) { toast('Could not save on this device: ' + (err && err.message || err), 'error'); return false; }
+  go(dest || location.hash || '#/', msg, anchor, replace, kind); return true;
+}
+let toastTimer;
+function toast(msg, kind = 'ok') {
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast ' + kind; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, kind === 'ok' ? 2600 : 5500);
+}
+function render() {
+  const { parts, q } = route(); hooks = []; let html;
+  try {
+    if (!parts.length) html = pageHome();
+    else if (parts[0] === 'search') html = pageSearch(q.get('q') || '');
+    else if (parts[0] === 'new') html = pageForm(null, q.get('link'), q.get('rel'));
+    else if (parts[0] === 'c' && parts[2] === 'edit') html = pageForm(parts[1]);
+    else if (parts[0] === 'c') html = pageProfile(parts[1]);
+    else if (parts[0] === 'data') html = pageData();
+    else html = pageNotFound();
+  } catch (e) {
+    console.error(e);
+    html = `<section class="card"><h2>Something went wrong</h2><p class="muted">${esc(e.message)}</p><a class="btn" href="#/">Home</a></section>`;
+  }
+  $('#app').innerHTML = html;
+  $('#back').hidden = !parts.length;
+  $('#suggest').hidden = true;
+  if (document.activeElement !== $('#q')) $('#q').value = parts[0] === 'search' ? (q.get('q') || '') : '';
+  if (pendingAnchor) { const el = document.getElementById(pendingAnchor); el ? el.scrollIntoView({ block: 'start' }) : scrollTo(0, 0); pendingAnchor = null; }
+  else scrollTo(0, 0);
+  if (pendingToast) { toast(pendingToast.msg, pendingToast.kind); pendingToast = null; }
+  hooks.forEach(f => f());
+  document.title = (document.querySelector('h1, h2')?.textContent || '').trim().slice(0, 40) + ' · Client Book';
+}
+
+/* =========================================================================
+   Pages
+   ========================================================================= */
+function backupBanner() {
+  if (!db.clients.length) return '';
+  const last = db.meta.lastExport, changed = db.meta.lastChange;
+  if (last && (!changed || changed <= last)) return '';
+  const days = last ? daysFrom(parseISO(last), today()) : null;
+  if (last && days < 7) return '';
+  return `<div class="banner warn"><span>${last ? `Last Excel backup was ${days} days ago.` : 'You haven’t backed up to Excel yet.'}
+    Your data only lives on this iPad.</span><button class="btn small primary" onclick="exportExcel()">Back up now</button></div>`;
+}
+
+function pageHome() {
+  const t = today(), in14 = new Date(t); in14.setDate(in14.getDate() + 14);
+  const clients = [...db.clients].sort(byName);
+  const fu = clients.filter(c => { const d = parseISO(c['Next Follow-up']); return d && d <= in14; })
+    .sort((a, b) => a['Next Follow-up'].localeCompare(b['Next Follow-up']));
+  const bd = clients.filter(c => parseISO(c['Date of Birth'])).map(c => {
+    const nb = nextBirthday(c['Date of Birth'], t); return { c, nb, days: daysFrom(t, nb), turns: ageOf(c['Date of Birth'], nb) };
+  }).filter(b => b.days <= 30).sort((a, b) => a.days - b.days);
+  const recent = clients.filter(c => isISO(c['Last Updated'])).sort((a, b) => b['Last Updated'].localeCompare(a['Last Updated'])).slice(0, 6);
+  const link = c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>`;
+  hooks.push(() => {
+    const f = $('#filter'); if (!f) return;
+    f.addEventListener('input', () => { const v = f.value.toLowerCase(); document.querySelectorAll('#clients tbody tr').forEach(r => r.hidden = !r.textContent.toLowerCase().includes(v)); });
+  });
+  return `${backupBanner()}
+  <div class="dash">
+    <section class="card"><h2>Follow-ups due <small>next 14 days</small></h2>
+      ${fu.length ? `<ul class="mini">${fu.map(c => `<li>${link(c)}<span class="${parseISO(c['Next Follow-up']) <= t ? 'due' : 'muted'}">${fmtDate(c['Next Follow-up'])} · ${ago(c['Next Follow-up'])}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing due.</p>'}
+    </section>
+    <section class="card"><h2>Birthdays <small>next 30 days</small></h2>
+      ${bd.length ? `<ul class="mini">${bd.map(b => `<li>${link(b.c)}<span class="muted">${pad(b.nb.getDate())} ${MON[b.nb.getMonth()]} · turns ${b.turns}${b.days === 0 ? ' · <b>today!</b>' : ` · in ${b.days}d`}</span></li>`).join('')}</ul>` : '<p class="muted">No birthdays coming up.</p>'}
+    </section>
+    <section class="card"><h2>Recently updated</h2>
+      ${recent.length ? `<ul class="mini">${recent.map(c => `<li>${link(c)}<span class="muted">${ago(c['Last Updated'])}</span></li>`).join('')}</ul>` : `<p class="muted">No clients yet — <a href="#/new">add your first one</a>, or <a href="#/data">import your Excel file</a>.</p>`}
+    </section>
+  </div>
+  <section class="card">
+    <div class="row-between"><h2>All clients <small>${clients.length}</small></h2>
+      ${clients.length ? '<input id="filter" class="filter" type="search" placeholder="Filter this list…">' : ''}</div>
+    ${clients.length ? `<div class="table-wrap"><table class="list" id="clients">
+      <thead><tr><th>Name</th><th>Age</th><th>Phone</th><th>Workplace</th><th>Last met</th><th>Updated</th></tr></thead><tbody>
+      ${clients.map(c => `<tr><td>${link(c)}</td><td>${ageOf(c['Date of Birth']) ?? ''}</td><td class="nowrap">${esc(c.Phone)}</td><td>${esc(c.Workplace)}</td>
+        <td class="nowrap">${fmtDate(c['Last Met'])}</td><td class="muted nowrap">${ago(c['Last Updated'])}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="muted">Your client book is empty.</p>'}
+  </section>`;
+}
+
+function pageSearch(q) {
+  const res = q ? searchClients(q) : [];
+  if (res.length === 1) { setTimeout(() => location.replace('#/c/' + encodeURIComponent(res[0].ID)), 0); return ''; }
+  return `<section class="card"><h2>${q ? `${res.length} result${res.length === 1 ? '' : 's'} for “${esc(q)}”` : 'Search'}</h2>
+    ${res.length ? `<ul class="results">${res.map(c => `<li><a href="#/c/${encodeURIComponent(c.ID)}"><b>${esc(c.Name)}</b>
+      <span>${[c.Workplace, c.Phone, ageOf(c['Date of Birth']) != null ? 'age ' + ageOf(c['Date of Birth']) : '', c.ID].filter(Boolean).map(esc).join(' · ')}</span></a></li>`).join('')}</ul>`
+      : q ? '<p class="muted">No one matches that. <a href="#/new">Add a new client?</a></p>' : '<p class="muted">Type a name, NRIC, phone number or workplace in the search box.</p>'}
+  </section>`;
+}
+
+function fieldHtml(f, val, sugg) {
+  const n = slug(f.label), tag = f.required ? '<em class="req">required</em>' : '<em>optional</em>';
+  let input;
+  if (f.type === 'textarea') input = `<textarea name="${n}" rows="${f.rows || 3}" placeholder="${esc(f.placeholder || '')}">${esc(val || '')}</textarea>`;
+  else if (f.type === 'select') input = `<select name="${n}"><option value="">—</option>${f.options.map(o => `<option${o === val ? ' selected' : ''}>${esc(o)}</option>`).join('')}${val && !f.options.includes(val) ? `<option selected>${esc(val)}</option>` : ''}</select>`;
+  else if (f.type === 'date') input = `<input type="date" name="${n}" value="${isISO(val) ? esc(val.slice(0, 10)) : ''}">`;
+  else {
+    const caps = f.caps ? ` autocapitalize="${f.caps}"` : f.type === 'text' ? ' autocapitalize="words"' : '';
+    input = `<input type="${f.type}" name="${n}" value="${esc(val || '')}" placeholder="${esc(f.placeholder || '')}"${f.required ? ' required' : ''}${caps}${f.autofill ? ` list="dl_${n}" autocomplete="off"` : ''}>`;
+    if (f.autofill) input += datalist('dl_' + n, sugg[f.label] || []);
+  }
+  return `<label class="${f.wide ? 'wide' : ''}"><span>${esc(f.label)} ${tag}</span>${input}</label>`;
+}
+function extraRow(e = {}) {
+  return `<div class="extra-row"><input name="extra_field" value="${esc(e.Field || '')}" placeholder="Field (e.g. Hobbies)" list="extra_suggest" autocapitalize="sentences">
+    <textarea name="extra_value" rows="1" placeholder="Details">${esc(e.Value || '')}</textarea>
+    <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove()">✕</button></div>`;
+}
+function addExtraRow() { const w = $('#extras'); w.insertAdjacentHTML('beforeend', extraRow()); w.lastElementChild.querySelector('input').focus(); }
+
+function pageForm(cid, linkId, rel) {
+  const editing = !!cid, c = editing ? getClient(cid) : {};
+  if (editing && !c) return pageNotFound();
+  const link = linkId ? getClient(linkId) : null, sugg = suggestions();
+  const extras = editing ? extrasOf(cid) : [{}];
+  const cancel = editing ? `#/c/${encodeURIComponent(cid)}` : link ? `#/c/${encodeURIComponent(link.ID)}` : '#/';
+  return `<section class="card">
+    <h2>${editing ? 'Edit ' + esc(c.Name) : 'New client'}</h2>
+    ${link && RELATIONS[rel] ? `<p class="banner">This person will be linked as <b>${esc(link.Name)}’s ${RELATIONS[rel][3].toLowerCase()}</b>.</p>` : ''}
+    <p class="muted">Only <b>Name</b> is required. Leave anything you don’t know blank — you can fill it in later.</p>
+    <form class="form" autocomplete="off" onsubmit="return saveClient(event)" data-cid="${esc(cid || '')}" data-link="${esc(link ? link.ID : '')}" data-rel="${esc(rel || '')}">
+      ${SECTIONS.map(([title, fields]) => `<fieldset><legend>${esc(title)}</legend><div class="grid">${fields.map(f => fieldHtml(f, c[f.label], sugg)).join('')}</div></fieldset>`).join('')}
+      <fieldset id="extras-set"><legend>Extra details <em>optional</em></legend>
+        <p class="muted small">Add any other information as your own fields — e.g. Nickname, Hobbies, Kids’ school, Wedding anniversary. Add as many as you like.</p>
+        <div id="extras">${extras.map(extraRow).join('')}</div>
+        ${datalist('extra_suggest', sugg.Field)}
+        <button type="button" class="btn" onclick="addExtraRow()">+ Add a field</button>
+      </fieldset>
+      <div class="actions"><button class="btn primary" type="submit">Save</button><a class="btn" href="${cancel}">Cancel</a></div>
+    </form></section>`;
+}
+
+async function saveClient(e) {
+  e.preventDefault();
+  const form = e.target, fd = new FormData(form), { cid, link, rel } = form.dataset;
+  const data = {};
+  for (const label of FORM_FIELDS) {
+    let v = String(fd.get(slug(label)) || '').trim();
+    if (label === 'NRIC') v = v.toUpperCase().replace(/\s+/g, '');
+    data[label] = v || blank(label);
+  }
+  const fs = fd.getAll('extra_field'), vs = fd.getAll('extra_value'), extras = [];
+  fs.forEach((f, i) => { f = String(f).trim(); const v = String(vs[i] || '').trim(); if (f || v) extras.push({ Field: f || 'Note', Value: v }); });
+  if (!data.Name) { toast('Name is required — everything else is optional.', 'error'); return false; }
+  const warn = [];
+  if (data.NRIC) {
+    if (!/^[STFGM]\d{7}[A-Z]$/.test(data.NRIC)) warn.push(`NRIC “${data.NRIC}” doesn’t look like a standard NRIC/FIN — saved anyway.`);
+    const dup = db.clients.find(c => c.ID !== cid && String(c.NRIC || '').toUpperCase() === data.NRIC);
+    if (dup) { toast(`That NRIC already belongs to ${dup.Name} (${dup.ID}).`, 'error'); return false; }
+  }
+  let target;
+  if (cid) { target = getClient(cid); Object.assign(target, data); }
+  else {
+    target = {}; for (const h of SHEETS.Clients) target[h] = blank(h);
+    Object.assign(target, data, { ID: nextId(db.clients, 'C'), Created: nowStamp() });
+    db.clients.push(target);
+  }
+  touch(target); setExtras(target.ID, extras);
+  let msg = cid ? 'Profile updated.' : `Saved ${target.Name}.`, dest = '#/c/' + encodeURIComponent(target.ID), anchor = null;
+  const lc = link && getClient(link);
+  if (!cid && lc && RELATIONS[rel]) { addLink(lc.ID, target.ID, rel); touch(lc); msg = `Saved ${target.Name} and linked to ${lc.Name}.`; dest = '#/c/' + encodeURIComponent(lc.ID); anchor = 'family'; }
+  if (warn.length) msg += ' ' + warn.join(' ');
+  await commit(msg, dest, anchor, true, warn.length ? 'warn' : 'ok');
+  return false;
+}
+
+function pageProfile(cid) {
+  const c = getClient(cid); if (!c) return pageNotFound();
+  const id = esc(cid), age = ageOf(c['Date of Birth']), sugg = suggestions(), fam = familyOf(cid), extras = extrasOf(cid);
+  const notes = db.notes.filter(n => n['Client ID'] === cid).sort((a, b) => String(b.Added || '').localeCompare(String(a.Added || '')));
+  const inter = db.interactions.filter(i => i['Client ID'] === cid).sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')));
+  const pols = db.policies.filter(p => p['Client ID'] === cid);
+  const linked = new Set([cid, ...fam.map(f => f.c.ID)]);
+  const others = db.clients.filter(o => !linked.has(o.ID)).sort(byName);
+  const first = esc(String(c.Name || '').split(' ')[0]);
+  const relOpts = `<option value="">They are ${first}’s…</option>` + Object.entries(RELATIONS).map(([k, r]) => `<option value="${k}">${r[3]}</option>`).join('');
+  const F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
+  const sub = [c.Gender, age != null ? 'Age ' + age : '', c.Occupation, c.Workplace].filter(Boolean).map(esc).join(' · ') || 'No details yet';
+  const fu = c['Next Follow-up'], fuDue = parseISO(fu) && parseISO(fu) <= today();
+  return `
+  <section class="card hero">
+    <div class="avatar">${esc(String(c.Name || '?').charAt(0).toUpperCase())}</div>
+    <div class="who"><h1>${esc(c.Name)}</h1><p class="muted">${sub}</p>
+      <p class="stamps"><span>ID ${id}</span>
+        <span>Last met: <b>${fmtDate(c['Last Met']) || '—'}</b>${c['Last Met'] ? ` (${ago(c['Last Met'])})` : ''}</span>
+        <span>Profile updated: <b>${fmtDate(c['Last Updated']) || '—'}</b></span>
+        ${fu ? `<span class="${fuDue ? 'due' : ''}">Follow-up: <b>${fmtDate(fu)}</b></span>` : ''}</p></div>
+    <a class="btn primary" href="#/c/${encodeURIComponent(cid)}/edit">Edit profile</a>
+  </section>
+  <div class="cols">
+  <div class="col-main">
+    <section class="card"><h2>Details</h2><dl class="details">
+      ${F('NRIC', c.NRIC ? `<span class="nric" data-full="${esc(c.NRIC)}" data-mask="${esc(maskNric(c.NRIC))}">${esc(maskNric(c.NRIC))}</span> <button class="link small" onclick="toggleNric(this)">show</button>` : '')}
+      ${F('Date of birth', c['Date of Birth'] ? esc(fmtDate(c['Date of Birth'])) + (age != null ? ` (age ${age})` : '') : '')}
+      ${F('Phone', c.Phone ? `<a href="tel:${esc(String(c.Phone).replace(/[^\d+]/g, ''))}">${esc(c.Phone)}</a>` : '')}
+      ${F('Email', c.Email ? `<a href="mailto:${esc(c.Email)}">${esc(c.Email)}</a>` : '')}
+      ${F('Address', c.Address ? `<span class="pre">${esc(c.Address)}</span>` : '', 'wide')}
+      ${F('Occupation', esc(c.Occupation))}
+      ${F('Workplace', esc(c.Workplace))}
+      ${F('Income range', esc(c['Income Range']))}
+      ${F('How we met', esc(c['How We Met']))}
+      ${F('First met', c['First Met'] ? `${esc(fmtDate(c['First Met']))} (${ago(c['First Met'])})` : '')}
+      ${F('Created', esc(fmtDate(c.Created)))}
+    </dl></section>
+
+    <section class="card"><h2>Special remarks</h2>
+      ${c.Remarks ? `<div class="pre remarks">${esc(c.Remarks)}</div>` : `<p class="none">No remarks yet — <a href="#/c/${encodeURIComponent(cid)}/edit">add some</a>.</p>`}
+      ${extras.length ? `<dl class="details extras">${extras.map(e => F(e.Field, `<span class="pre">${esc(e.Value)}</span>`)).join('')}</dl>` : ''}
+      <p class="small"><a href="#/c/${encodeURIComponent(cid)}/edit">+ Add or edit extra details</a></p>
+    </section>
+
+    <section class="card" id="notes"><h2>Notes <small>${notes.length}</small></h2>
+      <form class="note-add" onsubmit="return addNote(event)" data-cid="${id}">
+        <textarea name="note" rows="3" placeholder="Jot down anything new about ${first} — it’ll be dated automatically." required></textarea>
+        <button class="btn primary">Add note</button></form>
+      ${notes.map(n => `<div class="note">
+        <div class="note-head"><span class="muted small">${esc(fmtDate(n.Added))}</span>
+          <span><button class="link small" onclick="this.closest('.note').classList.toggle('editing')">edit</button>
+          <button class="link small danger" data-cid="${id}" data-nid="${esc(n.ID)}" onclick="delNote(this)">delete</button></span></div>
+        <div class="pre note-text">${esc(n.Note)}</div>
+        <form class="note-edit" onsubmit="return saveNote(event)" data-cid="${id}" data-nid="${esc(n.ID)}">
+          <textarea name="note" rows="4">${esc(n.Note)}</textarea><button class="btn primary small">Save</button></form>
+      </div>`).join('')}
+    </section>
+
+    <section class="card" id="log"><h2>Interaction log <small>${inter.length}</small></h2>
+      <form class="inline-form" onsubmit="return addInteraction(event)" data-cid="${id}">
+        <input type="date" name="date" value="${todayISO()}" title="Date">
+        <select name="type">${INTERACTION_TYPES.map(t => `<option>${t}</option>`).join('')}</select>
+        <input name="notes" placeholder="What happened?" class="grow" autocapitalize="sentences">
+        <label class="small muted">Next follow-up <input type="date" name="next_follow_up"></label>
+        <button class="btn primary">Log</button></form>
+      <p class="muted small">Logging a meeting, meal, review or event updates “Last met” automatically.</p>
+      ${inter.length ? `<div class="table-wrap"><table class="list"><thead><tr><th>Date</th><th>Type</th><th>Notes</th><th></th></tr></thead><tbody>
+        ${inter.map(i => `<tr><td class="nowrap">${esc(fmtDate(i.Date))}</td><td>${esc(i.Type)}</td><td class="pre">${esc(i.Notes)}</td>
+          <td><button class="icon" title="Delete" data-cid="${id}" data-iid="${esc(i.ID)}" onclick="delInteraction(this)">✕</button></td></tr>`).join('')}
+      </tbody></table></div>` : ''}
+    </section>
+
+    <section class="card" id="policies"><h2>Policies held <small>${pols.length}</small></h2>
+      ${pols.length ? `<div class="table-wrap"><table class="list"><thead><tr><th>Product</th><th>Insurer</th><th>Policy no.</th><th>Start</th><th>Premium</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>
+        ${pols.map(p => `<tr><td>${esc(p.Product)}</td><td>${esc(p.Insurer)}</td><td>${esc(p['Policy No'])}</td><td class="nowrap">${esc(fmtDate(p['Start Date']))}</td>
+          <td class="nowrap">${esc(money(p.Premium))}${p.Frequency ? ` <span class="muted">/ ${esc(p.Frequency.toLowerCase())}</span>` : ''}</td>
+          <td>${esc(p.Status)}</td><td class="pre">${esc(p.Notes)}</td>
+          <td><button class="icon" title="Remove" data-cid="${id}" data-pid="${esc(p.ID)}" onclick="delPolicy(this)">✕</button></td></tr>`).join('')}
+      </tbody></table></div>` : ''}
+      <details><summary class="btn">+ Add policy</summary>
+        <form class="form" onsubmit="return addPolicy(event)" data-cid="${id}" autocomplete="off"><div class="grid">
+          <label><span>Product <em class="req">required</em></span><input name="product" required list="dl_product"></label>
+          <label><span>Insurer <em>optional</em></span><input name="insurer" list="dl_insurer"></label>
+          ${datalist('dl_product', sugg.Product)}${datalist('dl_insurer', sugg.Insurer)}
+          <label><span>Policy no. <em>optional</em></span><input name="policy_no" autocapitalize="characters"></label>
+          <label><span>Start date <em>optional</em></span><input type="date" name="start_date"></label>
+          <label><span>Premium <em>optional</em></span><input name="premium" inputmode="decimal" placeholder="e.g. 250"></label>
+          <label><span>Frequency <em>optional</em></span><select name="frequency"><option value="">—</option>${FREQUENCIES.map(f => `<option>${f}</option>`).join('')}</select></label>
+          <label><span>Status <em>optional</em></span><select name="status"><option value="">—</option>${POLICY_STATUS.map(s => `<option>${s}</option>`).join('')}</select></label>
+          <label class="wide"><span>Notes <em>optional</em></span><textarea name="notes" rows="2"></textarea></label>
+        </div><div class="actions"><button class="btn primary">Add policy</button></div></form>
+      </details>
+    </section>
+
+    <section class="card danger-zone"><button class="link danger small" data-cid="${id}" onclick="delClient(this)">Delete this client</button></section>
+  </div>
+
+  <aside class="col-side">
+    <section class="card" id="family"><h2>Family <small>${fam.length}</small></h2>
+      ${fam.length ? `<ul class="family">${fam.map(m => `<li>
+        <a href="#/c/${encodeURIComponent(m.c.ID)}"><span class="rel">${esc(m.label)}</span><b>${esc(m.c.Name)} ›</b>
+          ${m.age != null || m.c.Phone ? `<span class="muted small">${[m.age != null ? 'Age ' + m.age : '', m.c.Phone].filter(Boolean).map(esc).join(' · ')}</span>` : ''}</a>
+        <button class="icon" title="Unlink" data-cid="${id}" data-rid="${esc(m.c.ID)}" onclick="unlinkFamily(this)">✕</button></li>`).join('')}</ul>`
+        : '<p class="none">No family members linked yet.</p>'}
+      <div class="family-add"><h3>Add family member</h3>
+        <div class="stack"><select id="newrel">${relOpts}</select>
+          <button class="btn primary" data-cid="${id}" onclick="addNewRelative(this)">+ Add a new person</button></div>
+        ${others.length ? `<p class="muted small or">or link someone already in your book</p>
+        <form class="stack" onsubmit="return linkExisting(event)" data-cid="${id}" autocomplete="off">
+          <input name="person" list="people" placeholder="Start typing a name…" required autocapitalize="words">
+          ${datalist('people', others.map(o => `${o.Name} [${o.ID}]`))}
+          <select name="relationship" required>${relOpts}</select>
+          <button class="btn">Link</button></form>` : ''}
+      </div>
+    </section>
+  </aside>
+  </div>`;
+}
+
+function pageData() {
+  const counts = Object.entries(KEY).map(([n, k]) => `<span><b>${db[k].length}</b> ${n === 'Clients' ? 'clients' : n.toLowerCase()}</span>`).join('');
+  hooks.push(async () => {
+    const prev = await kvGet('prev'), w = $('#undo-wrap');
+    if (prev && w) w.innerHTML = `Imported or erased by mistake? <button class="link" onclick="undoImport()">Restore the previous data</button> (${prev.clients.length} clients).`;
+  });
+  hooks.push(async () => {
+    const el = $('#persisted'); if (!el) return;
+    try {
+      const p = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null;
+      el.textContent = p === true ? 'Protected — iPadOS won’t clear it to free up space.' : p === false ? 'Not yet protected. Adding Client Book to your Home Screen helps keep it safe.' : 'Unknown on this browser.';
+    } catch (_) { el.textContent = 'Unknown on this browser.'; }
+  });
+  return `<section class="card"><h2>Backup &amp; data</h2>
+      <p class="stat">${counts}</p>
+      <p class="muted small">Everything is stored on this iPad only. Storage status: <span id="persisted">checking…</span></p>
+      <p class="muted small">Last Excel backup: <b>${db.meta.lastExport ? esc(fmtDate(db.meta.lastExport)) + ' (' + ago(db.meta.lastExport) + ')' : 'never'}</b></p>
+    </section>
+    <section class="card"><h2>Export to Excel</h2>
+      <p>Creates an Excel file with everything in it — use it as a backup, to open in Excel, or to move your data to the computer version.</p>
+      <button class="btn primary" onclick="exportExcel()">Export to Excel</button>
+      <p class="muted small">On iPad you’ll get the Share menu — choose <b>Save to Files</b> (or AirDrop / email it to yourself).
+        To use it in the computer version, rename it to <b>clients.xlsx</b> and put it in the ClientBook folder.</p>
+    </section>
+    <section class="card"><h2>Import from Excel</h2>
+      <p>Load a <b>clients.xlsx</b> from the computer version or a previous export. This <b>replaces</b> everything currently on this iPad.</p>
+      <label class="btn">Choose Excel file…<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="importExcel(this)"></label>
+      <p id="undo-wrap" class="small"></p>
+    </section>
+    <section class="card"><h2>Erase everything</h2>
+      <p class="muted small">Removes all clients from this iPad. Export first if you might need them.</p>
+      <button class="btn danger" onclick="eraseAll()">Erase all data</button>
+    </section>
+    <section class="card"><h2>Tips</h2><ul class="steps small">
+      <li>Always open Client Book from its <b>Home Screen icon</b>. Safari and the Home Screen app keep separate data on iPad.</li>
+      <li>Export to Excel regularly and save it to Files or iCloud Drive — that’s your backup if the iPad is lost or reset.</li>
+      <li>Works offline once it has been opened once with internet.</li>
+    </ul></section>`;
+}
+
+function pageNotFound() { return `<section class="card"><h2>Not found</h2><p class="muted">That client doesn’t exist (they may have been deleted).</p><a class="btn" href="#/">Home</a></section>`; }
+
+/* =========================================================================
+   Actions
+   ========================================================================= */
+function toggleNric(btn) { const s = btn.previousElementSibling, on = s.textContent === s.dataset.mask; s.textContent = on ? s.dataset.full : s.dataset.mask; btn.textContent = on ? 'hide' : 'show'; }
+function addNewRelative(btn) {
+  const rel = $('#newrel').value;
+  if (!rel) { toast('First choose how they’re related.', 'warn'); $('#newrel').focus(); return; }
+  location.hash = `#/new?link=${encodeURIComponent(btn.dataset.cid)}&rel=${encodeURIComponent(rel)}`;
+}
+async function linkExisting(e) {
+  e.preventDefault(); const f = e.target, cid = f.dataset.cid, c = getClient(cid), fd = new FormData(f);
+  const text = String(fd.get('person') || '').trim(), key = String(fd.get('relationship') || '');
+  let oid = (/\[([^\]]+)\]\s*$/.exec(text) || [])[1];
+  if (!oid || !getClient(oid)) { const m = db.clients.filter(x => String(x.Name).toLowerCase() === text.toLowerCase()); oid = m.length === 1 ? m[0].ID : null; }
+  if (!RELATIONS[key]) { toast('Pick a relationship.', 'error'); return false; }
+  if (!oid) { toast('Couldn’t find that person — pick them from the list, or use “Add a new person”.', 'error'); return false; }
+  if (oid === cid) { toast('A client can’t be their own family member.', 'error'); return false; }
+  const o = getClient(oid); addLink(cid, oid, key); touch(c); touch(o);
+  await commit(`Linked ${o.Name} as ${relLabel(key, o.Gender)}.`, location.hash, 'family'); return false;
+}
+async function unlinkFamily(btn) {
+  const { cid, rid } = btn.dataset, a = getClient(cid), b = getClient(rid);
+  if (!confirm(`Remove the family link between ${a.Name} and ${b ? b.Name : 'this person'}? Both profiles are kept.`)) return;
+  db.family = db.family.filter(f => !((f['Client ID'] === cid && f['Related ID'] === rid) || (f['Client ID'] === rid && f['Related ID'] === cid)));
+  touch(a); touch(b); await commit('Family link removed.', location.hash, 'family');
+}
+async function addNote(e) {
+  e.preventDefault(); const f = e.target, cid = f.dataset.cid, t = String(new FormData(f).get('note') || '').trim();
+  if (!t) return false;
+  db.notes.push({ ID: nextId(db.notes, 'N'), 'Client ID': cid, Added: nowStamp(), Note: t }); touch(getClient(cid));
+  await commit('Note added.', location.hash, 'notes'); return false;
+}
+async function saveNote(e) {
+  e.preventDefault(); const f = e.target, { cid, nid } = f.dataset, t = String(new FormData(f).get('note') || '').trim();
+  const n = db.notes.find(x => x.ID === nid); if (!n || !t) return false;
+  n.Note = t; touch(getClient(cid)); await commit('Note updated.', location.hash, 'notes'); return false;
+}
+async function delNote(btn) {
+  if (!confirm('Delete this note?')) return;
+  db.notes = db.notes.filter(n => n.ID !== btn.dataset.nid); touch(getClient(btn.dataset.cid));
+  await commit('Note deleted.', location.hash, 'notes');
+}
+async function addInteraction(e) {
+  e.preventDefault(); const f = e.target, cid = f.dataset.cid, c = getClient(cid), fd = new FormData(f);
+  const d = String(fd.get('date') || '') || todayISO(), type = String(fd.get('type') || 'Other');
+  db.interactions.push({ ID: nextId(db.interactions, 'I'), 'Client ID': cid, Date: d, Type: type, Notes: String(fd.get('notes') || '').trim() });
+  if (IN_PERSON.has(type)) {
+    if (!isISO(c['Last Met']) || d > c['Last Met']) c['Last Met'] = d;
+    if (!isISO(c['First Met'])) c['First Met'] = d;
+  }
+  const nf = String(fd.get('next_follow_up') || ''); if (isISO(nf)) c['Next Follow-up'] = nf;
+  touch(c); await commit('Interaction logged.' + (IN_PERSON.has(type) ? ' Last met updated.' : ''), location.hash, 'log'); return false;
+}
+async function delInteraction(btn) {
+  if (!confirm('Delete this entry?')) return;
+  db.interactions = db.interactions.filter(i => i.ID !== btn.dataset.iid); touch(getClient(btn.dataset.cid));
+  await commit('Entry removed.', location.hash, 'log');
+}
+async function addPolicy(e) {
+  e.preventDefault(); const f = e.target, cid = f.dataset.cid, fd = new FormData(f), g = k => String(fd.get(k) || '').trim();
+  if (!g('product')) { toast('Product name is required for a policy.', 'error'); return false; }
+  const prem = g('premium'), num = parseFloat(prem.replace(/[,$\s]/g, ''));
+  db.policies.push({ ID: nextId(db.policies, 'P'), 'Client ID': cid, Product: g('product'), Insurer: g('insurer'), 'Policy No': g('policy_no'),
+    'Start Date': g('start_date') || null, Premium: prem ? (isNaN(num) ? prem : num) : null, Frequency: g('frequency'), Status: g('status'), Notes: g('notes') });
+  touch(getClient(cid)); await commit(`Added policy: ${g('product')}.`, location.hash, 'policies'); return false;
+}
+async function delPolicy(btn) {
+  if (!confirm('Remove this policy?')) return;
+  db.policies = db.policies.filter(p => p.ID !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
+  await commit('Policy removed.', location.hash, 'policies');
+}
+async function delClient(btn) {
+  const cid = btn.dataset.cid, c = getClient(cid);
+  if (!confirm(`Delete ${c.Name} and all their notes, policies and family links?`)) return;
+  db.clients = db.clients.filter(x => x.ID !== cid);
+  db.family = db.family.filter(f => f['Client ID'] !== cid && f['Related ID'] !== cid);
+  for (const k of ['extras', 'notes', 'interactions', 'policies']) db[k] = db[k].filter(r => r['Client ID'] !== cid);
+  await commit(`Deleted ${c.Name}.`, '#/', null, true);
+}
+async function eraseAll() {
+  if (!confirm('Erase ALL clients from this iPad?')) return;
+  if (prompt('Type ERASE to confirm.') !== 'ERASE') { toast('Nothing was erased.', 'warn'); return; }
+  await kvSet('prev', JSON.parse(JSON.stringify(db)));
+  db = emptyDb(); await commit('All data erased. (You can still undo this from this page.)', '#/data', null, true);
+}
+
+/* =========================================================================
+   Excel (.xlsx) — written and read without any outside library
+   ========================================================================= */
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const te = new TextEncoder(), td = new TextDecoder();
+const EPOCH = Date.UTC(1899, 11, 30);
+function toSerial(iso) {
+  const [d, t] = iso.split('T'), [y, m, dd] = d.split('-').map(Number);
+  let s = (Date.UTC(y, m - 1, dd) - EPOCH) / 864e5;
+  if (t) { const [h, mi, se] = t.split(':').map(Number); s += ((h || 0) * 3600 + (mi || 0) * 60 + (se || 0)) / 86400; }
+  return s;
+}
+function fromSerial(n) {
+  const d = new Date(Math.round(n * 864e5) + EPOCH);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+function parseLoose(s, withTime) {
+  s = s.trim(); let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(s)))
+    return `${m[1]}-${pad(m[2])}-${pad(m[3])}` + (withTime ? `T${pad(m[4] || 0)}:${pad(m[5] || 0)}:${pad(m[6] || 0)}` : '');
+  if ((m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/.exec(s)))
+    return `${m[3]}-${pad(m[2])}-${pad(m[1])}` + (withTime ? 'T00:00:00' : '');
+  return null;
+}
+function cellIn(h, v) {
+  if (v == null || v === '') return blank(h);
+  if (DATE_F.has(h)) return typeof v === 'number' ? fromSerial(v).slice(0, 10) : (parseLoose(String(v), false) || String(v));
+  if (STAMP_F.has(h)) return typeof v === 'number' ? fromSerial(v) : (parseLoose(String(v), true) || String(v));
+  if (NUM_F.has(h)) { if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[,$\s]/g, '')); return isNaN(n) ? String(v) : n; }
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(v);
+  if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+  return String(v).trim();
+}
+
+// ---- writing
+const xmlEsc = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function colName(i) { let s = ''; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function colIndex(l) { let n = 0; for (const ch of l.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; }
+function sheetXml(headers, rows) {
+  const wide = ['Name', 'Workplace', 'Product', 'How We Met', 'Email', 'Occupation', 'Field'];
+  let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>';
+  headers.forEach((h, i) => { const w = LONG_F.has(h) ? 50 : wide.includes(h) ? 24 : STAMP_F.has(h) ? 18 : 14; x += `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`; });
+  x += '</cols><sheetData><row r="1">' + headers.map((h, i) => `<c r="${colName(i)}1" t="inlineStr" s="4"><is><t>${xmlEsc(h)}</t></is></c>`).join('') + '</row>';
+  rows.forEach((r, ri) => {
+    const rn = ri + 2; let cells = '';
+    headers.forEach((h, ci) => {
+      const v = r[h], ref = colName(ci) + rn; if (v == null || v === '') return;
+      if ((DATE_F.has(h) || STAMP_F.has(h)) && isISO(v)) cells += `<c r="${ref}" s="${DATE_F.has(h) ? 1 : 2}"><v>${toSerial(DATE_F.has(h) ? v.slice(0, 10) : v)}</v></c>`;
+      else if (typeof v === 'number') cells += `<c r="${ref}"${NUM_F.has(h) ? ' s="3"' : ''}><v>${v}</v></c>`;
+      else cells += `<c r="${ref}" t="inlineStr"${LONG_F.has(h) ? ' s="5"' : ''}><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+    });
+    x += `<row r="${rn}">${cells}</row>`;
+  });
+  return x + '</sheetData></worksheet>';
+}
+const STYLES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+  + '<numFmts count="2"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/><numFmt numFmtId="165" formatCode="yyyy-mm-dd hh:mm"/></numFmts>'
+  + '<fonts count="2"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font></fonts>'
+  + '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F3A5F"/><bgColor indexed="64"/></patternFill></fill></fills>'
+  + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+  + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+  + '<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+  + '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+  + '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+  + '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+  + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
+  + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs>'
+  + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+function buildXlsx() {
+  const names = Object.keys(SHEETS), files = [];
+  files.push({ name: '[Content_Types].xml', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+    + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+    + names.map((n, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')
+    + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' });
+  files.push({ name: '_rels/.rels', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' });
+  files.push({ name: 'xl/workbook.xml', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
+    + names.map((n, i) => `<sheet name="${xmlEsc(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>' });
+  files.push({ name: 'xl/_rels/workbook.xml.rels', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + names.map((n, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')
+    + `<Relationship Id="rId${names.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` });
+  files.push({ name: 'xl/styles.xml', text: STYLES_XML });
+  names.forEach((n, i) => files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, text: sheetXml(SHEETS[n], db[KEY[n]]) }));
+  return zipStore(files.map(f => ({ name: f.name, data: te.encode(f.text) })));
+}
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_TABLE[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  const parts = [], central = []; let offset = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = te.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true);
+    ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + sz;
+  }
+  const cdSize = central.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: XLSX_MIME });
+}
+async function exportExcel() {
+  try {
+    const blob = buildXlsx(), name = `ClientBook ${todayISO()}.xlsx`, file = new File([blob], name, { type: XLSX_MIME });
+    let done = false;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: name }); done = true; }
+      catch (e) { if (e.name === 'AbortError') { toast('Export cancelled — nothing was saved.', 'warn'); return; } }
+    }
+    if (!done) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+    }
+    db.meta.lastExport = nowStamp(); await kvSet('db', JSON.parse(JSON.stringify(db)));
+    go(location.hash || '#/', 'Excel backup created.', null, false);
+  } catch (e) { console.error(e); toast('Export failed: ' + e.message, 'error'); }
+}
+
+// ---- reading
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('This iPad’s software is too old to read Excel files — please update iPadOS.');
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf); let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65558); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('That isn’t an Excel (.xlsx) file.');
+  const count = dv.getUint16(e + 10, true), entries = {}; let p = dv.getUint32(e + 16, true);
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('The Excel file looks damaged.');
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true),
+      xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = td.decode(u8.subarray(p + 46, p + 46 + nlen)); p += 46 + nlen + xlen + clen;
+    const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    entries[name] = { method, data: u8.subarray(start, start + csize) };
+  }
+  return async name => {
+    const f = entries[name]; if (!f) return null;
+    if (f.method === 0) return td.decode(f.data);
+    if (f.method === 8) return td.decode(await inflateRaw(f.data));
+    throw new Error('Unsupported Excel compression.');
+  };
+}
+function textOf(el) { let s = ''; for (const t of el.getElementsByTagName('t')) { if (t.parentNode && t.parentNode.nodeName === 'rPh') continue; s += t.textContent; } return s; }
+async function readXlsx(buf) {
+  const get = unzip(buf), P = new DOMParser(), parse = t => P.parseFromString(t, 'application/xml');
+  const wbT = await get('xl/workbook.xml'); if (!wbT) throw new Error('That isn’t an Excel workbook.');
+  const rels = {}, relT = await get('xl/_rels/workbook.xml.rels');
+  if (relT) for (const r of parse(relT).getElementsByTagName('Relationship')) rels[r.getAttribute('Id')] = r.getAttribute('Target');
+  const ss = [], ssT = await get('xl/sharedStrings.xml');
+  if (ssT) for (const si of parse(ssT).getElementsByTagName('si')) ss.push(textOf(si));
+  const book = {};
+  for (const s of parse(wbT).getElementsByTagName('sheet')) {
+    const rid = s.getAttribute('r:id') || s.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+    let target = rels[rid]; if (!target) continue;
+    target = target.startsWith('/') ? target.slice(1) : 'xl/' + target.replace(/^\.\//, '');
+    const xml = await get(target); if (!xml) continue;
+    const rows = [];
+    for (const row of parse(xml).getElementsByTagName('row')) {
+      const r = []; let auto = 0;
+      for (const c of row.getElementsByTagName('c')) {
+        const ref = c.getAttribute('r'), ci = ref ? colIndex(ref.replace(/\d+/g, '')) : auto; auto = ci + 1;
+        const t = c.getAttribute('t'), vEl = c.getElementsByTagName('v')[0]; let v = null;
+        if (t === 's') v = vEl ? ss[+vEl.textContent] : null;
+        else if (t === 'inlineStr') { const is = c.getElementsByTagName('is')[0]; v = is ? textOf(is) : null; }
+        else if (t === 'str' || t === 'e') v = vEl ? vEl.textContent : null;
+        else if (t === 'b') v = vEl ? vEl.textContent === '1' : null;
+        else v = vEl && vEl.textContent !== '' ? Number(vEl.textContent) : null;
+        r[ci] = v;
+      }
+      rows[(+row.getAttribute('r') || rows.length + 1) - 1] = r;
+    }
+    book[s.getAttribute('name')] = rows;
+  }
+  return book;
+}
+function bookToDb(book) {
+  const nd = emptyDb();
+  if (!book['Clients']) throw new Error('This file has no “Clients” sheet — is it a Client Book file?');
+  for (const [name, headers] of Object.entries(SHEETS)) {
+    const rows = book[name]; if (!rows || !rows.length) continue;
+    const head = (rows[0] || []).map(v => v == null ? '' : String(v).trim());
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i]; if (!r || r.every(v => v == null || v === '')) continue;
+      const o = {}; for (const h of headers) { const ci = head.indexOf(h); o[h] = cellIn(h, ci >= 0 ? r[ci] : null); }
+      nd[KEY[name]].push(o);
+    }
+  }
+  nd.clients = nd.clients.filter(c => c.Name);
+  for (const c of nd.clients) if (!c.ID) c.ID = nextId(nd.clients, 'C');
+  for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
+  return nd;
+}
+async function importExcel(input) {
+  const file = input.files && input.files[0]; input.value = ''; if (!file) return;
+  try {
+    const nd = bookToDb(await readXlsx(await file.arrayBuffer()));
+    const msg = `Replace everything on this iPad (${db.clients.length} clients) with ${nd.clients.length} clients from “${file.name}”?`
+      + (db.clients.length ? '\n\nYou can undo this afterwards from this page.' : '');
+    if (!confirm(msg)) return;
+    if (db.clients.length) await kvSet('prev', JSON.parse(JSON.stringify(db)));
+    nd.meta = { lastExport: nowStamp(), lastChange: null };
+    db = nd; await commit(`Imported ${db.clients.length} clients.`, '#/', null, true);
+  } catch (e) { console.error(e); toast('Import failed: ' + e.message, 'error'); }
+}
+async function undoImport() {
+  const prev = await kvGet('prev'); if (!prev) return;
+  if (!confirm(`Restore the previous ${prev.clients.length} clients? Whatever is on this iPad now will be replaced.`)) return;
+  await kvSet('prev', JSON.parse(JSON.stringify(db)));
+  db = Object.assign(emptyDb(), prev); await commit('Previous data restored.', '#/', null, true);
+}
+
+/* =========================================================================
+   Header search with live suggestions
+   ========================================================================= */
+(function () {
+  const q = $('#q'), box = $('#suggest'); let items = [], active = -1;
+  const draw = () => {
+    if (!items.length) { box.hidden = true; return; }
+    box.innerHTML = items.map((c, i) => `<a href="#/c/${encodeURIComponent(c.ID)}" class="${i === active ? 'on' : ''}"><b>${esc(c.Name)}</b>
+      <span>${[c.Workplace, c.Phone, c.ID].filter(Boolean).map(esc).join(' · ')}</span></a>`).join('');
+    box.hidden = false;
+  };
+  q.addEventListener('input', () => { items = q.value.trim() ? searchClients(q.value).slice(0, 8) : []; active = -1; draw(); });
+  q.addEventListener('focus', () => { if (q.value.trim()) { items = searchClients(q.value).slice(0, 8); draw(); } });
+  q.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' && items.length) { active = Math.min(active + 1, items.length - 1); draw(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp' && items.length) { active = Math.max(active - 1, 0); draw(); e.preventDefault(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault(); const v = q.value.trim(); if (!v) return;
+      const target = active >= 0 ? items[active] : null; box.hidden = true; q.blur();
+      location.hash = target ? '#/c/' + encodeURIComponent(target.ID) : '#/search?q=' + encodeURIComponent(v);
+    } else if (e.key === 'Escape') box.hidden = true;
+  });
+  box.addEventListener('click', () => { box.hidden = true; q.blur(); });
+  document.addEventListener('click', e => { if (!box.contains(e.target) && e.target !== q) box.hidden = true; });
+})();
+
+/* =========================================================================
+   Start
+   ========================================================================= */
+window.addEventListener('hashchange', render);
+(async function start() {
+  const saved = await kvGet('db');
+  if (saved) db = Object.assign(emptyDb(), saved, { meta: Object.assign(emptyDb().meta, saved.meta || {}) });
+  render();
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
