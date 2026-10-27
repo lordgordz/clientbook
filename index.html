@@ -29,6 +29,8 @@ h2 { margin: 0 0 14px; font-size: 17px; font-weight: 650; }
 h2 small { color: var(--muted); font-weight: 500; margin-left: 6px; font-size: 14px; }
 h3 { font-size: 15px; margin: 18px 0 10px; }
 .muted { color: var(--muted); }
+.nick { color: var(--muted); font-weight: 500; }
+h1 .nick { font-size: 20px; }
 .small { font-size: 14px; }
 .none { color: #a7acb4; }
 .pre { white-space: pre-wrap; word-break: break-word; }
@@ -195,7 +197,7 @@ ul.family b { color: var(--accent-2); }
    clients.xlsx, so the two can share one Excel file.
    ========================================================================= */
 const SHEETS = {
-  'Clients': ['ID', 'Name', 'Gender', 'NRIC', 'Date of Birth', 'Phone', 'Email', 'Address',
+  'Clients': ['ID', 'Name', 'Nickname', 'Gender', 'NRIC', 'Date of Birth', 'Phone', 'Email', 'Address',
               'Occupation', 'Company', 'Income Range', 'How We Met', 'First Met', 'Last Met',
               'Next Follow-up', 'Remarks', 'Created', 'Last Updated'],
   'Family': ['Client ID', 'Related ID', 'Relationship'],
@@ -221,7 +223,7 @@ const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event',
 const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']);
 const POLICY_STATUS = ['In force', 'Pending', 'Lapsed', 'Surrendered', 'Matured', 'Claimed'];
 const FREQUENCIES = ['Monthly', 'Quarterly', 'Half-yearly', 'Yearly', 'Single'];
-const EXTRA_SUGGESTIONS = ['Nickname', 'Preferred language', 'Hobbies', 'Favourite food', 'Dietary needs', "Kids' school",
+const EXTRA_SUGGESTIONS = ['Preferred language', 'Hobbies', 'Favourite food', 'Dietary needs', "Kids' school",
   'Pets', 'Car', 'Wedding anniversary', 'Preferred contact time', 'Social media', 'Referred by', 'Referred to', 'Life goals', 'Concerns'];
 
 // "Related person is the client's <key>": [reverse key, male label, female label, neutral label]
@@ -245,6 +247,7 @@ const RELATIONS = {
 const SECTIONS = [
   ['Personal', [
     { label: 'Name', type: 'text', required: true },
+    { label: 'Nickname', type: 'text', placeholder: 'What you call them' },
     { label: 'Gender', type: 'select', options: GENDERS },
     { label: 'NRIC', type: 'text', placeholder: 'S1234567A', caps: 'characters' },
     { label: 'Date of Birth', type: 'date' },
@@ -282,6 +285,7 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const isISO = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
 const blank = h => (DATE_F.has(h) || STAMP_F.has(h) || NUM_F.has(h)) ? null : '';
+const nick = c => c && c.Nickname ? ` <span class="nick">“${esc(c.Nickname)}”</span>` : '';
 const byName = (a, b) => String(a.Name || '').localeCompare(String(b.Name || ''), undefined, { sensitivity: 'base' });
 
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -405,7 +409,7 @@ function searchClients(q) {
   if (!tokens.length) return [];
   const ex = {}; for (const e of db.extras) (ex[e['Client ID']] ||= []).push(`${e.Field} ${e.Value}`);
   return db.clients.map(c => {
-    const hay = ['Name', 'NRIC', 'Phone', 'Email', 'Company', 'Occupation', 'ID'].map(f => c[f] || '').join(' ').toLowerCase()
+    const hay = ['Name', 'Nickname', 'NRIC', 'Phone', 'Email', 'Company', 'Occupation', 'ID'].map(f => c[f] || '').join(' ').toLowerCase()
       + ' ' + (ex[c.ID] || []).join(' ').toLowerCase()
       + ' ' + String(c.Phone || '').replace(/\D/g, '');
     if (!tokens.every(t => hay.includes(t))) return null;
@@ -487,7 +491,7 @@ function pageHome() {
     const nb = nextBirthday(c['Date of Birth'], t); return { c, nb, days: daysFrom(t, nb), turns: ageOf(c['Date of Birth'], nb) };
   }).filter(b => b.days <= 30).sort((a, b) => a.days - b.days);
   const recent = clients.filter(c => isISO(c['Last Updated'])).sort((a, b) => b['Last Updated'].localeCompare(a['Last Updated'])).slice(0, 6);
-  const link = c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>`;
+  const link = c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>${nick(c)}`;
   hooks.push(() => {
     const f = $('#filter'); if (!f) return;
     f.addEventListener('input', () => { const v = f.value.toLowerCase(); document.querySelectorAll('#clients tbody tr').forEach(r => r.hidden = !r.textContent.toLowerCase().includes(v)); });
@@ -519,7 +523,7 @@ function pageSearch(q) {
   const res = q ? searchClients(q) : [];
   if (res.length === 1) { setTimeout(() => location.replace('#/c/' + encodeURIComponent(res[0].ID)), 0); return ''; }
   return `<section class="card"><h2>${q ? `${res.length} result${res.length === 1 ? '' : 's'} for “${esc(q)}”` : 'Search'}</h2>
-    ${res.length ? `<ul class="results">${res.map(c => `<li><a href="#/c/${encodeURIComponent(c.ID)}"><b>${esc(c.Name)}</b>
+    ${res.length ? `<ul class="results">${res.map(c => `<li><a href="#/c/${encodeURIComponent(c.ID)}"><b>${esc(c.Name)}${nick(c)}</b>
       <span>${[c.Company, c.Phone, ageOf(c['Date of Birth']) != null ? 'age ' + ageOf(c['Date of Birth']) : '', c.ID].filter(Boolean).map(esc).join(' · ')}</span></a></li>`).join('')}</ul>`
       : q ? '<p class="muted">No one matches that. <a href="#/new">Add a new client?</a></p>' : '<p class="muted">Type a name, NRIC, phone number or company in the search box.</p>'}
   </section>`;
@@ -609,7 +613,7 @@ function pageProfile(cid) {
   const pols = db.policies.filter(p => p['Client ID'] === cid);
   const linked = new Set([cid, ...fam.map(f => f.c.ID)]);
   const others = db.clients.filter(o => !linked.has(o.ID)).sort(byName);
-  const first = esc(String(c.Name || '').split(' ')[0]);
+  const first = esc(c.Nickname || String(c.Name || '').split(' ')[0]);
   const relOpts = `<option value="">They are ${first}’s…</option>` + Object.entries(RELATIONS).map(([k, r]) => `<option value="${k}">${r[3]}</option>`).join('');
   const F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
   const sub = [c.Gender, age != null ? 'Age ' + age : '', c.Occupation, c.Company].filter(Boolean).map(esc).join(' · ') || 'No details yet';
@@ -617,7 +621,7 @@ function pageProfile(cid) {
   return `
   <section class="card hero">
     <div class="avatar">${esc(String(c.Name || '?').charAt(0).toUpperCase())}</div>
-    <div class="who"><h1>${esc(c.Name)}</h1><p class="muted">${sub}</p>
+    <div class="who"><h1>${esc(c.Name)}${nick(c)}</h1><p class="muted">${sub}</p>
       <p class="stamps"><span>ID ${id}</span>
         <span>Last met: <b>${fmtDate(c['Last Met']) || '—'}</b>${c['Last Met'] ? ` (${ago(c['Last Met'])})` : ''}</span>
         <span>Profile updated: <b>${fmtDate(c['Last Updated']) || '—'}</b></span>
@@ -702,7 +706,7 @@ function pageProfile(cid) {
   <aside class="col-side">
     <section class="card" id="family"><h2>Family <small>${fam.length}</small></h2>
       ${fam.length ? `<ul class="family">${fam.map(m => `<li>
-        <a href="#/c/${encodeURIComponent(m.c.ID)}"><span class="rel">${esc(m.label)}</span><b>${esc(m.c.Name)} ›</b>
+        <a href="#/c/${encodeURIComponent(m.c.ID)}"><span class="rel">${esc(m.label)}</span><b>${esc(m.c.Name)}${nick(m.c)} ›</b>
           ${m.age != null || m.c.Phone ? `<span class="muted small">${[m.age != null ? 'Age ' + m.age : '', m.c.Phone].filter(Boolean).map(esc).join(' · ')}</span>` : ''}</a>
         <button class="icon" title="Unlink" data-cid="${id}" data-rid="${esc(m.c.ID)}" onclick="unlinkFamily(this)">✕</button></li>`).join('')}</ul>`
         : '<p class="none">No family members linked yet.</p>'}
@@ -1036,6 +1040,15 @@ async function readXlsx(buf) {
   }
   return book;
 }
+// Nicknames typed into Extra details before the Nickname field existed move into it.
+function moveNicknames(d) {
+  d.extras = d.extras.filter(e => {
+    if (String(e.Field || '').trim().toLowerCase() !== 'nickname') return true;
+    const c = d.clients.find(x => x.ID === e['Client ID']);
+    if (c && !c.Nickname) { c.Nickname = e.Value; return false; }
+    return true;
+  });
+}
 function bookToDb(book) {
   const nd = emptyDb();
   if (!book['Clients']) throw new Error('This file has no “Clients” sheet — is it a Client Book file?');
@@ -1050,6 +1063,7 @@ function bookToDb(book) {
     }
   }
   nd.clients = nd.clients.filter(c => c.Name);
+  moveNicknames(nd);
   for (const c of nd.clients) if (!c.ID) c.ID = nextId(nd.clients, 'C');
   for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
   return nd;
@@ -1080,7 +1094,7 @@ async function undoImport() {
   const q = $('#q'), box = $('#suggest'); let items = [], active = -1;
   const draw = () => {
     if (!items.length) { box.hidden = true; return; }
-    box.innerHTML = items.map((c, i) => `<a href="#/c/${encodeURIComponent(c.ID)}" class="${i === active ? 'on' : ''}"><b>${esc(c.Name)}</b>
+    box.innerHTML = items.map((c, i) => `<a href="#/c/${encodeURIComponent(c.ID)}" class="${i === active ? 'on' : ''}"><b>${esc(c.Name)}${nick(c)}</b>
       <span>${[c.Company, c.Phone, c.ID].filter(Boolean).map(esc).join(' · ')}</span></a>`).join('');
     box.hidden = false;
   };
@@ -1106,6 +1120,7 @@ window.addEventListener('hashchange', render);
 (async function start() {
   const saved = await kvGet('db');
   if (saved) db = Object.assign(emptyDb(), saved, { meta: Object.assign(emptyDb().meta, saved.meta || {}) });
+  moveNicknames(db);
   for (const [sheet, map] of Object.entries(RENAMED)) for (const r of db[KEY[sheet]])
     for (const [o, n] of Object.entries(map)) if (o in r) { if (!r[n]) r[n] = r[o]; delete r[o]; }
   render();
