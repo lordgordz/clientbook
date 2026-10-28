@@ -105,6 +105,13 @@ table.list td a { display: block; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 18px; }
 .grid label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .grid label.wide { grid-column: 1 / -1; }
+.datebox { position: relative; display: flex; }
+.datebox .dtext { padding-right: 50px; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.dpick { position: absolute; right: 0; top: 0; bottom: 0; width: 46px; display: flex; align-items: center; justify-content: center;
+  color: var(--accent-2); border-left: 1px solid #d6d2c9; }
+.dpick input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; border: 0; padding: 0; cursor: pointer; }
+.dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
+.dhint.bad { color: var(--err); }
 label > span { font-size: 14px; font-weight: 600; }
 em { font-style: normal; font-weight: 500; font-size: 12px; color: #a7acb4; margin-left: 4px; }
 em.req { color: var(--err); }
@@ -534,7 +541,7 @@ function fieldHtml(f, val, sugg) {
   let input;
   if (f.type === 'textarea') input = `<textarea name="${n}" rows="${f.rows || 3}" placeholder="${esc(f.placeholder || '')}">${esc(val || '')}</textarea>`;
   else if (f.type === 'select') input = `<select name="${n}"><option value="">—</option>${f.options.map(o => `<option${o === val ? ' selected' : ''}>${esc(o)}</option>`).join('')}${val && !f.options.includes(val) ? `<option selected>${esc(val)}</option>` : ''}</select>`;
-  else if (f.type === 'date') input = `<input type="date" name="${n}" value="${isISO(val) ? esc(val.slice(0, 10)) : ''}">`;
+  else if (f.type === 'date') input = dateBox(n, val, f.label);
   else {
     const caps = f.caps ? ` autocapitalize="${f.caps}"` : f.type === 'text' ? ' autocapitalize="words"' : '';
     input = `<input type="${f.type}" name="${n}" value="${esc(val || '')}" placeholder="${esc(f.placeholder || '')}"${f.required ? ' required' : ''}${caps}${f.autofill ? ` list="dl_${n}" autocomplete="off"` : ''}>`;
@@ -542,6 +549,66 @@ function fieldHtml(f, val, sugg) {
   }
   return `<label class="${f.wide ? 'wide' : ''}"><span>${esc(f.label)} ${tag}</span>${input}</label>`;
 }
+const CAL_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+function toDMY(iso) { return isISO(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : (iso || ''); }
+// Typed date -> ISO (yyyy-mm-dd). Accepts 05/11/1985, 5-11-85, 05111985, 5 Nov 1985, 1985-11-05.
+function parseTyped(s) {
+  s = String(s || '').trim(); if (!s) return '';
+  let d, m, y, x;
+  if ((x = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s))) [, y, m, d] = x;
+  else if ((x = /^(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{2}|\d{4})$/.exec(s))) [, d, m, y] = x;
+  else if ((x = /^(\d{2})(\d{2})(\d{4}|\d{2})$/.exec(s))) [, d, m, y] = x;
+  else if ((x = /^(\d{1,2})\s*([a-z]{3,})\.?,?\s*(\d{2}|\d{4})$/i.exec(s))) {
+    const mi = MON.findIndex(k => x[2].toLowerCase().startsWith(k.toLowerCase())); if (mi < 0) return null;
+    [d, m, y] = [x[1], mi + 1, x[3]];
+  } else return null;
+  d = +d; m = +m; y = +y;
+  if (String(y).length <= 2) { const cy = new Date().getFullYear() % 100; y += y > cy ? 1900 : 2000; }
+  const dt = new Date(y, m - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+  return `${y}-${pad(m)}-${pad(d)}`;
+}
+function dateBox(n, val, label) {
+  const iso = isISO(val) ? val.slice(0, 10) : '';
+  return `<div class="datebox"><input type="text" class="dtext" name="${n}" value="${esc(toDMY(iso) || val || '')}" placeholder="DD/MM/YYYY"
+      inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="12" data-label="${esc(label)}">
+    <span class="dpick" title="Pick from calendar">${CAL_SVG}<input type="date" tabindex="-1" aria-label="Pick ${esc(label)} from calendar" value="${iso}"></span></div>
+    <small class="dhint">${iso ? dateHint(iso, label) : ''}</small>`;
+}
+function dateHint(iso, label) {
+  const d = parseISO(iso), wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+  const age = label === 'Date of Birth' ? ageOf(iso) : null;
+  return `${wd}, ${fmtDate(iso)}${age != null && age >= 0 ? ` · age ${age}` : ''}`;
+}
+function checkDate(input) {
+  const hint = input.closest('label').querySelector('.dhint'), pick = input.parentNode.querySelector('input[type=date]');
+  const v = input.value.trim(), iso = parseTyped(v);
+  if (!v) { hint.textContent = ''; hint.classList.remove('bad'); pick.value = ''; return ''; }
+  if (iso) { input.value = toDMY(iso); pick.value = iso; hint.textContent = dateHint(iso, input.dataset.label); hint.classList.remove('bad'); return iso; }
+  hint.textContent = 'Type the date as DD/MM/YYYY'; hint.classList.add('bad'); return null;
+}
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.classList && t.classList.contains('dtext')) {
+    const hint = t.closest('label').querySelector('.dhint'); hint.classList.remove('bad');
+    // Auto-insert slashes while typing digits: 05111985 -> 05/11/1985
+    if (!/^[\d\/]*$/.test(t.value) || (e.inputType || '').startsWith('delete') || e.data === '/') return;
+    const parts = t.value.split('/');
+    if (parts.slice(0, -1).some(x => x.length !== 2)) return; // typed their own slashes, e.g. 1/3/21
+    const digits = t.value.replace(/\D/g, '').slice(0, 8);
+    t.value = digits.length > 4 ? `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+            : digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+    if (digits.length === 8) checkDate(t);
+  } else if (t.type === 'date' && t.closest && t.closest('.dpick')) {
+    const txt = t.closest('.datebox').querySelector('.dtext'); txt.value = t.value ? toDMY(t.value) : ''; checkDate(txt);
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.type === 'date' && t.closest && t.closest('.dpick')) { const txt = t.closest('.datebox').querySelector('.dtext'); txt.value = t.value ? toDMY(t.value) : ''; checkDate(txt); }
+});
+document.addEventListener('focusout', e => { if (e.target.classList && e.target.classList.contains('dtext')) checkDate(e.target); });
+
 function extraRow(e = {}) {
   return `<div class="extra-row"><input name="extra_field" value="${esc(e.Field || '')}" placeholder="Field (e.g. Hobbies)" list="extra_suggest" autocapitalize="sentences">
     <textarea name="extra_value" rows="1" placeholder="Details">${esc(e.Value || '')}</textarea>
@@ -562,7 +629,7 @@ function pageForm(cid, linkId, rel) {
     <form class="form" autocomplete="off" onsubmit="return saveClient(event)" data-cid="${esc(cid || '')}" data-link="${esc(link ? link.ID : '')}" data-rel="${esc(rel || '')}">
       ${SECTIONS.map(([title, fields]) => `<fieldset><legend>${esc(title)}</legend><div class="grid">${fields.map(f => fieldHtml(f, c[f.label], sugg)).join('')}</div></fieldset>`).join('')}
       <fieldset id="extras-set"><legend>Extra details <em>optional</em></legend>
-        <p class="muted small">Add any other information as your own fields — e.g. Nickname, Hobbies, Kids’ school, Wedding anniversary. Add as many as you like.</p>
+        <p class="muted small">Add any other information as your own fields — e.g. Hobbies, Kids’ school, Wedding anniversary. Add as many as you like.</p>
         <div id="extras">${extras.map(extraRow).join('')}</div>
         ${datalist('extra_suggest', sugg.Field)}
         <button type="button" class="btn" onclick="addExtraRow()">+ Add a field</button>
@@ -578,6 +645,11 @@ async function saveClient(e) {
   for (const label of FORM_FIELDS) {
     let v = String(fd.get(slug(label)) || '').trim();
     if (label === 'NRIC') v = v.toUpperCase().replace(/\s+/g, '');
+    if (DATE_F.has(label) && v) {
+      const iso = parseTyped(v);
+      if (!iso) { const el = form.querySelector(`[name="${slug(label)}"]`); checkDate(el); el.focus(); toast(`${label}: type the date as DD/MM/YYYY.`, 'error'); return false; }
+      v = iso;
+    }
     data[label] = v || blank(label);
   }
   const fs = fd.getAll('extra_field'), vs = fd.getAll('extra_value'), extras = [];
