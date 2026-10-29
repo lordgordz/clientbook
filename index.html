@@ -168,6 +168,9 @@ ul.family li a:active { background: var(--accent-soft); border-radius: 10px 0 0 
 ul.family .rel { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent-2); font-weight: 700; }
 ul.family b { color: var(--accent-2); }
 .family-add { border-top: 1px solid var(--line); margin-top: 12px; }
+.suggest-links { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
+.suggest-links ul { margin: 6px 0 10px; padding-left: 18px; }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .or { margin: 14px 0 8px; }
 .danger-zone { text-align: center; }
 ul.pols { list-style: none; margin: 0; padding: 0; }
@@ -419,6 +422,58 @@ function addLink(a, b, key) {
   const rev = (RELATIONS[key] || ['other'])[0];
   db.family = db.family.filter(f => !((f['Client ID'] === a && f['Related ID'] === b) || (f['Client ID'] === b && f['Related ID'] === a)));
   db.family.push({ 'Client ID': a, 'Related ID': b, Relationship: key }, { 'Client ID': b, 'Related ID': a, Relationship: rev });
+}
+// ---- Filling in family links that follow from the ones entered ----
+// Rules: children of the same parent are siblings; a spouse is also a parent
+// of the other spouse's children; siblings share parents.
+// Links you remove are remembered and never added back automatically.
+const pairKey = (a, b) => [a, b].sort().join('|');
+function isIgnored(a, b) { return (db.meta.noLink || []).includes(pairKey(a, b)); }
+function ignorePair(a, b) { const k = pairKey(a, b); db.meta.noLink = [...new Set([...(db.meta.noLink || []), k])]; }
+function unignorePair(a, b) { const k = pairKey(a, b); db.meta.noLink = (db.meta.noLink || []).filter(x => x !== k); }
+function inferLinks() {
+  const fam = db.family.map(f => ({ ...f })), added = [];
+  const has = (a, b) => fam.some(f => f['Client ID'] === a && f['Related ID'] === b);
+  const rel = (a, key) => fam.filter(f => f['Client ID'] === a && f.Relationship === key).map(f => f['Related ID']).filter(id => getClient(id));
+  const ensure = (a, b, key) => {   // b is a's <key>
+    if (!a || !b || a === b || has(a, b) || has(b, a) || isIgnored(a, b)) return false;
+    fam.push({ 'Client ID': a, 'Related ID': b, Relationship: key }, { 'Client ID': b, 'Related ID': a, Relationship: RELATIONS[key][0] });
+    added.push({ a, b, key }); return true;
+  };
+  for (let round = 0, grew = true; grew && round < 6; round++) {
+    grew = false;
+    for (const c of db.clients) {
+      const P = c.ID, kids = rel(P, 'child');
+      for (let i = 0; i < kids.length; i++) for (let j = i + 1; j < kids.length; j++) grew = ensure(kids[i], kids[j], 'sibling') || grew;
+      for (const S of rel(P, 'spouse')) for (const C of kids) grew = ensure(S, C, 'child') || grew;
+      for (const Sib of rel(P, 'sibling')) for (const Pa of rel(P, 'parent')) grew = ensure(Pa, Sib, 'child') || grew;
+    }
+  }
+  return added;
+}
+function describeLink({ a, b, key }) {
+  const A = getClient(a), B = getClient(b);
+  if (key === 'sibling') return `${A.Name} and ${B.Name} as siblings`;
+  if (key === 'child') return `${A.Name} as ${B.Name}’s ${relLabel('parent', A.Gender).toLowerCase()}`;
+  return `${B.Name} as ${A.Name}’s ${relLabel(key, B.Gender).toLowerCase()}`;
+}
+function applyInferred(list) {
+  for (const l of list) { addLink(l.a, l.b, l.key); touch(getClient(l.a)); touch(getClient(l.b)); }
+  return list.length ? ' Also linked ' + (list.length > 3 ? `${list.length} more family links.` : list.map(describeLink).join('; ') + '.') : '';
+}
+function familyGroup(id) {   // everyone connected to id through family links
+  const seen = new Set([id]), queue = [id];
+  while (queue.length) { const x = queue.shift(); for (const f of db.family) if (f['Client ID'] === x && !seen.has(f['Related ID'])) { seen.add(f['Related ID']); queue.push(f['Related ID']); } }
+  return seen;
+}
+async function linkAllSuggested(btn) {
+  const grp = familyGroup(btn.dataset.cid), list = inferLinks().filter(l => grp.has(l.a) || grp.has(l.b));
+  const msg = applyInferred(list); await commit(msg ? 'Linked:' + msg.replace(' Also linked', '') : 'Nothing to link.', location.hash, 'family');
+}
+async function dismissSuggested(btn) {
+  const grp = familyGroup(btn.dataset.cid);
+  for (const l of inferLinks().filter(l => grp.has(l.a) || grp.has(l.b))) ignorePair(l.a, l.b);
+  await commit('OK — those won’t be suggested again.', location.hash, 'family');
 }
 function familyOf(id) {
   const order = Object.keys(RELATIONS);
@@ -787,7 +842,11 @@ async function saveClient(e) {
   touch(target); setExtras(target.ID, extras);
   let msg = cid ? 'Profile updated.' : `Saved ${target.Name}.`, dest = '#/c/' + encodeURIComponent(target.ID), anchor = null;
   const lc = link && getClient(link);
-  if (!cid && lc && RELATIONS[rel]) { addLink(lc.ID, target.ID, rel); touch(lc); msg = `Saved ${target.Name} and linked to ${lc.Name}.`; dest = '#/c/' + encodeURIComponent(lc.ID); anchor = 'family'; }
+  if (!cid && lc && RELATIONS[rel]) {
+    addLink(lc.ID, target.ID, rel); touch(lc);
+    const extra = applyInferred(inferLinks().filter(l => familyGroup(lc.ID).has(l.a)));
+    msg = `Saved ${target.Name} and linked to ${lc.Name}.` + extra; dest = '#/c/' + encodeURIComponent(lc.ID); anchor = 'family';
+  }
   if (warn.length) msg += ' ' + warn.join(' ');
   await commit(msg, dest, anchor, true, warn.length ? 'warn' : 'ok');
   return false;
@@ -878,6 +937,10 @@ function pageProfile(cid) {
 
   <aside class="col-side">
     <section class="card" id="family"><h2>Family <small>${fam.length}</small></h2>
+      ${(() => { const grp = familyGroup(cid), sug = fam.length ? inferLinks().filter(l => grp.has(l.a) || grp.has(l.b)) : [];
+        return sug.length ? `<div class="suggest-links"><b>Complete this family?</b><ul>${sug.slice(0, 6).map(l => `<li>${esc(describeLink(l))}</li>`).join('')}${sug.length > 6 ? `<li>+ ${sug.length - 6} more</li>` : ''}</ul>
+          <div class="row-btns"><button class="btn small primary" data-cid="${id}" onclick="linkAllSuggested(this)">Link all</button>
+          <button class="btn small" data-cid="${id}" onclick="dismissSuggested(this)">Don’t link these</button></div></div>` : ''; })()}
       ${fam.length ? `<ul class="family">${fam.map(m => `<li>
         <a href="#/c/${encodeURIComponent(m.c.ID)}"><span class="rel">${esc(m.label)}</span><b>${esc(m.c.Name)}${nick(m.c)} ›</b>
           ${m.age != null || m.c.Phone ? `<span class="muted small">${[m.age != null ? 'Age ' + m.age : '', m.c.Phone].filter(Boolean).map(esc).join(' · ')}</span>` : ''}</a>
@@ -957,14 +1020,16 @@ async function linkExisting(e) {
   if (!RELATIONS[key]) { toast('Pick a relationship.', 'error'); return false; }
   if (!oid) { toast('Couldn’t find that person — pick them from the list, or use “Add a new person”.', 'error'); return false; }
   if (oid === cid) { toast('A client can’t be their own family member.', 'error'); return false; }
-  const o = getClient(oid); addLink(cid, oid, key); touch(c); touch(o);
-  await commit(`Linked ${o.Name} as ${relLabel(key, o.Gender)}.`, location.hash, 'family'); return false;
+  const o = getClient(oid); unignorePair(cid, oid); addLink(cid, oid, key); touch(c); touch(o);
+  const extra = applyInferred(inferLinks().filter(l => familyGroup(cid).has(l.a)));
+  await commit(`Linked ${o.Name} as ${relLabel(key, o.Gender)}.` + extra, location.hash, 'family'); return false;
 }
 async function unlinkFamily(btn) {
   const { cid, rid } = btn.dataset, a = getClient(cid), b = getClient(rid);
   if (!confirm(`Remove the family link between ${a.Name} and ${b ? b.Name : 'this person'}? Both profiles are kept.`)) return;
   db.family = db.family.filter(f => !((f['Client ID'] === cid && f['Related ID'] === rid) || (f['Client ID'] === rid && f['Related ID'] === cid)));
-  touch(a); touch(b); await commit('Family link removed.', location.hash, 'family');
+  ignorePair(cid, rid);
+  touch(a); touch(b); await commit('Family link removed. It won’t be added back automatically.', location.hash, 'family');
 }
 async function addNote(e) {
   e.preventDefault(); const f = e.target, cid = f.dataset.cid, t = String(new FormData(f).get('note') || '').trim();
