@@ -114,7 +114,8 @@ table.list td a { display: block; }
   color: var(--accent-2); border-left: 1px solid #d6d2c9; }
 .dpick input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; border: 0; padding: 0; cursor: pointer; }
 .dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
-.dhint.bad { color: var(--err); }
+.dhint.bad, .dhint .bad { color: var(--err); }
+.dhint .good { color: var(--ok); }
 label > span { font-size: 14px; font-weight: 600; }
 em { font-style: normal; font-weight: 500; font-size: 12px; color: #a7acb4; margin-left: 4px; }
 em.req { color: var(--err); }
@@ -637,6 +638,7 @@ function fieldHtml(f, val, sugg) {
     input = `<input type="${f.type}" name="${n}" value="${esc(val ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.required ? ' required' : ''}${caps}${f.inputmode ? ` inputmode="${f.inputmode}"` : ''}${f.autofill ? ` list="dl_${n}" autocomplete="off"` : ''}>`;
     if (f.autofill) input += datalist('dl_' + n, sugg[f.sugg || f.label] || []);
   }
+  if (f.label === 'NRIC') input = input.replace('<input ', '<input data-nric="1" maxlength="20" ') + `<small class="dhint" id="nric-hint">${nricHint(val)}</small>`;
   return `<label class="${f.wide ? 'wide' : ''}"><span>${esc(f.show || f.label)} ${tag}</span>${input}</label>`;
 }
 const CAL_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
@@ -678,6 +680,23 @@ function checkDate(input) {
   if (iso) { input.value = toDMY(iso); pick.value = iso; hint.textContent = dateHint(iso, input.dataset.label); hint.classList.remove('bad'); return iso; }
   hint.textContent = 'Type the date as DD/MM/YYYY'; hint.classList.add('bad'); return null;
 }
+// NRIC: live check that it's 9 characters, e.g. S1234567A
+function nricHint(v) {
+  v = String(v || '').toUpperCase().replace(/\s+/g, ''); const n = v.length;
+  if (!n) return '';
+  if (n < 9) return `<span class="bad">${n} of 9 characters · ${9 - n} too few</span>`;
+  if (n > 9) return `<span class="bad">${n} of 9 characters · ${n - 9} too many</span>`;
+  if (!/^[STFGM]\d{7}[A-Z]$/.test(v)) return '<span class="bad">9 characters, but it should look like S1234567A</span>';
+  return '<span class="good">✓ 9 characters</span>';
+}
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.nric) {
+    const pos = t.selectionStart, up = t.value.toUpperCase().replace(/\s+/g, '');
+    if (up !== t.value) { t.value = up; try { t.setSelectionRange(pos, pos); } catch (_) {} }
+    const h = document.getElementById('nric-hint'); if (h) h.innerHTML = nricHint(t.value);
+  }
+});
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.classList && t.classList.contains('dtext')) {
@@ -747,8 +766,14 @@ async function saveClient(e) {
   fs.forEach((f, i) => { f = String(f).trim(); const v = String(vs[i] || '').trim(); if (f || v) extras.push({ Field: f || 'Note', Value: v }); });
   if (!data.Name) { toast('Name is required — everything else is optional.', 'error'); return false; }
   const warn = [];
+  if (data.NRIC && data.NRIC.length !== 9) {
+    const n = data.NRIC.length;
+    if (!confirm(`The NRIC “${data.NRIC}” has ${n} characters — it should have 9 (${n < 9 ? 9 - n + ' too few' : n - 9 + ' too many'}).\n\nSave anyway?`)) {
+      const el = form.querySelector('[name=nric]'); el.focus(); return false;
+    }
+  }
   if (data.NRIC) {
-    if (!/^[STFGM]\d{7}[A-Z]$/.test(data.NRIC)) warn.push(`NRIC “${data.NRIC}” doesn’t look like a standard NRIC/FIN — saved anyway.`);
+    if (data.NRIC.length === 9 && !/^[STFGM]\d{7}[A-Z]$/.test(data.NRIC)) warn.push(`NRIC “${data.NRIC}” doesn’t look like a standard NRIC/FIN — saved anyway.`);
     const dup = db.clients.find(c => c.ID !== cid && String(c.NRIC || '').toUpperCase() === data.NRIC);
     if (dup) { toast(`That NRIC already belongs to ${dup.Name} (${dup.ID}).`, 'error'); return false; }
   }
