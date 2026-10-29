@@ -425,7 +425,8 @@ function addLink(a, b, key) {
 }
 // ---- Filling in family links that follow from the ones entered ----
 // Rules: children of the same parent are siblings; a spouse is also a parent
-// of the other spouse's children; siblings share parents.
+// of the other spouse's children; siblings share parents; a parent's parent is
+// a grandparent; a grandparent's spouse is a grandparent; siblings share grandparents.
 // Links you remove are remembered and never added back automatically.
 const pairKey = (a, b) => [a, b].sort().join('|');
 function isIgnored(a, b) { return (db.meta.noLink || []).includes(pairKey(a, b)); }
@@ -447,6 +448,9 @@ function inferLinks() {
       for (let i = 0; i < kids.length; i++) for (let j = i + 1; j < kids.length; j++) grew = ensure(kids[i], kids[j], 'sibling') || grew;
       for (const S of rel(P, 'spouse')) for (const C of kids) grew = ensure(S, C, 'child') || grew;
       for (const Sib of rel(P, 'sibling')) for (const Pa of rel(P, 'parent')) grew = ensure(Pa, Sib, 'child') || grew;
+      for (const G of rel(P, 'parent')) for (const C of kids) grew = ensure(C, G, 'grandparent') || grew;          // parent's parent
+      for (const S of rel(P, 'spouse')) for (const GC of rel(P, 'grandchild')) grew = ensure(GC, S, 'grandparent') || grew;
+      for (const Sib of rel(P, 'sibling')) for (const G of rel(P, 'grandparent')) grew = ensure(Sib, G, 'grandparent') || grew;
     }
   }
   return added;
