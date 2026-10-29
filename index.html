@@ -168,6 +168,30 @@ ul.family b { color: var(--accent-2); }
 .family-add { border-top: 1px solid var(--line); margin-top: 12px; }
 .or { margin: 14px 0 8px; }
 .danger-zone { text-align: center; }
+ul.pols { list-style: none; margin: 0; padding: 0; }
+ul.pols li a { display: block; padding: 12px 4px; border-top: 1px solid var(--line); color: var(--ink); }
+ul.pols li:first-child a { border-top: 0; }
+ul.pols li a:active { background: var(--accent-soft); }
+.pol-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.pol-top b { color: var(--accent-2); font-size: 16px; }
+.pol-meta { font-size: 14px; color: var(--muted); margin-top: 3px; }
+.tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.off { background: var(--err-soft); color: var(--err); }
+.tag.done { background: var(--ok-soft); color: var(--ok); }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile.wide { grid-column: 1 / -1; }
+@media (max-width: 520px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.tile span { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+.tile b { font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+.tile small { font-size: 13px; color: var(--muted); }
+.tile.key { border-color: var(--accent-2); background: var(--accent-soft); }
+.tile.key b { color: var(--accent); }
+.tile .warn { color: var(--warn); }
+.agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.agents .card { margin-bottom: 0; }
+.termbox { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; }
+.crumb { font-size: 14px; margin: 0 0 4px; }
 .stat { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 6px; }
 .steps { margin: 8px 0 0; padding-left: 20px; }
 .steps li { margin-bottom: 6px; }
@@ -214,16 +238,17 @@ const SHEETS = {
   'Extra Details': ['Client ID', 'Field', 'Value'],
   'Notes': ['ID', 'Client ID', 'Added', 'Note'],
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
-  'Policies': ['ID', 'Client ID', 'Product', 'Insurer', 'Policy No', 'Start Date', 'Premium',
-               'Frequency', 'Status', 'Notes'],
+  'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
+               'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Coverage', 'Status', 'End Date', 'Notes',
+               'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
 };
 // Columns that were renamed — older Excel files and saved data are upgraded automatically.
-const RENAMED = { 'Clients': { 'Workplace': 'Company' } };
+const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
               'Interactions': 'interactions', 'Policies': 'policies' };
-const DATE_F = new Set(['Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date']);
+const DATE_F = new Set(['Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
-const NUM_F = new Set(['Premium']);
+const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
 
 const GENDERS = ['Male', 'Female'];
@@ -231,8 +256,14 @@ const INCOME_RANGES = ['Below $3k / month', '$3k – $6k / month', '$6k – $10k
 const HOW_MET = ['Referral', 'Friend / family', 'Colleague', 'Roadshow', 'Event / seminar', 'Social media', 'Cold call', 'Walk-in', 'Other'];
 const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event', 'Call', 'Message', 'Email', 'Other'];
 const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']);
-const POLICY_STATUS = ['In force', 'Pending', 'Lapsed', 'Surrendered', 'Matured', 'Claimed'];
-const FREQUENCIES = ['Monthly', 'Quarterly', 'Half-yearly', 'Yearly', 'Single'];
+const POLICY_STATUS = ['In force', 'Lapsed', 'Surrendered', 'Matured', 'Claimed', 'Terminated'];
+const POLICY_TYPES = ['Whole life', 'Term', 'Investment-linked (ILP)', 'Endowment', 'Accident & health', 'Disability care', 'Universal life'];
+const NO_TOTALS = new Set(['Accident & health']);   // these don't show premiums paid
+const FREQUENCIES = ['Single premium', 'Annual', 'Semi-annual', 'Quarterly', 'Monthly'];
+const FREQ_MONTHS = { 'Annual': 12, 'Semi-annual': 6, 'Quarterly': 3, 'Monthly': 1 };
+const FREQ_UNIT = { 'Annual': 'year', 'Semi-annual': 'half-year', 'Quarterly': 'quarter', 'Monthly': 'month' };
+const OLD_FREQ = { 'Yearly': 'Annual', 'Half-yearly': 'Semi-annual', 'Single': 'Single premium' };
+const TERMS = [['Years', 'Number of years'], ['Till age', 'Until age'], ['Perpetual', 'Perpetually (whole life)']];
 const EXTRA_SUGGESTIONS = ['Preferred language', 'Hobbies', 'Favourite food', 'Dietary needs', "Kids' school",
   'Pets', 'Car', 'Wedding anniversary', 'Preferred contact time', 'Social media', 'Referred by', 'Referred to', 'Life goals', 'Concerns'];
 
@@ -329,7 +360,7 @@ function nextBirthday(dob, t) {
   let nb = make(t.getFullYear()); if (nb < t) nb = make(t.getFullYear() + 1); return nb;
 }
 function maskNric(v) { v = v || ''; return v.length < 5 ? v : v[0] + '•'.repeat(v.length - 5) + v.slice(-4); }
-function money(v) { return typeof v === 'number' ? '$' + v.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (v || ''); }
+function money(v) { return typeof v === 'number' ? '$' + v.toLocaleString('en-SG', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }) : (v || ''); }
 function nextId(rows, prefix) {
   let n = 0; const re = new RegExp('^' + prefix + '(\\d+)$');
   for (const r of rows) { const m = re.exec(String(r.ID || '')); if (m) n = Math.max(n, +m[1]); }
@@ -410,7 +441,8 @@ function suggestions() {
     'Company': distinct(db.clients.map(c => c.Company)),
     'How We Met': distinct(db.clients.map(c => c['How We Met']), HOW_MET),
     'Field': distinct(db.extras.map(e => e.Field), EXTRA_SUGGESTIONS),
-    'Product': distinct(db.policies.map(p => p.Product)),
+    'Policy Name': distinct(db.policies.map(p => p['Policy Name'])),
+    'Agent': distinct(db.policies.flatMap(p => [p['Writing Agent'], p['Servicing Agent']])),
     'Insurer': distinct(db.policies.map(p => p.Insurer)),
   };
 }
@@ -429,7 +461,8 @@ function searchDocs() {
   for (const e of db.extras) add(e['Client ID'], e.Field || 'Extra', `${e.Field} ${e.Value}`, e.Value);
   for (const n of db.notes) add(n['Client ID'], 'Note', n.Note);
   for (const i of db.interactions) add(i['Client ID'], 'Log ' + fmtDate(i.Date), [i.Type, i.Notes].filter(Boolean).join(': '));
-  for (const p of db.policies) add(p['Client ID'], 'Policy', [p.Product, p.Insurer, p['Policy No'], p.Status, p.Frequency, p.Notes].filter(Boolean).join(' · '));
+  for (const p of db.policies) add(p['Client ID'], 'Policy', [p['Policy Name'], p['Policy Type'], p.Insurer, p['Policy No'], p.Status, p.Notes,
+    p['Writing Agent'], p['Writing Agent Code'], p['Servicing Agent'], p['Servicing Agent Code']].filter(Boolean).join(' · '));
   return (_docs = by);
 }
 const PROFILE_KEYS = new Set(['Company', 'Address', 'Occupation', 'Email', 'Phone', 'How We Met', 'NRIC']);
@@ -475,7 +508,8 @@ function matchInfo(c, q) {
    ========================================================================= */
 let pendingToast = null, pendingAnchor = null, hooks = [];
 function route() {
-  const h = location.hash.slice(1) || '/'; const [path, qs] = h.split('?');
+  const [h0, anchor] = (location.hash.slice(1) || '/').split('#'); const [path, qs] = h0.split('?');
+  if (anchor && !pendingAnchor) pendingAnchor = anchor;   // e.g. #/c/C0001#policies scrolls to Policies
   return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
 }
 function go(dest, msg, anchor, replace, kind = 'ok') {
@@ -502,6 +536,9 @@ function render() {
     if (!parts.length) html = pageHome();
     else if (parts[0] === 'search') html = pageSearch(q.get('q') || '');
     else if (parts[0] === 'new') html = pageForm(null, q.get('link'), q.get('rel'));
+    else if (parts[0] === 'c' && parts[2] === 'p' && parts[3] === 'new') html = pagePolicyForm(parts[1], null);
+    else if (parts[0] === 'c' && parts[2] === 'p' && parts[4] === 'edit') html = pagePolicyForm(parts[1], parts[3]);
+    else if (parts[0] === 'c' && parts[2] === 'p') html = pagePolicy(parts[1], parts[3]);
     else if (parts[0] === 'c' && parts[2] === 'edit') html = pageForm(parts[1]);
     else if (parts[0] === 'c') html = pageProfile(parts[1]);
     else if (parts[0] === 'data') html = pageData();
@@ -596,10 +633,10 @@ function fieldHtml(f, val, sugg) {
   else if (f.type === 'date') input = dateBox(n, val, f.label);
   else {
     const caps = f.caps ? ` autocapitalize="${f.caps}"` : f.type === 'text' ? ' autocapitalize="words"' : '';
-    input = `<input type="${f.type}" name="${n}" value="${esc(val || '')}" placeholder="${esc(f.placeholder || '')}"${f.required ? ' required' : ''}${caps}${f.autofill ? ` list="dl_${n}" autocomplete="off"` : ''}>`;
-    if (f.autofill) input += datalist('dl_' + n, sugg[f.label] || []);
+    input = `<input type="${f.type}" name="${n}" value="${esc(val ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.required ? ' required' : ''}${caps}${f.inputmode ? ` inputmode="${f.inputmode}"` : ''}${f.autofill ? ` list="dl_${n}" autocomplete="off"` : ''}>`;
+    if (f.autofill) input += datalist('dl_' + n, sugg[f.sugg || f.label] || []);
   }
-  return `<label class="${f.wide ? 'wide' : ''}"><span>${esc(f.label)} ${tag}</span>${input}</label>`;
+  return `<label class="${f.wide ? 'wide' : ''}"><span>${esc(f.show || f.label)} ${tag}</span>${input}</label>`;
 }
 const CAL_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
 function toDMY(iso) { return isISO(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : (iso || ''); }
@@ -630,7 +667,8 @@ function dateBox(n, val, label) {
 function dateHint(iso, label) {
   const d = parseISO(iso), wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
   const age = label === 'Date of Birth' ? ageOf(iso) : null;
-  return `${wd}, ${fmtDate(iso)}${age != null && age >= 0 ? ` · age ${age}` : ''}`;
+  const held = label === 'Date Bought' && d <= today() ? ymText(monthsBetween(d, today())) + ' ago' : '';
+  return `${wd}, ${fmtDate(iso)}${age != null && age >= 0 ? ` · age ${age}` : ''}${held ? ` · ${held}` : ''}`;
 }
 function checkDate(input) {
   const hint = input.closest('label').querySelector('.dhint'), pick = input.parentNode.querySelector('input[type=date]');
@@ -734,7 +772,7 @@ function pageProfile(cid) {
   const id = esc(cid), age = ageOf(c['Date of Birth']), sugg = suggestions(), fam = familyOf(cid), extras = extrasOf(cid);
   const notes = db.notes.filter(n => n['Client ID'] === cid).sort((a, b) => String(b.Added || '').localeCompare(String(a.Added || '')));
   const inter = db.interactions.filter(i => i['Client ID'] === cid).sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')));
-  const pols = db.policies.filter(p => p['Client ID'] === cid);
+  const pols = db.policies.filter(p => p['Client ID'] === cid).sort((a, b) => String(a['Date Bought'] || '9').localeCompare(String(b['Date Bought'] || '9')));
   const linked = new Set([cid, ...fam.map(f => f.c.ID)]);
   const others = db.clients.filter(o => !linked.has(o.ID)).sort(byName);
   const first = esc(c.Nickname || String(c.Name || '').split(' ')[0]);
@@ -802,26 +840,9 @@ function pageProfile(cid) {
       </tbody></table></div>` : ''}
     </section>
 
-    <section class="card" id="policies"><h2>Policies held <small>${pols.length}</small></h2>
-      ${pols.length ? `<div class="table-wrap"><table class="list"><thead><tr><th>Product</th><th>Insurer</th><th>Policy no.</th><th>Start</th><th>Premium</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>
-        ${pols.map(p => `<tr><td>${esc(p.Product)}</td><td>${esc(p.Insurer)}</td><td>${esc(p['Policy No'])}</td><td class="nowrap">${esc(fmtDate(p['Start Date']))}</td>
-          <td class="nowrap">${esc(money(p.Premium))}${p.Frequency ? ` <span class="muted">/ ${esc(p.Frequency.toLowerCase())}</span>` : ''}</td>
-          <td>${esc(p.Status)}</td><td class="pre">${esc(p.Notes)}</td>
-          <td><button class="icon" title="Remove" data-cid="${id}" data-pid="${esc(p.ID)}" onclick="delPolicy(this)">✕</button></td></tr>`).join('')}
-      </tbody></table></div>` : ''}
-      <details><summary class="btn">+ Add policy</summary>
-        <form class="form" onsubmit="return addPolicy(event)" data-cid="${id}" autocomplete="off"><div class="grid">
-          <label><span>Product <em class="req">required</em></span><input name="product" required list="dl_product"></label>
-          <label><span>Insurer <em>optional</em></span><input name="insurer" list="dl_insurer"></label>
-          ${datalist('dl_product', sugg.Product)}${datalist('dl_insurer', sugg.Insurer)}
-          <label><span>Policy no. <em>optional</em></span><input name="policy_no" autocapitalize="characters"></label>
-          <label><span>Start date <em>optional</em></span><input type="date" name="start_date"></label>
-          <label><span>Premium <em>optional</em></span><input name="premium" inputmode="decimal" placeholder="e.g. 250"></label>
-          <label><span>Frequency <em>optional</em></span><select name="frequency"><option value="">—</option>${FREQUENCIES.map(f => `<option>${f}</option>`).join('')}</select></label>
-          <label><span>Status <em>optional</em></span><select name="status"><option value="">—</option>${POLICY_STATUS.map(s => `<option>${s}</option>`).join('')}</select></label>
-          <label class="wide"><span>Notes <em>optional</em></span><textarea name="notes" rows="2"></textarea></label>
-        </div><div class="actions"><button class="btn primary">Add policy</button></div></form>
-      </details>
+    <section class="card" id="policies"><div class="row-between"><h2>Policies <small>${pols.length}</small></h2>
+        <a class="btn small primary" href="#/c/${encodeURIComponent(cid)}/p/new">+ Add policy</a></div>
+      ${pols.length ? `<ul class="pols">${pols.map(policyRow).join('')}</ul>` : '<p class="none">No policies yet.</p>'}
     </section>
 
     <section class="card danger-zone"><button class="link danger small" data-cid="${id}" onclick="delClient(this)">Delete this client</button></section>
@@ -949,19 +970,305 @@ async function delInteraction(btn) {
   db.interactions = db.interactions.filter(i => i.ID !== btn.dataset.iid); touch(getClient(btn.dataset.cid));
   await commit('Entry removed.', location.hash, 'log');
 }
-async function addPolicy(e) {
-  e.preventDefault(); const f = e.target, cid = f.dataset.cid, fd = new FormData(f), g = k => String(fd.get(k) || '').trim();
-  if (!g('product')) { toast('Product name is required for a policy.', 'error'); return false; }
-  const prem = g('premium'), num = parseFloat(prem.replace(/[,$\s]/g, ''));
-  db.policies.push({ ID: nextId(db.policies, 'P'), 'Client ID': cid, Product: g('product'), Insurer: g('insurer'), 'Policy No': g('policy_no'),
-    'Start Date': g('start_date') || null, Premium: prem ? (isNaN(num) ? prem : num) : null, Frequency: g('frequency'), Status: g('status'), Notes: g('notes') });
-  touch(getClient(cid)); await commit(`Added policy: ${g('product')}.`, location.hash, 'policies'); return false;
+
+/* =========================================================================
+   Policies
+   ========================================================================= */
+function migratePolicies(d) {
+  for (const p of d.policies) {
+    if (OLD_FREQ[p['Premium Frequency']]) p['Premium Frequency'] = OLD_FREQ[p['Premium Frequency']];
+    if (!p['Insured ID']) p['Insured ID'] = p['Client ID'];
+  }
+}
+function addMonthsD(d, n) {
+  const t = new Date(d.getFullYear(), d.getMonth() + n, 1), last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+  t.setDate(Math.min(d.getDate(), last)); return t;
+}
+function monthsBetween(a, b) {
+  let m = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth();
+  if (b < addMonthsD(a, m)) m--; return m;
+}
+function ymText(m) {
+  if (m < 1) return 'under a month';
+  const y = Math.floor(m / 12), mo = m % 12;
+  return [y ? `${y} yr${y > 1 ? 's' : ''}` : '', mo ? `${mo} mth${mo > 1 ? 's' : ''}` : ''].filter(Boolean).join(' ');
+}
+function insuredOf(p) { return getClient(p['Insured ID']) || getClient(p['Client ID']); }
+function premText(p) {
+  const v = p.Premium, f = p['Premium Frequency'];
+  if (v == null || v === '') return '';
+  const m = typeof v === 'number' ? money(v) : v;
+  if (f === 'Single premium') return `${m} single premium`;
+  return FREQ_UNIT[f] ? `${m} / ${FREQ_UNIT[f]}` : m;
+}
+// Works out how long the policy has been held and what has been paid.
+// Premiums are due on the date bought and every period after it, until the
+// premium term ends, the policy ends (end date), or today.
+function policyCalc(p) {
+  const r = { noTotals: NO_TOTALS.has(p['Policy Type']) };
+  const bought = parseISO(p['Date Bought']);
+  if (!bought) { r.missing = 'Add the date bought'; return r; }
+  const t = today(), end = parseISO(p['End Date']);
+  r.ended = !!p.Status && p.Status !== 'In force';
+  r.needsEnd = r.ended && !end;
+  const asOf = r.ended && end && end < t ? end : t;
+  r.bought = bought; r.asOf = asOf; r.future = bought > t;
+  r.heldMonths = r.future ? 0 : monthsBetween(bought, asOf);
+  const f = p['Premium Frequency'], period = FREQ_MONTHS[f], prem = typeof p.Premium === 'number' ? p.Premium : null;
+  r.single = f === 'Single premium'; r.perpetual = !r.single && p['Premium Term'] === 'Perpetual';
+  let termEnd = null; const tv = +p['Premium Term Value'];
+  if (!r.single && p['Premium Term'] === 'Years' && tv > 0) termEnd = addMonthsD(bought, 12 * tv);
+  if (!r.single && p['Premium Term'] === 'Till age' && tv > 0) {
+    const ins = insuredOf(p), dob = ins && parseISO(ins['Date of Birth']);
+    if (dob) termEnd = addMonthsD(dob, 12 * tv); else r.needDob = ins ? ins.Name : 'the insured person';
+  }
+  r.termEnd = termEnd;
+  const count = limit => {
+    if (r.single) return bought <= limit ? 1 : 0;
+    if (!period) return null;
+    let n = 0;
+    for (let k = 0; k < 2400; k++) { const d = addMonthsD(bought, k * period); if (d > limit || (termEnd && d >= termEnd)) break; n++; }
+    return n;
+  };
+  r.paidCount = count(asOf);
+  r.totalCount = r.single ? 1 : (termEnd && period ? count(new Date(9999, 0, 1)) : null);
+  if (r.ended && r.paidCount != null && !r.needsEnd) r.totalCount = r.paidCount; // ended: no more premiums
+  r.paid = prem != null && r.paidCount != null ? prem * r.paidCount : null;
+  r.projected = prem != null && r.totalCount != null ? prem * r.totalCount : null;
+  r.annual = prem != null && period ? prem * 12 / period : null;
+  r.done = r.totalCount != null && r.paidCount >= r.totalCount && !r.future;
+  r.leftMonths = termEnd && termEnd > t && !r.ended ? monthsBetween(t, termEnd) : 0;
+  if (prem == null) r.why = 'Add the premium amount';
+  else if (!f) r.why = 'Add the premium frequency';
+  return r;
+}
+function termText(p, r) {
+  const v = +p['Premium Term Value'];
+  if (p['Premium Frequency'] === 'Single premium') return 'One-time payment';
+  if (p['Premium Term'] === 'Years' && v) return `${v} year${v > 1 ? 's' : ''}${r && r.termEnd ? ` (until ${fmtDate(isoOf(r.termEnd))})` : ''}`;
+  if (p['Premium Term'] === 'Till age' && v) return `Until age ${v}${r && r.termEnd ? ` (${fmtDate(isoOf(r.termEnd))})` : ''}`;
+  if (p['Premium Term'] === 'Perpetual') return 'Perpetually (whole life)';
+  return '';
+}
+function isoOf(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function statusTag(p, r) {
+  if (p.Status && p.Status !== 'In force') return `<span class="tag off">${esc(p.Status)}</span>`;
+  if (r && r.done && !r.single && r.totalCount) return '<span class="tag done">Fully paid</span>';
+  return '';
+}
+function policyRow(p) {
+  const r = policyCalc(p), cid = encodeURIComponent(p['Client ID']), pid = encodeURIComponent(p.ID);
+  const meta = [p['Date Bought'] ? 'Bought ' + fmtDate(p['Date Bought']) : '', premText(p),
+    r.bought ? (r.future ? 'starts ' + ago(p['Date Bought']) : 'held ' + ymText(r.heldMonths)) : ''].filter(Boolean).map(esc).join(' · ');
+  return `<li><a href="#/c/${cid}/p/${pid}"><div class="pol-top"><b>${esc(p['Policy Name'] || 'Untitled policy')} ›</b>
+    ${p['Policy Type'] ? `<span class="tag">${esc(p['Policy Type'])}</span>` : ''}${statusTag(p, r)}</div>
+    ${meta ? `<div class="pol-meta">${meta}</div>` : ''}</a></li>`;
+}
+
+function pagePolicy(cid, pid) {
+  const c = getClient(cid), p = db.policies.find(x => x.ID === pid && x['Client ID'] === cid);
+  if (!c || !p) return pageNotFound();
+  const r = policyCalc(p), ins = insuredOf(p), F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
+  const tile = (label, big, small = '', cls = '') => `<div class="tile ${cls}"><span>${label}</span><b>${big}</b>${small ? `<small>${small}</small>` : ''}</div>`;
+  const unitWord = FREQ_UNIT[p['Premium Frequency']] ? p['Premium Frequency'].toLowerCase() : '';
+  let tiles = '';
+  // Held for
+  tiles += r.missing ? tile('Held for', '—', r.missing)
+    : r.future ? tile('Held for', '—', `Starts ${fmtDate(p['Date Bought'])}`)
+    : tile('Held for', ymText(r.heldMonths), r.ended && parseISO(p['End Date']) ? `${fmtDate(p['Date Bought'])} – ${fmtDate(p['End Date'])}` : `since ${fmtDate(p['Date Bought'])}`);
+  // Paid so far + projected
+  if (r.noTotals) tiles += tile('Total premiums paid', '—', 'Not shown for Accident & health policies');
+  else {
+    const paidSmall = r.missing || r.why || (r.paidCount != null ? `${r.paidCount} ${r.single ? 'single premium' : unitWord + ' payment' + (r.paidCount === 1 ? '' : 's')}` : '')
+      + (r.needsEnd ? ' · <span class="warn">add the end date to stop the count</span>' : '');
+    tiles += tile('Total premiums paid so far', r.paid != null ? money(r.paid) : '—', paidSmall, 'key');
+    let projBig = '—', projSmall = '';
+    if (r.projected != null) {
+      projBig = money(r.projected);
+      projSmall = r.single ? 'One-time payment' : `${r.totalCount} payments` + (r.ended ? ' · policy ended' : r.done ? ' · fully paid' : r.leftMonths ? ` · ${ymText(r.leftMonths)} left` : '');
+    } else if (r.perpetual) { projBig = 'For life'; projSmall = r.annual != null ? `${money(r.annual)} a year, no end date` : 'No end date'; }
+    else if (r.needDob) projSmall = `Add ${esc(r.needDob)}’s date of birth to work this out`;
+    else if (!r.missing && !r.why) projSmall = 'Add the premium duration to work this out';
+    else projSmall = r.missing || r.why;
+    tiles += tile('Projected total for full term', projBig, projSmall, 'wide');
+  }
+  const agent = (title, pre) => {
+    const n = p[pre], code = p[pre + ' Code'], ct = p[pre + ' Contact'];
+    return `<section class="card"><h2>${title}</h2>${n || code || ct ? `<dl class="details">
+      ${F('Name', esc(n))}${F('Agent code', esc(code))}${F('Contact', ct ? (/^[\d+\s()-]+$/.test(ct) ? `<a href="tel:${esc(ct.replace(/[^\d+]/g, ''))}">${esc(ct)}</a>` : esc(ct)) : '')}</dl>`
+      : `<p class="none">Not added yet — <a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">add</a>.</p>`}</section>`;
+  };
+  return `
+  <section class="card hero">
+    <div class="who"><p class="crumb"><a href="#/c/${encodeURIComponent(cid)}#policies">‹ ${esc(c.Name)}</a></p>
+      <h1>${esc(p['Policy Name'] || 'Untitled policy')}</h1>
+      <p class="muted">${[p['Policy Type'], p.Insurer, p['Policy No'] ? 'No. ' + p['Policy No'] : ''].filter(Boolean).map(esc).join(' · ') || '&nbsp;'} ${statusTag(p, r)}</p></div>
+    <a class="btn primary" href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">Edit policy</a>
+  </section>
+  <div class="tiles">${tile('Premium', premText(p) ? esc(premText(p).replace(' single premium', '')) : '—', p['Premium Frequency'] ? esc(p['Premium Frequency']) : '')}${tile('Date bought', p['Date Bought'] ? esc(fmtDate(p['Date Bought'])) : '—', p['Date Bought'] && !r.future ? ago(p['Date Bought']) : '')}${tiles}</div>
+  <section class="card"><h2>Policy details</h2><dl class="details">
+    ${F('Policy name', esc(p['Policy Name']))}
+    ${F('Policy number', esc(p['Policy No']))}
+    ${F('Policy type', esc(p['Policy Type']))}
+    ${F('Insurer', esc(p.Insurer))}
+    ${F('Insured person', ins ? (ins.ID === cid ? esc(ins.Name) : `<a href="#/c/${encodeURIComponent(ins.ID)}">${esc(ins.Name)}</a>`) + (ageOf(ins['Date of Birth']) != null ? ` (age ${ageOf(ins['Date of Birth'])})` : '') : '')}
+    ${F('Date bought', esc(fmtDate(p['Date Bought'])))}
+    ${F('Premium', esc(premText(p)))}
+    ${F('Premium frequency', esc(p['Premium Frequency']))}
+    ${F('Premium duration', esc(termText(p, r)))}
+    ${F('Coverage amount', p.Coverage != null && p.Coverage !== '' ? esc(money(p.Coverage)) : '')}
+    ${F('Status', esc(p.Status))}
+    ${F('End date', esc(fmtDate(p['End Date'])))}
+    ${p.Notes ? F('Notes', `<span class="pre">${esc(p.Notes)}</span>`, 'wide') : ''}
+  </dl></section>
+  <div class="agents">${agent('Writing agent', 'Writing Agent')}${agent('Current servicing agent', 'Servicing Agent')}</div>
+  <section class="card danger-zone" style="margin-top:16px"><button class="link danger small" data-cid="${esc(cid)}" data-pid="${esc(pid)}" onclick="delPolicy(this)">Delete this policy</button></section>`;
+}
+
+const POLICY_SECTIONS = [
+  ['Policy', [
+    { label: 'Policy Name', show: 'Policy name', type: 'text', required: true, autofill: true },
+    { label: 'Policy No', show: 'Policy number', type: 'text', caps: 'characters' },
+    { label: 'Policy Type', show: 'Policy type', type: 'select', options: POLICY_TYPES },
+    { label: 'Insurer', type: 'text', autofill: true },
+    { custom: 'insured' },
+    { label: 'Coverage', show: 'Coverage amount', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 500,000' },
+  ]],
+  ['Premium', [
+    { label: 'Date Bought', show: 'Date bought', type: 'date' },
+    { label: 'Premium', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 250' },
+    { label: 'Premium Frequency', show: 'Premium frequency', type: 'select', options: FREQUENCIES },
+    { custom: 'term' },
+  ]],
+  ['Status', [
+    { label: 'Status', type: 'select', options: POLICY_STATUS },
+    { label: 'End Date', show: 'End date', type: 'date' },
+    { label: 'Notes', type: 'textarea', wide: true, rows: 3 },
+  ]],
+  ['Writing agent', [
+    { label: 'Writing Agent', show: 'Name', type: 'text', autofill: true, sugg: 'Agent' },
+    { label: 'Writing Agent Code', show: 'Agent code', type: 'text', caps: 'characters' },
+    { label: 'Writing Agent Contact', show: 'Contact', type: 'tel' },
+  ]],
+  ['Current servicing agent', [
+    { label: 'Servicing Agent', show: 'Name', type: 'text', autofill: true, sugg: 'Agent' },
+    { label: 'Servicing Agent Code', show: 'Agent code', type: 'text', caps: 'characters' },
+    { label: 'Servicing Agent Contact', show: 'Contact', type: 'tel' },
+  ]],
+];
+const POLICY_FIELDS = POLICY_SECTIONS.flatMap(([, fs]) => fs.filter(f => f.label).map(f => f.label));
+
+function pagePolicyForm(cid, pid) {
+  const c = getClient(cid); if (!c) return pageNotFound();
+  const editing = !!pid, p = editing ? db.policies.find(x => x.ID === pid && x['Client ID'] === cid) : { Status: 'In force', 'Insured ID': cid };
+  if (!p) return pageNotFound();
+  const sugg = suggestions(), fam = familyOf(cid);
+  const custom = f => {
+    if (f.custom === 'insured') return `<label><span>Insured person <em>optional</em></span><select name="insured_id">
+      <option value="${esc(cid)}">${esc(c.Name)} (client)</option>
+      ${fam.map(m => `<option value="${esc(m.c.ID)}"${p['Insured ID'] === m.c.ID ? ' selected' : ''}>${esc(m.c.Name)} (${esc(m.label.toLowerCase())})</option>`).join('')}
+      ${p['Insured ID'] && p['Insured ID'] !== cid && !fam.some(m => m.c.ID === p['Insured ID']) && getClient(p['Insured ID']) ? `<option value="${esc(p['Insured ID'])}" selected>${esc(getClient(p['Insured ID']).Name)}</option>` : ''}
+      </select><small class="dhint">Link family members on the client’s page to pick them here.</small></label>`;
+    if (f.custom === 'term') return `<label id="term-field"><span>Premium duration <em>optional</em></span><div class="termbox">
+      <select name="premium_term"><option value="">—</option>${TERMS.map(([v, t]) => `<option value="${v}"${p['Premium Term'] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
+      <input name="premium_term_value" inputmode="numeric" placeholder="e.g. 20" value="${esc(p['Premium Term Value'] ?? '')}" autocomplete="off"></div>
+      <small class="dhint" id="term-hint"></small></label>`;
+  };
+  hooks.push(wirePolicyForm);
+  return `<section class="card">
+    <p class="crumb"><a href="#/c/${encodeURIComponent(cid)}#policies">‹ ${esc(c.Name)}</a></p>
+    <h2>${editing ? 'Edit ' + esc(p['Policy Name'] || 'policy') : 'New policy for ' + esc(c.Name)}</h2>
+    <p class="muted">Only <b>Policy name</b> is required. Fill in date bought, premium, frequency and duration to see the totals.</p>
+    <form class="form" autocomplete="off" onsubmit="return savePolicy(event)" data-cid="${esc(cid)}" data-pid="${esc(pid || '')}">
+      ${POLICY_SECTIONS.map(([title, fields]) => `<fieldset><legend>${esc(title)}</legend>
+        ${title === 'Current servicing agent' ? '<p><button type="button" class="btn small" onclick="sameAgent()">Same as writing agent</button></p>' : ''}
+        <div class="grid">${fields.map(f => f.custom ? custom(f) : fieldHtml(f, p[f.label], sugg)).join('')}</div></fieldset>`).join('')}
+      <div class="actions"><button class="btn primary" type="submit">Save policy</button>
+        <a class="btn" href="${editing ? `#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}` : `#/c/${encodeURIComponent(cid)}#policies`}">Cancel</a></div>
+    </form></section>`;
+}
+function wirePolicyForm() {
+  const form = document.querySelector('form[data-pid]'); if (!form) return;
+  const freq = form.querySelector('[name=premium_frequency]'), term = form.querySelector('[name=premium_term]'),
+        val = form.querySelector('[name=premium_term_value]'), hint = $('#term-hint'), field = $('#term-field'), ins = form.querySelector('[name=insured_id]');
+  const update = () => {
+    const single = freq.value === 'Single premium';
+    field.style.opacity = single ? .45 : 1; term.disabled = val.disabled = single;
+    val.style.visibility = term.value === 'Years' || term.value === 'Till age' ? 'visible' : 'hidden';
+    val.placeholder = term.value === 'Till age' ? 'e.g. 65' : 'e.g. 20';
+    let h = single ? 'Not needed for a single premium' : '';
+    if (!single && term.value === 'Till age') {
+      const who = getClient(ins.value), dob = who && parseISO(who['Date of Birth']);
+      h = dob ? `${who.Name} was born ${fmtDate(who['Date of Birth'])}` + (+val.value ? ` · premiums end ${fmtDate(isoOf(addMonthsD(dob, 12 * +val.value)))}` : '')
+              : `Add ${who ? who.Name : 'the insured'}’s date of birth to work out when premiums end`;
+    }
+    if (!single && term.value === 'Years' && +val.value) {
+      const b = parseTyped(form.querySelector('[name=date_bought]').value);
+      if (b) h = `Premiums end ${fmtDate(isoOf(addMonthsD(parseISO(b), 12 * +val.value)))}`;
+    }
+    hint.textContent = h;
+  };
+  [freq, term, val, ins].forEach(el => el.addEventListener('input', update));
+  form.querySelector('[name=date_bought]').addEventListener('focusout', update);
+  update();
+  // Picking a known agent fills in their code and contact
+  for (const pre of ['writing_agent', 'servicing_agent']) {
+    const n = form.querySelector(`[name=${pre}]`);
+    n.addEventListener('change', () => {
+      const v = n.value.trim().toLowerCase(); if (!v) return;
+      const hit = [...db.policies].reverse().map(x => [['Writing Agent', x], ['Servicing Agent', x]]).flat()
+        .find(([k, x]) => String(x[k] || '').toLowerCase() === v);
+      if (!hit) return; const [k, x] = hit;
+      const code = form.querySelector(`[name=${pre}_code]`), ct = form.querySelector(`[name=${pre}_contact]`);
+      if (!code.value) code.value = x[k + ' Code'] || ''; if (!ct.value) ct.value = x[k + ' Contact'] || '';
+    });
+  }
+}
+function sameAgent() {
+  for (const s of ['', '_code', '_contact']) document.querySelector(`[name=servicing_agent${s}]`).value = document.querySelector(`[name=writing_agent${s}]`).value;
+}
+async function savePolicy(e) {
+  e.preventDefault();
+  const form = e.target, fd = new FormData(form), { cid, pid } = form.dataset, g = k => String(fd.get(k) ?? '').trim();
+  const out = {};
+  for (const label of POLICY_FIELDS) {
+    let v = g(slug(label));
+    if (DATE_F.has(label) && v) {
+      const iso = parseTyped(v);
+      if (!iso) { const el = form.querySelector(`[name="${slug(label)}"]`); checkDate(el); el.focus(); toast(`${label}: type the date as DD/MM/YYYY.`, 'error'); return false; }
+      v = iso;
+    }
+    if ((label === 'Premium' || label === 'Coverage') && v) {
+      const n = parseFloat(v.replace(/[,$\s]/g, ''));
+      if (isNaN(n)) { form.querySelector(`[name="${slug(label)}"]`).focus(); toast(`${label}: enter a number, e.g. 250.`, 'error'); return false; }
+      v = n;
+    }
+    out[label] = v === '' ? blank(label) : v;
+  }
+  if (!out['Policy Name']) { toast('Policy name is required.', 'error'); return false; }
+  out['Insured ID'] = g('insured_id') || cid;
+  const single = out['Premium Frequency'] === 'Single premium';
+  out['Premium Term'] = single ? '' : g('premium_term');
+  const tv = g('premium_term_value');
+  if (!single && (out['Premium Term'] === 'Years' || out['Premium Term'] === 'Till age')) {
+    const n = parseInt(tv, 10);
+    if (!(n > 0 && n <= 120)) { form.querySelector('[name=premium_term_value]').focus(); toast(out['Premium Term'] === 'Years' ? 'Enter the number of years, e.g. 20.' : 'Enter the age premiums stop, e.g. 65.', 'error'); return false; }
+    out['Premium Term Value'] = n;
+  } else out['Premium Term Value'] = null;
+  let p;
+  if (pid) { p = db.policies.find(x => x.ID === pid); Object.assign(p, out); }
+  else { p = { ID: nextId(db.policies, 'P'), 'Client ID': cid, ...out }; db.policies.push(p); }
+  touch(getClient(cid));
+  await commit(pid ? 'Policy updated.' : `Added ${p['Policy Name']}.`, `#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(p.ID)}`, null, true);
+  return false;
 }
 async function delPolicy(btn) {
-  if (!confirm('Remove this policy?')) return;
-  db.policies = db.policies.filter(p => p.ID !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
-  await commit('Policy removed.', location.hash, 'policies');
+  const p = db.policies.find(x => x.ID === btn.dataset.pid);
+  if (!confirm(`Delete ${p && p['Policy Name'] ? p['Policy Name'] : 'this policy'}?`)) return;
+  db.policies = db.policies.filter(x => x.ID !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
+  await commit('Policy deleted.', `#/c/${encodeURIComponent(btn.dataset.cid)}`, 'policies', true);
 }
+
 async function delClient(btn) {
   const cid = btn.dataset.cid, c = getClient(cid);
   if (!confirm(`Delete ${c.Name} and all their notes, policies and family links?`)) return;
@@ -1016,7 +1323,7 @@ const xmlEsc = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').repla
 function colName(i) { let s = ''; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
 function colIndex(l) { let n = 0; for (const ch of l.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; }
 function sheetXml(headers, rows) {
-  const wide = ['Name', 'Company', 'Product', 'How We Met', 'Email', 'Occupation', 'Field'];
+  const wide = ['Name', 'Company', 'Policy Name', 'Writing Agent', 'Servicing Agent', 'How We Met', 'Email', 'Occupation', 'Field'];
   let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
     + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>';
   headers.forEach((h, i) => { const w = LONG_F.has(h) ? 50 : wide.includes(h) ? 24 : STAMP_F.has(h) ? 18 : 14; x += `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`; });
@@ -1187,7 +1494,7 @@ function bookToDb(book) {
     }
   }
   nd.clients = nd.clients.filter(c => c.Name);
-  moveNicknames(nd);
+  moveNicknames(nd); migratePolicies(nd);
   for (const c of nd.clients) if (!c.ID) c.ID = nextId(nd.clients, 'C');
   for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
   return nd;
@@ -1247,6 +1554,7 @@ window.addEventListener('hashchange', render);
   moveNicknames(db);
   for (const [sheet, map] of Object.entries(RENAMED)) for (const r of db[KEY[sheet]])
     for (const [o, n] of Object.entries(map)) if (o in r) { if (!r[n]) r[n] = r[o]; delete r[o]; }
+  migratePolicies(db);
   render();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
