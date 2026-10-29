@@ -29,6 +29,9 @@ h2 { margin: 0 0 14px; font-size: 17px; font-weight: 650; }
 h2 small { color: var(--muted); font-weight: 500; margin-left: 6px; font-size: 14px; }
 h3 { font-size: 15px; margin: 18px 0 10px; }
 .muted { color: var(--muted); }
+.why { display: block; font-size: 13px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+.why b { font-weight: 600; color: var(--ink); }
+mark { background: #fbe7a6; color: inherit; border-radius: 3px; padding: 0 1px; }
 .nick { color: var(--muted); font-weight: 500; }
 h1 .nick { font-size: 20px; }
 .small { font-size: 14px; }
@@ -188,7 +191,7 @@ ul.family b { color: var(--accent-2); }
   <button id="back" class="back" hidden aria-label="Back" onclick="goBack()">‹</button>
   <a class="brand" href="#/"><span class="mark">CB</span><span class="brand-text">Client Book</span></a>
   <div class="search">
-    <input id="q" type="search" placeholder="Search name, NRIC, phone, company…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <input id="q" type="search" placeholder="Search name, company, address, phone…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
     <div id="suggest" class="suggest" hidden></div>
   </div>
   <a class="btn light" href="#/new">+ New</a>
@@ -416,13 +419,36 @@ function searchClients(q) {
   if (!tokens.length) return [];
   const ex = {}; for (const e of db.extras) (ex[e['Client ID']] ||= []).push(`${e.Field} ${e.Value}`);
   return db.clients.map(c => {
-    const hay = ['Name', 'Nickname', 'NRIC', 'Phone', 'Email', 'Company', 'Occupation', 'ID'].map(f => c[f] || '').join(' ').toLowerCase()
+    const hay = ['Name', 'Nickname', 'NRIC', 'Phone', 'Email', 'Company', 'Occupation', 'Address', 'ID'].map(f => c[f] || '').join(' ').toLowerCase()
       + ' ' + (ex[c.ID] || []).join(' ').toLowerCase()
       + ' ' + String(c.Phone || '').replace(/\D/g, '');
     if (!tokens.every(t => hay.includes(t))) return null;
-    const n = String(c.Name || '').toLowerCase();
-    return { c, rank: n.startsWith(ql) ? 0 : n.includes(ql) ? 1 : 2 };
+    const n = String(c.Name || '').toLowerCase(), nk = String(c.Nickname || '').toLowerCase();
+    const rank = n.startsWith(ql) || n.split(/\s+/).some(w => w.startsWith(ql)) ? 0 : (n.includes(ql) || nk.includes(ql)) ? 1 : 2;
+    return { c, rank };
   }).filter(Boolean).sort((a, b) => a.rank - b.rank || byName(a.c, b.c)).map(x => x.c);
+}
+
+// Explains why someone matched when it wasn't their name: e.g. "Address: Blk 123 <mark>Ang</mark> Mo Kio Ave 3"
+function highlight(text, tokens) {
+  let out = esc(text);
+  for (const t of tokens) out = out.replace(new RegExp('(' + esc(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+  return out;
+}
+function matchInfo(c, q) {
+  const tokens = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return '';
+  const name = `${c.Name || ''} ${c.Nickname || ''}`.toLowerCase();
+  if (tokens.every(t => name.includes(t))) return '';
+  const fields = [['Company', c.Company], ['Address', c.Address], ['Occupation', c.Occupation], ['Email', c.Email], ['Phone', c.Phone],
+    ...extrasOf(c.ID).map(e => [e.Field, e.Value])];
+  const hits = fields.filter(([, v]) => v && tokens.some(t => String(v).toLowerCase().includes(t)));
+  if (!hits.length) return '';
+  return hits.slice(0, 2).map(([k, v]) => {
+    let txt = String(v).replace(/\s*\n\s*/g, ', ');
+    if (txt.length > 70) { const i = Math.max(0, txt.toLowerCase().indexOf(tokens.find(t => txt.toLowerCase().includes(t)) || '') - 25); txt = (i ? '…' : '') + txt.slice(i, i + 70) + '…'; }
+    return `<span class="why"><b>${esc(k)}:</b> ${highlight(txt, tokens)}</span>`;
+  }).join('');
 }
 
 /* =========================================================================
@@ -501,7 +527,14 @@ function pageHome() {
   const link = c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>${nick(c)}`;
   hooks.push(() => {
     const f = $('#filter'); if (!f) return;
-    f.addEventListener('input', () => { const v = f.value.toLowerCase(); document.querySelectorAll('#clients tbody tr').forEach(r => r.hidden = !r.textContent.toLowerCase().includes(v)); });
+    f.addEventListener('input', () => {
+      const v = f.value.trim(), hits = v ? new Set(searchClients(v).map(c => c.ID)) : null;
+      document.querySelectorAll('#clients tbody tr').forEach(r => {
+        const show = !hits || hits.has(r.dataset.id); r.hidden = !show;
+        const w = r.querySelector('.whybox'); if (w) w.innerHTML = show && v ? matchInfo(getClient(r.dataset.id), v) : '';
+      });
+      const n = hits ? hits.size : db.clients.length, cnt = $('#clients-count'); if (cnt) cnt.textContent = hits ? `${n} of ${db.clients.length}` : n;
+    });
   });
   return `${backupBanner()}
   <div class="dash">
@@ -516,11 +549,11 @@ function pageHome() {
     </section>
   </div>
   <section class="card">
-    <div class="row-between"><h2>All clients <small>${clients.length}</small></h2>
-      ${clients.length ? '<input id="filter" class="filter" type="search" placeholder="Filter this list…">' : ''}</div>
+    <div class="row-between"><h2>All clients <small id="clients-count">${clients.length}</small></h2>
+      ${clients.length ? '<input id="filter" class="filter" type="search" placeholder="Filter by name, company, address…" autocomplete="off" autocorrect="off" autocapitalize="off">' : ''}</div>
     ${clients.length ? `<div class="table-wrap"><table class="list" id="clients">
       <thead><tr><th>Name</th><th>Age</th><th>Phone</th><th>Company</th><th>Last met</th><th>Updated</th></tr></thead><tbody>
-      ${clients.map(c => `<tr><td>${link(c)}</td><td>${ageOf(c['Date of Birth']) ?? ''}</td><td class="nowrap">${esc(c.Phone)}</td><td>${esc(c.Company)}</td>
+      ${clients.map(c => `<tr data-id="${esc(c.ID)}"><td>${link(c)}<div class="whybox"></div></td><td>${ageOf(c['Date of Birth']) ?? ''}</td><td class="nowrap">${esc(c.Phone)}</td><td>${esc(c.Company)}</td>
         <td class="nowrap">${fmtDate(c['Last Met'])}</td><td class="muted nowrap">${ago(c['Last Updated'])}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">Your client book is empty.</p>'}
   </section>`;
@@ -531,8 +564,8 @@ function pageSearch(q) {
   if (res.length === 1) { setTimeout(() => location.replace('#/c/' + encodeURIComponent(res[0].ID)), 0); return ''; }
   return `<section class="card"><h2>${q ? `${res.length} result${res.length === 1 ? '' : 's'} for “${esc(q)}”` : 'Search'}</h2>
     ${res.length ? `<ul class="results">${res.map(c => `<li><a href="#/c/${encodeURIComponent(c.ID)}"><b>${esc(c.Name)}${nick(c)}</b>
-      <span>${[c.Company, c.Phone, ageOf(c['Date of Birth']) != null ? 'age ' + ageOf(c['Date of Birth']) : '', c.ID].filter(Boolean).map(esc).join(' · ')}</span></a></li>`).join('')}</ul>`
-      : q ? '<p class="muted">No one matches that. <a href="#/new">Add a new client?</a></p>' : '<p class="muted">Type a name, NRIC, phone number or company in the search box.</p>'}
+      <span>${[c.Company, c.Phone, ageOf(c['Date of Birth']) != null ? 'age ' + ageOf(c['Date of Birth']) : '', c.ID].filter(Boolean).map(esc).join(' · ')}</span>${matchInfo(c, q)}</a></li>`).join('')}</ul>`
+      : q ? '<p class="muted">No one matches that. <a href="#/new">Add a new client?</a></p>' : '<p class="muted">Type a name, company, address, NRIC or phone number in the search box.</p>'}
   </section>`;
 }
 
@@ -1167,7 +1200,7 @@ async function undoImport() {
   const draw = () => {
     if (!items.length) { box.hidden = true; return; }
     box.innerHTML = items.map((c, i) => `<a href="#/c/${encodeURIComponent(c.ID)}" class="${i === active ? 'on' : ''}"><b>${esc(c.Name)}${nick(c)}</b>
-      <span>${[c.Company, c.Phone, c.ID].filter(Boolean).map(esc).join(' · ')}</span></a>`).join('');
+      <span>${[c.Company, c.Phone, c.ID].filter(Boolean).map(esc).join(' · ')}</span>${matchInfo(c, q.value)}</a>`).join('');
     box.hidden = false;
   };
   q.addEventListener('input', () => { items = q.value.trim() ? searchClients(q.value).slice(0, 8) : []; active = -1; draw(); });
