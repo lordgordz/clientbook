@@ -124,6 +124,7 @@ select { background-image: linear-gradient(45deg, transparent 50%, #6b7380 50%),
   background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
 input[type=date] { min-height: 44px; }
 textarea { resize: vertical; }
+input:disabled, select:disabled { background: #f1efe9; color: var(--muted); -webkit-text-fill-color: var(--muted); opacity: 1; }
 input:focus, select:focus, textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent-2); }
 .actions { display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); margin-top: 10px; }
 .extra-row { display: grid; grid-template-columns: 220px 1fr auto; gap: 10px; margin-bottom: 10px; align-items: start; }
@@ -772,6 +773,7 @@ function pageProfile(cid) {
   const id = esc(cid), age = ageOf(c['Date of Birth']), sugg = suggestions(), fam = familyOf(cid), extras = extrasOf(cid);
   const notes = db.notes.filter(n => n['Client ID'] === cid).sort((a, b) => String(b.Added || '').localeCompare(String(a.Added || '')));
   const inter = db.interactions.filter(i => i['Client ID'] === cid).sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')));
+  const insuredBy = db.policies.filter(p => p['Insured ID'] === cid && p['Client ID'] !== cid);
   const pols = db.policies.filter(p => p['Client ID'] === cid).sort((a, b) => String(a['Date Bought'] || '9').localeCompare(String(b['Date Bought'] || '9')));
   const linked = new Set([cid, ...fam.map(f => f.c.ID)]);
   const others = db.clients.filter(o => !linked.has(o.ID)).sort(byName);
@@ -842,7 +844,8 @@ function pageProfile(cid) {
 
     <section class="card" id="policies"><div class="row-between"><h2>Policies <small>${pols.length}</small></h2>
         <a class="btn small primary" href="#/c/${encodeURIComponent(cid)}/p/new">+ Add policy</a></div>
-      ${pols.length ? `<ul class="pols">${pols.map(policyRow).join('')}</ul>` : '<p class="none">No policies yet.</p>'}
+      ${pols.length ? `<ul class="pols">${pols.map(x => policyRow(x)).join('')}</ul>` : `<p class="none">${insuredBy.length ? 'Doesn’t own any policies.' : 'No policies yet.'}</p>`}
+      ${insuredBy.length ? `<h3>Insured under ${insuredBy.length === 1 ? 'a policy' : 'policies'} owned by others</h3><ul class="pols">${insuredBy.map(x => policyRow(x, cid)).join('')}</ul>` : ''}
     </section>
 
     <section class="card danger-zone"><button class="link danger small" data-cid="${id}" onclick="delClient(this)">Delete this client</button></section>
@@ -1056,9 +1059,14 @@ function statusTag(p, r) {
   if (r && r.done && !r.single && r.totalCount) return '<span class="tag done">Fully paid</span>';
   return '';
 }
-function policyRow(p) {
-  const r = policyCalc(p), cid = encodeURIComponent(p['Client ID']), pid = encodeURIComponent(p.ID);
-  const meta = [p['Date Bought'] ? 'Bought ' + fmtDate(p['Date Bought']) : '', premText(p),
+function relTo(ownerId, otherId) {
+  const f = db.family.find(x => x['Client ID'] === ownerId && x['Related ID'] === otherId), o = getClient(otherId);
+  return f && o ? ` <span class="muted">· ${esc(relLabel(f.Relationship, o.Gender).toLowerCase())}</span>` : '';
+}
+function policyRow(p, viewer) {
+  const r = policyCalc(p), cid = encodeURIComponent(p['Client ID']), pid = encodeURIComponent(p.ID), ins = insuredOf(p), own = getClient(p['Client ID']);
+  const who = viewer && viewer !== p['Client ID'] ? (own ? 'Owner: ' + own.Name : '') : (ins && ins.ID !== p['Client ID'] ? 'Insured: ' + ins.Name : '');
+  const meta = [who, p['Date Bought'] ? 'Bought ' + fmtDate(p['Date Bought']) : '', premText(p),
     r.bought ? (r.future ? 'starts ' + ago(p['Date Bought']) : 'held ' + ymText(r.heldMonths)) : ''].filter(Boolean).map(esc).join(' · ');
   return `<li><a href="#/c/${cid}/p/${pid}"><div class="pol-top"><b>${esc(p['Policy Name'] || 'Untitled policy')} ›</b>
     ${p['Policy Type'] ? `<span class="tag">${esc(p['Policy Type'])}</span>` : ''}${statusTag(p, r)}</div>
@@ -1111,7 +1119,8 @@ function pagePolicy(cid, pid) {
     ${F('Policy number', esc(p['Policy No']))}
     ${F('Policy type', esc(p['Policy Type']))}
     ${F('Insurer', esc(p.Insurer))}
-    ${F('Insured person', ins ? (ins.ID === cid ? esc(ins.Name) : `<a href="#/c/${encodeURIComponent(ins.ID)}">${esc(ins.Name)}</a>`) + (ageOf(ins['Date of Birth']) != null ? ` (age ${ageOf(ins['Date of Birth'])})` : '') : '')}
+    ${F('Policy owner', esc(c.Name) + (ageOf(c['Date of Birth']) != null ? ` (age ${ageOf(c['Date of Birth'])})` : ''))}
+    ${F('Insured', ins ? (ins.ID === cid ? esc(ins.Name) + ' <span class="muted">(same as owner)</span>' : `<a href="#/c/${encodeURIComponent(ins.ID)}">${esc(ins.Name)}</a>` + (ageOf(ins['Date of Birth']) != null ? ` (age ${ageOf(ins['Date of Birth'])})` : '') + relTo(cid, ins.ID)) : '')}
     ${F('Date bought', esc(fmtDate(p['Date Bought'])))}
     ${F('Premium', esc(premText(p)))}
     ${F('Premium frequency', esc(p['Premium Frequency']))}
@@ -1164,11 +1173,13 @@ function pagePolicyForm(cid, pid) {
   if (!p) return pageNotFound();
   const sugg = suggestions(), fam = familyOf(cid);
   const custom = f => {
-    if (f.custom === 'insured') return `<label><span>Insured person <em>optional</em></span><select name="insured_id">
-      <option value="${esc(cid)}">${esc(c.Name)} (client)</option>
+    if (f.custom === 'insured') return `<label><span>Policy owner</span><input value="${esc(c.Name)}" disabled>
+      <small class="dhint">The client this policy is filed under.</small></label>
+      <label><span>Insured <em>optional</em></span><select name="insured_id">
+      <option value="${esc(cid)}">${esc(c.Name)} (same as owner)</option>
       ${fam.map(m => `<option value="${esc(m.c.ID)}"${p['Insured ID'] === m.c.ID ? ' selected' : ''}>${esc(m.c.Name)} (${esc(m.label.toLowerCase())})</option>`).join('')}
       ${p['Insured ID'] && p['Insured ID'] !== cid && !fam.some(m => m.c.ID === p['Insured ID']) && getClient(p['Insured ID']) ? `<option value="${esc(p['Insured ID'])}" selected>${esc(getClient(p['Insured ID']).Name)}</option>` : ''}
-      </select><small class="dhint">Link family members on the client’s page to pick them here.</small></label>`;
+      </select><small class="dhint">${fam.length ? 'Same as owner unless you pick a family member.' : 'Link family members on the client’s page to pick one here.'}</small></label>`;
     if (f.custom === 'term') return `<label id="term-field"><span>Premium duration <em>optional</em></span><div class="termbox">
       <select name="premium_term"><option value="">—</option>${TERMS.map(([v, t]) => `<option value="${v}"${p['Premium Term'] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
       <input name="premium_term_value" inputmode="numeric" placeholder="e.g. 20" value="${esc(p['Premium Term Value'] ?? '')}" autocomplete="off"></div>
