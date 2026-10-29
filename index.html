@@ -191,7 +191,7 @@ ul.family b { color: var(--accent-2); }
   <button id="back" class="back" hidden aria-label="Back" onclick="goBack()">‹</button>
   <a class="brand" href="#/"><span class="mark">CB</span><span class="brand-text">Client Book</span></a>
   <div class="search">
-    <input id="q" type="search" placeholder="Search name, company, address, phone…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <input id="q" type="search" placeholder="Search anything — names, addresses, notes, policies…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
     <div id="suggest" class="suggest" hidden></div>
   </div>
   <a class="btn light" href="#/new">+ New</a>
@@ -368,6 +368,7 @@ async function kvSet(k, v) {
 }
 let askedPersist = false;
 async function persist() {
+  _docs = null;
   db.meta.lastChange = nowStamp();
   await kvSet('db', JSON.parse(JSON.stringify(db)));
   if (!askedPersist && navigator.storage && navigator.storage.persist) { askedPersist = true; navigator.storage.persist().catch(() => {}); }
@@ -414,17 +415,35 @@ function suggestions() {
   };
 }
 const datalist = (id, opts) => `<datalist id="${id}">${opts.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`;
+// Everything searchable about one client, as [where, text] pairs.
+// Grouped once and reused until the data changes.
+let _docs = null;
+function searchDocs() {
+  if (_docs) return _docs;
+  const by = {}, add = (id, k, v, show) => { if (v != null && String(v).trim()) (by[id] ||= []).push([k, String(v), show]); };
+  for (const c of db.clients) {
+    for (const k of ['Company', 'Address', 'Occupation', 'Email', 'Phone', 'How We Met']) add(c.ID, k, c[k]);
+    if (c.NRIC) add(c.ID, 'NRIC', c.NRIC, maskNric(c.NRIC));
+    add(c.ID, 'Special remarks', c.Remarks);
+  }
+  for (const e of db.extras) add(e['Client ID'], e.Field || 'Extra', `${e.Field} ${e.Value}`, e.Value);
+  for (const n of db.notes) add(n['Client ID'], 'Note', n.Note);
+  for (const i of db.interactions) add(i['Client ID'], 'Log ' + fmtDate(i.Date), [i.Type, i.Notes].filter(Boolean).join(': '));
+  for (const p of db.policies) add(p['Client ID'], 'Policy', [p.Product, p.Insurer, p['Policy No'], p.Status, p.Frequency, p.Notes].filter(Boolean).join(' · '));
+  return (_docs = by);
+}
+const PROFILE_KEYS = new Set(['Company', 'Address', 'Occupation', 'Email', 'Phone', 'How We Met', 'NRIC']);
 function searchClients(q) {
   const ql = q.toLowerCase().trim(), tokens = ql.split(/\s+/).filter(Boolean);
   if (!tokens.length) return [];
-  const ex = {}; for (const e of db.extras) (ex[e['Client ID']] ||= []).push(`${e.Field} ${e.Value}`);
+  const docs = searchDocs();
   return db.clients.map(c => {
-    const hay = ['Name', 'Nickname', 'NRIC', 'Phone', 'Email', 'Company', 'Occupation', 'Address', 'ID'].map(f => c[f] || '').join(' ').toLowerCase()
-      + ' ' + (ex[c.ID] || []).join(' ').toLowerCase()
-      + ' ' + String(c.Phone || '').replace(/\D/g, '');
+    const d = docs[c.ID] || [];
+    const hay = [c.Name, c.Nickname, c.ID, ...d.map(x => x[1]), String(c.Phone || '').replace(/\D/g, '')].join(' \n ').toLowerCase();
     if (!tokens.every(t => hay.includes(t))) return null;
     const n = String(c.Name || '').toLowerCase(), nk = String(c.Nickname || '').toLowerCase();
-    const rank = n.startsWith(ql) || n.split(/\s+/).some(w => w.startsWith(ql)) ? 0 : (n.includes(ql) || nk.includes(ql)) ? 1 : 2;
+    const inProfile = d.some(([k, v]) => PROFILE_KEYS.has(k) && v.toLowerCase().includes(ql));
+    const rank = n.startsWith(ql) || n.split(/\s+/).some(w => w.startsWith(ql)) ? 0 : (n.includes(ql) || nk.includes(ql)) ? 1 : inProfile ? 2 : 3;
     return { c, rank };
   }).filter(Boolean).sort((a, b) => a.rank - b.rank || byName(a.c, b.c)).map(x => x.c);
 }
@@ -440,15 +459,15 @@ function matchInfo(c, q) {
   if (!tokens.length) return '';
   const name = `${c.Name || ''} ${c.Nickname || ''}`.toLowerCase();
   if (tokens.every(t => name.includes(t))) return '';
-  const fields = [['Company', c.Company], ['Address', c.Address], ['Occupation', c.Occupation], ['Email', c.Email], ['Phone', c.Phone],
-    ...extrasOf(c.ID).map(e => [e.Field, e.Value])];
-  const hits = fields.filter(([, v]) => v && tokens.some(t => String(v).toLowerCase().includes(t)));
+  const rest = tokens.filter(t => !name.includes(t)), hits = (searchDocs()[c.ID] || []).filter(([, v]) => rest.some(t => v.toLowerCase().includes(t)));
   if (!hits.length) return '';
-  return hits.slice(0, 2).map(([k, v]) => {
-    let txt = String(v).replace(/\s*\n\s*/g, ', ');
-    if (txt.length > 70) { const i = Math.max(0, txt.toLowerCase().indexOf(tokens.find(t => txt.toLowerCase().includes(t)) || '') - 25); txt = (i ? '…' : '') + txt.slice(i, i + 70) + '…'; }
-    return `<span class="why"><b>${esc(k)}:</b> ${highlight(txt, tokens)}</span>`;
-  }).join('');
+  const more = hits.length > 2 ? `<span class="why">+ ${hits.length - 2} more match${hits.length - 2 > 1 ? 'es' : ''}</span>` : '';
+  return hits.slice(0, 2).map(([k, v, show]) => {
+    let txt = String(show ?? v).replace(/\s*\n\s*/g, ' · ');
+    const low = txt.toLowerCase(), t0 = rest.find(t => low.includes(t));
+    if (txt.length > 80) { const i = t0 ? Math.max(0, low.indexOf(t0) - 30) : 0; txt = (i ? '…' : '') + txt.slice(i, i + 80) + (i + 80 < txt.length ? '…' : ''); }
+    return `<span class="why"><b>${esc(k)}:</b> ${highlight(txt, rest)}</span>`;
+  }).join('') + more;
 }
 
 /* =========================================================================
@@ -550,7 +569,7 @@ function pageHome() {
   </div>
   <section class="card">
     <div class="row-between"><h2>All clients <small id="clients-count">${clients.length}</small></h2>
-      ${clients.length ? '<input id="filter" class="filter" type="search" placeholder="Filter by name, company, address…" autocomplete="off" autocorrect="off" autocapitalize="off">' : ''}</div>
+      ${clients.length ? '<input id="filter" class="filter" type="search" placeholder="Filter by anything…" autocomplete="off" autocorrect="off" autocapitalize="off">' : ''}</div>
     ${clients.length ? `<div class="table-wrap"><table class="list" id="clients">
       <thead><tr><th>Name</th><th>Age</th><th>Phone</th><th>Company</th><th>Last met</th><th>Updated</th></tr></thead><tbody>
       ${clients.map(c => `<tr data-id="${esc(c.ID)}"><td>${link(c)}<div class="whybox"></div></td><td>${ageOf(c['Date of Birth']) ?? ''}</td><td class="nowrap">${esc(c.Phone)}</td><td>${esc(c.Company)}</td>
@@ -565,7 +584,7 @@ function pageSearch(q) {
   return `<section class="card"><h2>${q ? `${res.length} result${res.length === 1 ? '' : 's'} for “${esc(q)}”` : 'Search'}</h2>
     ${res.length ? `<ul class="results">${res.map(c => `<li><a href="#/c/${encodeURIComponent(c.ID)}"><b>${esc(c.Name)}${nick(c)}</b>
       <span>${[c.Company, c.Phone, ageOf(c['Date of Birth']) != null ? 'age ' + ageOf(c['Date of Birth']) : '', c.ID].filter(Boolean).map(esc).join(' · ')}</span>${matchInfo(c, q)}</a></li>`).join('')}</ul>`
-      : q ? '<p class="muted">No one matches that. <a href="#/new">Add a new client?</a></p>' : '<p class="muted">Type a name, company, address, NRIC or phone number in the search box.</p>'}
+      : q ? '<p class="muted">No one matches that. <a href="#/new">Add a new client?</a></p>' : '<p class="muted">Type anything in the search box — a name, company, address, phone number, or words from notes, remarks, policies or the interaction log.</p>'}
   </section>`;
 }
 
