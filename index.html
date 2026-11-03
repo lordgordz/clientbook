@@ -201,6 +201,49 @@ ul.pols li a:active { background: var(--accent-soft); }
 .steps { margin: 8px 0 0; padding-left: 20px; }
 .steps li { margin-bottom: 6px; }
 
+.hero-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+/* ---- printable pages (letter, coverage summary) ---- */
+.print-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.print-bar .opts { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.print-bar .opts label { display: flex; align-items: center; gap: 6px; }
+.print-bar input[type=checkbox] { width: 20px; height: 20px; min-height: 0; -webkit-appearance: checkbox; appearance: checkbox; }
+.sheet { background: #fff; color: #111; border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 2px 14px rgba(0,0,0,.06);
+  max-width: 820px; margin: 0 auto; padding: 56px 64px; font: 15px/1.6 Georgia, "Times New Roman", serif; }
+.sheet h1, .sheet h2, .sheet h3 { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.sheet .lh { display: flex; justify-content: space-between; gap: 20px; border-bottom: 2px solid #1f3a5f; padding-bottom: 12px; margin-bottom: 28px;
+  font: 13px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #333; }
+.sheet .lh b { font-size: 18px; color: #1f3a5f; display: block; }
+.sheet .lh .r { text-align: right; }
+.sheet .addr { margin: 0 0 24px; white-space: pre-line; }
+.sheet .re { font-weight: bold; margin: 0 0 16px; }
+.sheet p { margin: 0 0 14px; }
+.sheet table { width: 100%; border-collapse: collapse; margin: 6px 0 18px; font: 13.5px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.sheet th { text-align: left; border-bottom: 1.5px solid #1f3a5f; padding: 6px 8px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: #1f3a5f; }
+.sheet td { border-bottom: 1px solid #ddd; padding: 7px 8px; vertical-align: top; }
+.sheet td.n, .sheet th.n { text-align: right; white-space: nowrap; }
+.sheet tr.tot td { font-weight: bold; border-top: 1.5px solid #1f3a5f; border-bottom: 0; }
+.sheet .sig { margin-top: 30px; }
+.sheet .sig .name { margin-top: 44px; font-weight: bold; }
+.sheet .miss { background: #fde9a8; border-radius: 3px; padding: 0 3px; font-family: -apple-system, Arial, sans-serif; font-size: 13px; }
+.sheet [contenteditable]:focus { outline: 2px dashed #9db5d6; outline-offset: 4px; }
+.sheet .foot { margin-top: 26px; font: 11.5px/1.5 -apple-system, Arial, sans-serif; color: #666; border-top: 1px solid #ddd; padding-top: 10px; }
+.sheet .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 22px; font-family: -apple-system, Arial, sans-serif; }
+.sheet .kpis div { border: 1px solid #ccd6e3; border-radius: 6px; padding: 10px 12px; }
+.sheet .kpis span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #555; }
+.sheet .kpis b { font-size: 20px; color: #1f3a5f; }
+.sheet h2.sec { font-size: 15px; margin: 22px 0 4px; color: #1f3a5f; }
+.sheet .muted { color: #666; }
+@page { size: A4; margin: 16mm 16mm 18mm; }
+@media print {
+  body { background: #fff; }
+  .topbar, .print-bar, .toast, .no-print { display: none !important; }
+  .wrap { padding: 0; max-width: none; }
+  .sheet { border: 0; box-shadow: none; padding: 0; max-width: none; border-radius: 0; }
+  .sheet .miss { background: none; }
+  .sheet tr { break-inside: avoid; }
+}
+@media (max-width: 640px) { .sheet { padding: 28px 22px; } .sheet table { display: block; overflow-x: auto; } .sheet .kpis { grid-template-columns: 1fr; } .sheet .lh { flex-direction: column; } .sheet .lh .r { text-align: left; } }
+
 @media (max-width: 900px) {
   .dash { grid-template-columns: minmax(0, 1fr); }
   .cols { grid-template-columns: minmax(0, 1fr); }
@@ -246,20 +289,22 @@ const SHEETS = {
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Coverage', 'Status', 'End Date', 'Notes',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
+  'Settings': ['Key', 'Value'],
 };
 // Columns that were renamed — older Excel files and saved data are upgraded automatically.
 const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
-              'Interactions': 'interactions', 'Policies': 'policies' };
+              'Interactions': 'interactions', 'Policies': 'policies', 'Settings': 'settings' };
 const DATE_F = new Set(['Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
 const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
+const SETTING_KEYS = ['My Name', 'My Title', 'My Company', 'My Phone', 'My Email', 'My Address', 'My Rep No', 'Letter Wording'];
 
 const GENDERS = ['Male', 'Female'];
 const INCOME_RANGES = ['Below $3k / month', '$3k – $6k / month', '$6k – $10k / month', '$10k – $20k / month', 'Above $20k / month'];
 const HOW_MET = ['Referral', 'Friend / family', 'Colleague', 'Roadshow', 'Event / seminar', 'Social media', 'Cold call', 'Walk-in', 'Other'];
-const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event', 'Call', 'Message', 'Email', 'Other'];
+const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event', 'Call', 'Message', 'Email', 'Letter', 'Other'];
 const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']);
 const POLICY_STATUS = ['In force', 'Lapsed', 'Surrendered', 'Matured', 'Claimed', 'Terminated'];
 const POLICY_TYPES = ['Whole life', 'Term', 'Investment-linked (ILP)', 'Endowment', 'Accident & health', 'Disability care', 'Universal life'];
@@ -375,7 +420,7 @@ function nextId(rows, prefix) {
 /* =========================================================================
    Storage — kept on this device (IndexedDB, falls back to localStorage)
    ========================================================================= */
-function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], meta: { lastExport: null, lastChange: null } }; }
+function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], settings: [], meta: { lastExport: null, lastChange: null } }; }
 let db = emptyDb();
 let _idb;
 function openIdb() {
@@ -597,12 +642,15 @@ function render() {
     if (!parts.length) html = pageHome();
     else if (parts[0] === 'search') html = pageSearch(q.get('q') || '');
     else if (parts[0] === 'new') html = pageForm(null, q.get('link'), q.get('rel'));
+    else if (parts[0] === 'c' && parts[2] === 'letter') html = pageLetter(parts[1], q);
+    else if (parts[0] === 'c' && parts[2] === 'summary') html = pageSummary(parts[1], q);
     else if (parts[0] === 'c' && parts[2] === 'p' && parts[3] === 'new') html = pagePolicyForm(parts[1], null);
     else if (parts[0] === 'c' && parts[2] === 'p' && parts[4] === 'edit') html = pagePolicyForm(parts[1], parts[3]);
     else if (parts[0] === 'c' && parts[2] === 'p') html = pagePolicy(parts[1], parts[3]);
     else if (parts[0] === 'c' && parts[2] === 'edit') html = pageForm(parts[1]);
     else if (parts[0] === 'c') html = pageProfile(parts[1]);
     else if (parts[0] === 'data') html = pageData();
+    else if (parts[0] === 'me') html = pageMe();
     else html = pageNotFound();
   } catch (e) {
     console.error(e);
@@ -878,7 +926,8 @@ function pageProfile(cid) {
         <span>Last met: <b>${fmtDate(c['Last Met']) || '—'}</b>${c['Last Met'] ? ` (${ago(c['Last Met'])})` : ''}</span>
         <span>Profile updated: <b>${fmtDate(c['Last Updated']) || '—'}</b></span>
         ${fu ? `<span class="${fuDue ? 'due' : ''}">Follow-up: <b>${fmtDate(fu)}</b></span>` : ''}</p></div>
-    <a class="btn primary" href="#/c/${encodeURIComponent(cid)}/edit">Edit profile</a>
+    <div class="hero-actions"><a class="btn primary" href="#/c/${encodeURIComponent(cid)}/edit">Edit profile</a>
+      <a class="btn" href="#/c/${encodeURIComponent(cid)}/letter">✉︎ Write letter</a></div>
   </section>
   <div class="cols">
   <div class="col-main">
@@ -931,7 +980,8 @@ function pageProfile(cid) {
     </section>
 
     <section class="card" id="policies"><div class="row-between"><h2>Policies <small>${pols.length}</small></h2>
-        <a class="btn small primary" href="#/c/${encodeURIComponent(cid)}/p/new">+ Add policy</a></div>
+        <div class="row-btns">${pols.length || insuredBy.length ? `<a class="btn small" href="#/c/${encodeURIComponent(cid)}/summary">⎙ Print coverage summary</a>` : ''}
+        <a class="btn small primary" href="#/c/${encodeURIComponent(cid)}/p/new">+ Add policy</a></div></div>
       ${pols.length ? `<ul class="pols">${pols.map(x => policyRow(x)).join('')}</ul>` : `<p class="none">${insuredBy.length ? 'Doesn’t own any policies.' : 'No policies yet.'}</p>`}
       ${insuredBy.length ? `<h3>Insured under ${insuredBy.length === 1 ? 'a policy' : 'policies'} owned by others</h3><ul class="pols">${insuredBy.map(x => policyRow(x, cid)).join('')}</ul>` : ''}
     </section>
@@ -966,7 +1016,7 @@ function pageProfile(cid) {
 }
 
 function pageData() {
-  const counts = Object.entries(KEY).map(([n, k]) => `<span><b>${db[k].length}</b> ${n === 'Clients' ? 'clients' : n.toLowerCase()}</span>`).join('');
+  const counts = Object.entries(KEY).filter(([n]) => n !== 'Settings').map(([n, k]) => `<span><b>${db[k].length}</b> ${n === 'Clients' ? 'clients' : n.toLowerCase()}</span>`).join('');
   hooks.push(async () => {
     const prev = await kvGet('prev'), w = $('#undo-wrap');
     if (prev && w) w.innerHTML = `Imported or erased by mistake? <button class="link" onclick="undoImport()">Restore the previous data</button> (${prev.clients.length} clients).`;
@@ -983,6 +1033,9 @@ function pageData() {
       <p class="muted small">Everything is stored on this iPad only. Storage status: <span id="persisted">checking…</span></p>
       <p class="muted small">Last Excel backup: <b>${db.meta.lastExport ? esc(fmtDate(db.meta.lastExport)) + ' (' + ago(db.meta.lastExport) + ')' : 'never'}</b></p>
     </section>
+    <section class="card"><h2>Your details</h2>
+      <p>Your name, contact and the standard wording used in client letters and coverage summaries.</p>
+      <a class="btn" href="#/me">Edit your details</a></section>
     <section class="card"><h2>Export to Excel</h2>
       <p>Creates an Excel file with everything in it — use it as a backup, to open in Excel, or to move your data to the computer version.</p>
       <button class="btn primary" onclick="exportExcel()">Export to Excel</button>
@@ -1372,6 +1425,177 @@ async function delPolicy(btn) {
   if (!confirm(`Delete ${p && p['Policy Name'] ? p['Policy Name'] : 'this policy'}?`)) return;
   db.policies = db.policies.filter(x => x.ID !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
   await commit('Policy deleted.', `#/c/${encodeURIComponent(btn.dataset.cid)}`, 'policies', true);
+}
+
+
+/* =========================================================================
+   Your details, client letters and coverage summaries
+   ========================================================================= */
+const DEFAULT_LETTER = `Dear {salutation},
+
+My name is {my_name}, and I am your {my_title}{at_company}. I am writing to introduce myself and to let you know that I am the consultant looking after the following {policy_word} for you:
+
+{policies}
+
+As I have not been able to reach you by phone, I would like to make sure you have a direct point of contact for anything to do with your {policy_word} — understanding your coverage, updating your contact details or nominations, making a claim, or reviewing whether your plans still suit your needs today.
+
+I would be glad to arrange a short, no-obligation meeting at a time and place convenient for you. Please call or WhatsApp me at {my_phone}{or_email}. When you get in touch, do share your latest contact number so that I can keep your records up to date.
+
+I look forward to hearing from you.`;
+function setting(k) { const r = (db.settings || []).find(x => x.Key === k); return r ? String(r.Value ?? '') : ''; }
+function setSetting(k, v) {
+  db.settings = (db.settings || []).filter(x => x.Key !== k);
+  if (String(v || '').trim()) db.settings.push({ Key: k, Value: String(v) });
+}
+function myDetails() {
+  return { name: setting('My Name'), title: setting('My Title') || 'financial consultant', company: setting('My Company'),
+    phone: setting('My Phone'), email: setting('My Email'), address: setting('My Address'), rep: setting('My Rep No') };
+}
+function letterhead(me) {
+  const miss = t => `<span class="miss">[${t}]</span>`;
+  return `<div class="lh"><div><b>${me.name ? esc(me.name) : miss('your name')}</b>${esc(cap(me.title))}${me.company ? '<br>' + esc(me.company) : ''}${me.rep ? `<br>Rep. No. ${esc(me.rep)}` : ''}</div>
+    <div class="r">${me.phone ? 'Tel/WhatsApp: ' + esc(me.phone) : miss('your phone')}${me.email ? '<br>' + esc(me.email) : ''}${me.address ? '<br>' + esc(me.address).replace(/\n/g, '<br>') : ''}</div></div>`;
+}
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+function maskPolicyNo(n) { n = String(n || ''); return n.length > 4 ? '••••' + n.slice(-4) : n; }
+
+function pageMe() {
+  const me = myDetails(), f = (k, label, extra = '') => `<label${extra.includes('wide') ? ' class="wide"' : ''}><span>${label} <em>optional</em></span>${
+    k === 'My Address' ? `<textarea name="${slug(k)}" rows="3">${esc(setting(k))}</textarea>` : `<input name="${slug(k)}" value="${esc(setting(k))}"${extra.replace('wide', '')}>`}</label>`;
+  return `<section class="card"><p class="crumb"><a href="#/data">‹ Backup &amp; data</a></p><h2>Your details</h2>
+    <p class="muted">Used on client letters and coverage summaries. Saved on this iPad and included in your Excel backups.</p>
+    <form class="form" onsubmit="return saveMe(event)" autocomplete="off">
+      <fieldset><legend>About you</legend><div class="grid">
+        ${f('My Name', 'Your name', ' autocapitalize="words"')}${f('My Title', 'Title', ' placeholder="Financial consultant"')}
+        ${f('My Company', 'Company / agency', ' autocapitalize="words"')}${f('My Rep No', 'MAS rep. no.', ' autocapitalize="characters"')}
+        ${f('My Phone', 'Mobile / WhatsApp', ' type="tel"')}${f('My Email', 'Email', ' type="email"')}
+        ${f('My Address', 'Office address', 'wide')}
+      </div></fieldset>
+      <fieldset><legend>Standard letter wording</legend>
+        <p class="muted small">These words fill in automatically: {salutation} {my_name} {my_title} {at_company} {policy_word} {policies} (the policy list) {my_phone} {or_email}. Leave a blank line between paragraphs.</p>
+        <textarea name="letter" rows="16" style="font: 15px/1.55 Georgia, serif">${esc(setting('Letter Wording') || DEFAULT_LETTER)}</textarea>
+        <p><button type="button" class="btn small" onclick="this.closest('form').letter.value = DEFAULT_LETTER">Restore the original wording</button></p>
+      </fieldset>
+      <div class="actions"><button class="btn primary">Save</button><a class="btn" href="#/data">Cancel</a></div>
+    </form></section>`;
+}
+async function saveMe(e) {
+  e.preventDefault(); const fd = new FormData(e.target);
+  for (const k of SETTING_KEYS.filter(k => k !== 'Letter Wording')) setSetting(k, String(fd.get(slug(k)) || '').trim());
+  const w = String(fd.get('letter') || '').trim(); setSetting('Letter Wording', w && w !== DEFAULT_LETTER.trim() ? w : '');
+  await commit('Your details saved.', history.length > 1 && sessionStorage.getItem('cb_back') ? sessionStorage.getItem('cb_back') : '#/data', null, true);
+  try { sessionStorage.removeItem('cb_back'); } catch (_) {}
+  return false;
+}
+function goMe() { try { sessionStorage.setItem('cb_back', location.hash); } catch (_) {} location.hash = '#/me'; }
+
+// ---- client letter ----
+function letterPolicies(cid, opts) {
+  return db.policies.filter(p => p['Client ID'] === cid && (opts.ended || !p.Status || p.Status === 'In force'))
+    .sort((a, b) => String(a['Date Bought'] || '9').localeCompare(String(b['Date Bought'] || '9')));
+}
+function pageLetter(cid, q) {
+  const c = getClient(cid); if (!c) return pageNotFound();
+  const opts = { full: q.get('full') === '1', ended: q.get('ended') === '1' };
+  const me = myDetails(), pols = letterPolicies(cid, opts), insurers = [...new Set(pols.map(p => p.Insurer).filter(Boolean))];
+  const miss = t => `<span class="miss">[${t}]</span>`;
+  const title = c.Gender === 'Male' ? 'Mr ' : c.Gender === 'Female' ? 'Ms ' : '';
+  const tbl = pols.length ? `<table><thead><tr><th>Policy</th><th>Policy no.</th>${insurers.length > 1 ? '<th>Insurer</th>' : ''}<th>Insured</th><th>Since</th></tr></thead><tbody>
+    ${pols.map(p => { const ins = insuredOf(p); return `<tr><td>${esc(p['Policy Name'])}</td><td>${esc(opts.full ? p['Policy No'] : maskPolicyNo(p['Policy No'])) || '—'}</td>
+      ${insurers.length > 1 ? `<td>${esc(p.Insurer)}</td>` : ''}<td>${esc(ins ? ins.Name : c.Name)}</td><td>${esc(fmtDate(p['Date Bought'])) || '—'}</td></tr>`; }).join('')}</tbody></table>`
+    : `<p>${miss('no policies on file — add them on the client’s page')}</p>`;
+  const fill = {
+    salutation: esc(title + c.Name), my_name: me.name ? esc(me.name) : miss('your name'), my_title: esc(me.title),
+    at_company: me.company ? ' at ' + esc(me.company) : '', policy_word: pols.length === 1 ? 'policy' : 'policies',
+    my_phone: me.phone ? `<b>${esc(me.phone)}</b>` : miss('your phone'), or_email: me.email ? `, or email me at <b>${esc(me.email)}</b>` : '',
+  };
+  const body = (setting('Letter Wording') || DEFAULT_LETTER).trim().split(/\n\s*\n/).map(par => {
+    if (par.trim() === '{policies}') return tbl;
+    return `<p>${esc(par).replace(/\{(\w+)\}/g, (m, k) => k === 'policies' ? '' : (fill[k] ?? m)).replace(/\n/g, '<br>')}</p>`;
+  }).join('');
+  const addr = c.Address ? esc(c.Address) : miss('no mailing address on file — add it on the client’s page');
+  const link = (k, v) => { const u = new URLSearchParams(q); v ? u.set(k, '1') : u.delete(k); const s2 = u.toString(); return `#/c/${encodeURIComponent(cid)}/letter${s2 ? '?' + s2 : ''}`; };
+  const warn = [!me.name || !me.phone ? `Add your name and phone in <a href="javascript:goMe()">your details</a>.` : '', !c.Address ? 'This client has no address yet.' : ''].filter(Boolean);
+  const sent = db.interactions.filter(i => i['Client ID'] === cid && i.Type === 'Letter').sort((a, b) => String(b.Date).localeCompare(String(a.Date)))[0];
+  return `<div class="print-bar no-print">
+      <div><p class="crumb"><a href="#/c/${encodeURIComponent(cid)}">‹ ${esc(c.Name)}</a></p>
+        <div class="opts"><label><input type="checkbox" ${opts.full ? 'checked' : ''} onchange="location.replace('${link('full', !opts.full)}')"> Show full policy numbers</label>
+          <label><input type="checkbox" ${opts.ended ? 'checked' : ''} onchange="location.replace('${link('ended', !opts.ended)}')"> Include ended policies</label></div></div>
+      <div class="row-btns"><a class="btn small" href="javascript:goMe()">Edit standard wording</a>
+        <button class="btn small" data-cid="${esc(cid)}" onclick="logLetter(this)">Mark as sent</button>
+        <button class="btn primary" onclick="printPage()">Print</button></div>
+    </div>
+    ${warn.length ? `<p class="banner warn no-print">${warn.join(' ')}</p>` : ''}
+    <p class="muted small no-print">Tap any text on the letter to change it for this letter only.${sent ? ` Last letter logged ${esc(fmtDate(sent.Date))}.` : ''}</p>
+    <div class="sheet">
+      ${letterhead(me)}
+      <p>${esc(fmtDate(todayISO()).replace(/^0/, ''))}</p>
+      <div class="addr">${esc(title + c.Name)}<br>${addr}</div>
+      <p class="re">Re: Your insurance ${pols.length === 1 ? 'policy' : 'policies'}${insurers.length === 1 ? ' with ' + esc(insurers[0]) : ''}</p>
+      <div contenteditable="true" spellcheck="true">${body}
+        <div class="sig"><p>Yours sincerely,</p><p class="name">${me.name ? esc(me.name) : miss('your name')}</p>
+          <p>${esc(cap(me.title))}${me.company ? '<br>' + esc(me.company) : ''}${me.rep ? `<br>Rep. No. ${esc(me.rep)}` : ''}<br>${me.phone ? esc(me.phone) : ''}${me.phone && me.email ? ' · ' : ''}${esc(me.email)}</p></div>
+      </div>
+    </div>`;
+}
+function printPage() {
+  try { window.print(); } catch (e) { toast('Printing isn’t available here — open Client Book in Safari, then Share › Print.', 'warn'); }
+}
+async function logLetter(btn) {
+  const cid = btn.dataset.cid, c = getClient(cid);
+  db.interactions.push({ ID: nextId(db.interactions, 'I'), 'Client ID': cid, Date: todayISO(), Type: 'Letter', Notes: 'Introduction letter mailed' });
+  touch(c); await commit('Logged in the interaction log as a letter sent today.', location.hash);
+}
+
+// ---- coverage summary ----
+function pageSummary(cid, q) {
+  const c = getClient(cid); if (!c) return pageNotFound();
+  const ended = q.get('ended') === '1', me = myDetails();
+  const live = p => ended || !p.Status || p.Status === 'In force';
+  const all = db.policies.filter(p => (p['Client ID'] === cid || p['Insured ID'] === cid) && live(p));
+  const groups = new Map();
+  for (const p of all) { const ins = insuredOf(p); const k = ins ? ins.ID : cid; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
+  const order = [...groups.keys()].sort((a, b) => (a === cid ? -1 : b === cid ? 1 : byName(getClient(a), getClient(b))));
+  const num = v => typeof v === 'number' ? v : 0;
+  const annual = p => { const r = policyCalc(p); return p.Status && p.Status !== 'In force' ? 0 : (r.annual || 0); };
+  const paid = p => { const r = policyCalc(p); return r.noTotals ? null : r.paid; };
+  const totCov = all.reduce((t, p) => t + num(p.Coverage), 0), totAnn = all.reduce((t, p) => t + annual(p), 0);
+  const totPaid = all.reduce((t, p) => t + (paid(p) || 0), 0), inForce = all.filter(p => !p.Status || p.Status === 'In force').length;
+  const m0 = v => v ? money(Math.round(v)) : '—';
+  const section = id => {
+    const ps = groups.get(id).sort((a, b) => String(a['Policy Type'] || '').localeCompare(String(b['Policy Type'] || '')) || String(a['Date Bought'] || '').localeCompare(String(b['Date Bought'] || '')));
+    const who = getClient(id), rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(' · ', ', ');
+    const types = {}; for (const p of ps) { const t = p['Policy Type'] || 'Other'; (types[t] ||= { n: 0, cov: 0, ann: 0 }); types[t].n++; types[t].cov += num(p.Coverage); types[t].ann += annual(p); }
+    return `<h2 class="sec">Insured: ${esc(who ? who.Name : '')}${esc(rel)}${who && ageOf(who['Date of Birth']) != null ? ` <span class="muted" style="font-weight:normal">· age ${ageOf(who['Date of Birth'])}</span>` : ''}</h2>
+      <table><thead><tr><th>Policy</th><th>Type</th><th>Insurer</th><th>Bought</th><th class="n">Premium</th><th class="n">Coverage</th>${ended ? '<th>Status</th>' : ''}</tr></thead><tbody>
+      ${ps.map(p => `<tr><td>${esc(p['Policy Name'])}${p['Client ID'] !== cid ? `<br><span class="muted">Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}</td>
+        <td>${esc(p['Policy Type'] || '—')}</td><td>${esc(p.Insurer || '—')}</td><td>${esc(fmtDate(p['Date Bought'])) || '—'}</td>
+        <td class="n">${esc(premText(p).replace(' single premium', ' (single)')) || '—'}</td><td class="n">${p.Coverage != null && p.Coverage !== '' ? esc(money(p.Coverage)) : '—'}</td>
+        ${ended ? `<td>${esc(p.Status || 'In force')}</td>` : ''}</tr>`).join('')}
+      </tbody></table>
+      ${Object.keys(types).length > 1 ? `<table><thead><tr><th>By policy type</th><th class="n">Policies</th><th class="n">Coverage</th><th class="n">Yearly premiums</th></tr></thead><tbody>
+        ${Object.entries(types).map(([t, v]) => `<tr><td>${esc(t)}</td><td class="n">${v.n}</td><td class="n">${m0(v.cov)}</td><td class="n">${m0(v.ann)}</td></tr>`).join('')}
+        <tr class="tot"><td>Total</td><td class="n">${ps.length}</td><td class="n">${m0(Object.values(types).reduce((t, v) => t + v.cov, 0))}</td><td class="n">${m0(Object.values(types).reduce((t, v) => t + v.ann, 0))}</td></tr></tbody></table>` : ''}`;
+  };
+  return `<div class="print-bar no-print">
+      <div><p class="crumb"><a href="#/c/${encodeURIComponent(cid)}#policies">‹ ${esc(c.Name)}</a></p>
+        <div class="opts"><label><input type="checkbox" ${ended ? 'checked' : ''} onchange="location.replace('#/c/${encodeURIComponent(cid)}/summary${ended ? '' : '?ended=1'}')"> Include ended policies</label></div></div>
+      <button class="btn primary" onclick="printPage()">Print</button>
+    </div>
+    <div class="sheet">
+      ${letterhead(me)}
+      <h1 style="font-size:22px;margin:0 0 2px">Insurance coverage summary</h1>
+      <p class="muted" style="margin:0 0 18px">Prepared for <b style="color:#111">${esc(c.Name)}</b> · ${esc(fmtDate(todayISO()))}</p>
+      ${all.length ? `<div class="kpis"><div><span>Total coverage</span><b>${m0(totCov)}</b></div>
+        <div><span>Yearly premiums</span><b>${m0(totAnn)}</b></div>
+        <div><span>Policies in force</span><b>${inForce}</b></div></div>
+        ${order.map(section).join('')}
+        <p class="muted" style="font-family:-apple-system,Arial,sans-serif;font-size:13px">Total premiums paid to date (excluding accident &amp; health): <b style="color:#111">${m0(totPaid)}</b>.
+          Yearly premiums exclude single-premium policies.</p>`
+        : '<p>No policies on file.</p>'}
+      <div class="foot">This summary is prepared from records kept by your consultant and is for reference only. It is not a policy document —
+        please refer to your policy contracts for the exact terms, benefits and exclusions.</div>
+    </div>`;
 }
 
 async function delClient(btn) {
