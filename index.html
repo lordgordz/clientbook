@@ -171,6 +171,8 @@ ul.family b { color: var(--accent-2); }
 .suggest-links { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
 .suggest-links ul { margin: 6px 0 10px; padding-left: 18px; }
 .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.dup-warn { margin: 14px 0 0; display: block; } .dup-warn[hidden] { display: none; } .dup-warn a { font-weight: 600; }
+.copy-addr { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); }
 .or { margin: 14px 0 8px; }
 .danger-zone { text-align: center; }
 ul.pols { list-style: none; margin: 0; padding: 0; }
@@ -929,19 +931,85 @@ function extraRow(e = {}) {
 function checkPostalOnOpen() { const el = document.querySelector('[data-postal]'); if (el && el.value.length === 6) el.dispatchEvent(new Event('input', { bubbles: true })); }
 function addExtraRow() { const w = $('#extras'); w.insertAdjacentHTML('beforeend', extraRow()); w.lastElementChild.querySelector('input').focus(); }
 
+/* ---- duplicate check: 2 of same name / NRIC / birthday ---- */
+const normName = n => String(n || '').toLowerCase().replace(/[^a-z0-9一-鿿]+/g, ' ').trim();
+function findDuplicate(d, ownId) {
+  const n = normName(d.Name), nric = String(d.NRIC || '').toUpperCase(), dob = isISO(d['Date of Birth']) ? d['Date of Birth'].slice(0, 10) : '';
+  for (const c of db.clients) {
+    if (c.ID === ownId) continue;
+    const m = [];
+    if (n && normName(c.Name) === n) m.push('name');
+    if (nric && String(c.NRIC || '').toUpperCase() === nric) m.push('NRIC');
+    if (dob && isISO(c['Date of Birth']) && c['Date of Birth'].slice(0, 10) === dob) m.push('birthday');
+    if (m.length >= 2) return { c, m };
+  }
+  return null;
+}
+const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+function dupMessage(dup) { return `Looks like ${dup.c.Name} is already in your book — same ${andList(dup.m)}.`; }
+function checkDupLive() {
+  const form = document.querySelector('form[data-cid]'), box = document.getElementById('dup-warn'); if (!form || !box) return;
+  const g = n => (form.querySelector(`[name=${n}]`) || {}).value || '';
+  const dup = findDuplicate({ Name: g('name'), NRIC: g('nric').toUpperCase().replace(/\s+/g, ''), 'Date of Birth': parseTyped(g('date_of_birth')) || '' }, form.dataset.cid || null);
+  box.hidden = !dup;
+  if (dup) box.innerHTML = `<b>${esc(dupMessage(dup))}</b> You can’t add the same person twice. <a href="#/c/${encodeURIComponent(dup.c.ID)}">Open ${esc(dup.c.Name)}’s profile ›</a>`;
+  return dup;
+}
+document.addEventListener('input', e => { if (e.target.closest && e.target.closest('form[data-cid]') && ['name', 'nric', 'date_of_birth'].includes(e.target.name)) checkDupLive(); });
+document.addEventListener('focusout', e => { if (e.target.name === 'date_of_birth' && e.target.closest('form[data-cid]')) setTimeout(checkDupLive, 0); });
+
+/* ---- children 18 and under share their parent's address ---- */
+const ADDR_KEYS = ['Postal Code', 'Unit No', 'Address'];
+const hasAddr = c => !!(c && (String(c.Address || '').trim() || String(c['Postal Code'] || '').trim()));
+const addrKey = c => { const pc = String(c['Postal Code'] || '').trim() || parsePostal(c.Address); return pc ? pc + '|' + (normUnit(c['Unit No']) || parseUnit(c.Address)) : String(c.Address || '').trim().toLowerCase().replace(/\s+/g, ' '); };
+const isMinor = c => { const a = ageOf(c && c['Date of Birth']); return a != null && a <= 18; };
+const childrenOf = id => db.family.filter(f => f['Client ID'] === id && f.Relationship === 'child').map(f => getClient(f['Related ID'])).filter(Boolean);
+const parentsOf = id => db.family.filter(f => f['Client ID'] === id && f.Relationship === 'parent').map(f => getClient(f['Related ID'])).filter(Boolean);
+function copyAddr(from, to) { for (const k of ADDR_KEYS) to[k] = from[k] ?? blank(k); touch(to); }
+// After a parent's address changes: minor children who lived with them (or had no address) follow
+function moveChildrenWith(parent, oldKey) {
+  const moved = [];
+  for (const ch of childrenOf(parent.ID)) {
+    if (!isMinor(ch) || !hasAddr(parent)) continue;
+    if (!hasAddr(ch) || (oldKey && addrKey(ch) === oldKey)) { if (addrKey(ch) !== addrKey(parent)) { copyAddr(parent, ch); moved.push(ch.Name); } }
+  }
+  return moved;
+}
+function sameAddrButtons(cid, link, rel) {   // "Copy address from …" for family members who have an address
+  const ids = new Set();
+  if (cid) for (const f of db.family) if (f['Client ID'] === cid) ids.add(f['Related ID']);
+  if (link) ids.add(link.ID);
+  const people = [...ids].map(getClient).filter(p => p && hasAddr(p));
+  if (!people.length) return '';
+  return `<p class="small copy-addr">Same address as: ${people.map(p => `<button type="button" class="btn small" data-from="${esc(p.ID)}" onclick="copyAddrInto(this)">${esc(p.Name)}</button>`).join(' ')}</p>`;
+}
+function copyAddrInto(btn) {
+  const p = getClient(btn.dataset.from), form = btn.closest('form'); if (!p) return;
+  form.querySelector('[name=postal_code]').value = p['Postal Code'] || '';
+  form.querySelector('[name=unit_no]').value = p['Unit No'] || '';
+  const a = form.querySelector('[name=address]'); a.value = p.Address || ''; a.dataset.auto = '0';
+  const h = document.getElementById('postal-hint'); if (h) h.innerHTML = `<span class="good">✓ Copied from ${esc(p.Name)}</span>`;
+}
+
 function pageForm(cid, linkId, rel) {
   const editing = !!cid, c = editing ? getClient(cid) : {};
   if (editing && !c) return pageNotFound();
   const link = linkId ? getClient(linkId) : null, sugg = suggestions();
+  // a new child added from a parent's page lives with that parent (also: a parent added from a minor child's page)
+  let prefillNote = '';
+  if (!editing && link && hasAddr(link) && (rel === 'child' || (rel === 'parent' && isMinor(link)))) {
+    for (const k of ADDR_KEYS) c[k] = link[k]; prefillNote = `<p class="muted small">Address filled in from ${esc(link.Name)} — children 18 and under share their parent’s address. Change it if they live elsewhere.</p>`;
+  }
   const extras = editing ? extrasOf(cid) : [{}];
   const cancel = editing ? `#/c/${encodeURIComponent(cid)}` : link ? `#/c/${encodeURIComponent(link.ID)}` : '#/';
-  hooks.push(checkPostalOnOpen);
+  hooks.push(checkPostalOnOpen, checkDupLive);
   return `<section class="card">
     <h2>${editing ? 'Edit ' + esc(c.Name) : 'New client'}</h2>
     ${link && RELATIONS[rel] ? `<p class="banner">This person will be linked as <b>${esc(link.Name)}’s ${RELATIONS[rel][3].toLowerCase()}</b>.</p>` : ''}
     <p class="muted">Only <b>Name</b> is required. Leave anything you don’t know blank — you can fill it in later.</p>
     <form class="form" autocomplete="off" onsubmit="return saveClient(event)" data-cid="${esc(cid || '')}" data-link="${esc(link ? link.ID : '')}" data-rel="${esc(rel || '')}">
-      ${SECTIONS.map(([title, fields]) => `<fieldset><legend>${esc(title)}</legend><div class="grid">${fields.map(f => fieldHtml(f, c[f.label], sugg)).join('')}</div></fieldset>`).join('')}
+      ${SECTIONS.map(([title, fields]) => `<fieldset><legend>${esc(title)}</legend>${title === 'Contact' ? sameAddrButtons(cid, link, rel) + prefillNote : ''}<div class="grid">${fields.map(f => fieldHtml(f, c[f.label], sugg)).join('')}</div>
+        ${title === 'Personal' ? '<div class="banner warn dup-warn" id="dup-warn" hidden></div>' : ''}</fieldset>`).join('')}
       <fieldset id="extras-set"><legend>Extra details <em>optional</em></legend>
         <p class="muted small">Add any other information as your own fields — e.g. Hobbies, Kids’ school, Wedding anniversary. Add as many as you like.</p>
         <div id="extras">${extras.map(extraRow).join('')}</div>
@@ -983,8 +1051,10 @@ async function saveClient(e) {
     const dup = db.clients.find(c => c.ID !== cid && String(c.NRIC || '').toUpperCase() === data.NRIC);
     if (dup) { toast(`That NRIC already belongs to ${dup.Name} (${dup.ID}).`, 'error'); return false; }
   }
-  let target;
-  if (cid) { target = getClient(cid); Object.assign(target, data); }
+  const dupe = findDuplicate(data, cid || null);
+  if (dupe) { checkDupLive(); document.getElementById('dup-warn').scrollIntoView({ block: 'center' }); toast(dupMessage(dupe) + ' Not saved.', 'error'); return false; }
+  let target, oldAddrKey = null;
+  if (cid) { target = getClient(cid); oldAddrKey = hasAddr(target) ? addrKey(target) : null; Object.assign(target, data); }
   else {
     target = {}; for (const h of SHEETS.Clients) target[h] = blank(h);
     Object.assign(target, data, { ID: nextId(db.clients, 'C'), Created: nowStamp() });
@@ -992,9 +1062,14 @@ async function saveClient(e) {
   }
   touch(target); setExtras(target.ID, extras);
   let msg = cid ? 'Profile updated.' : `Saved ${target.Name}.`, dest = '#/c/' + encodeURIComponent(target.ID), anchor = null;
+  // a minor with no address takes a parent's; a parent who moves takes their minor children along
+  if (isMinor(target) && !hasAddr(target)) { const par = parentsOf(target.ID).find(hasAddr); if (par) { copyAddr(par, target); msg += ` Address set to ${par.Name}’s.`; } }
+  const moved = cid && hasAddr(target) && addrKey(target) !== oldAddrKey ? moveChildrenWith(target, oldAddrKey) : [];
+  if (moved.length) msg += ` Also updated the address for ${andList(moved)}.`;
   const lc = link && getClient(link);
   if (!cid && lc && RELATIONS[rel]) {
     addLink(lc.ID, target.ID, rel); touch(lc);
+    if (rel === 'child' && isMinor(target) && !hasAddr(target) && hasAddr(lc)) copyAddr(lc, target);
     const extra = applyInferred(inferLinks().filter(l => familyGroup(lc.ID).has(l.a)));
     msg = `Saved ${target.Name} and linked to ${lc.Name}.` + extra; dest = '#/c/' + encodeURIComponent(lc.ID); anchor = 'family';
   }
@@ -1178,7 +1253,10 @@ async function linkExisting(e) {
   if (oid === cid) { toast('A client can’t be their own family member.', 'error'); return false; }
   const o = getClient(oid); unignorePair(cid, oid); addLink(cid, oid, key); touch(c); touch(o);
   const extra = applyInferred(inferLinks().filter(l => familyGroup(cid).has(l.a)));
-  await commit(`Linked ${o.Name} as ${relLabel(key, o.Gender)}.` + extra, location.hash, 'family'); return false;
+  let addrMsg = '';
+  const [par, kid] = key === 'child' ? [c, o] : key === 'parent' ? [o, c] : [null, null];
+  if (par && kid && isMinor(kid) && hasAddr(par) && !hasAddr(kid)) { copyAddr(par, kid); addrMsg = ` ${kid.Name} now has ${par.Name}’s address.`; }
+  await commit(`Linked ${o.Name} as ${relLabel(key, o.Gender)}.` + extra + addrMsg, location.hash, 'family'); return false;
 }
 async function unlinkFamily(btn) {
   const { cid, rid } = btn.dataset, a = getClient(cid), b = getClient(rid);
