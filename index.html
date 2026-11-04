@@ -171,6 +171,14 @@ ul.family b { color: var(--accent-2); }
 .suggest-links { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
 .suggest-links ul { margin: 6px 0 10px; padding-left: 18px; }
 .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.tidy-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); align-items: start; }
+.tidy-row input[type=checkbox] { width: 22px; height: 22px; min-height: 0; margin-top: 2px; -webkit-appearance: checkbox; appearance: checkbox; }
+.tidy-cmp { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 6px; font-size: 14px; }
+.tidy-cmp .old { color: var(--muted); text-decoration: line-through; text-decoration-color: #c9b9b5; white-space: pre-line; }
+.tidy-cmp .new { white-space: pre-line; background: var(--ok-soft); border-radius: 8px; padding: 6px 8px; }
+.tidy-cmp .arr { color: var(--muted); text-align: center; }
+.flag { font-size: 12px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+@media (max-width: 640px) { .tidy-cmp { grid-template-columns: minmax(0, 1fr); } .tidy-cmp .arr { display: none; } }
 .dup-warn { margin: 14px 0 0; display: block; } .dup-warn[hidden] { display: none; } .dup-warn a { font-weight: 600; }
 .copy-addr { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); }
 .or { margin: 14px 0 8px; }
@@ -747,6 +755,7 @@ function render() {
     else if (parts[0] === 'me') html = pageMe();
     else if (parts[0] === 'map') html = pageMap(q);
     else if (parts[0] === 'calendar') html = pageCalendar(q);
+    else if (parts[0] === 'tidy') html = pageTidy();
     else html = pageNotFound();
   } catch (e) {
     console.error(e);
@@ -1193,7 +1202,7 @@ function pageData() {
   const counts = Object.entries(KEY).filter(([n]) => n !== 'Settings' && n !== 'Added Postal Codes').map(([n, k]) => `<span><b>${db[k].length}</b> ${n === 'Clients' ? 'clients' : n.toLowerCase()}</span>`).join('');
   hooks.push(async () => {
     const prev = await kvGet('prev'), w = $('#undo-wrap');
-    if (prev && w) w.innerHTML = `Imported or erased by mistake? <button class="link" onclick="undoImport()">Restore the previous data</button> (${prev.clients.length} clients).`;
+    if (prev && w) w.innerHTML = `Imported, erased or tidied by mistake? <button class="link" onclick="undoImport()">Restore the previous data</button> (${prev.clients.length} clients).`;
   });
   hooks.push(async () => {
     const el = $('#persisted'); if (!el) return;
@@ -1207,6 +1216,9 @@ function pageData() {
       <p class="muted small">Everything is stored on this iPad only. Storage status: <span id="persisted">checking…</span></p>
       <p class="muted small">Last Excel backup: <b>${db.meta.lastExport ? esc(fmtDate(db.meta.lastExport)) + ' (' + ago(db.meta.lastExport) + ')' : 'never'}</b></p>
     </section>
+    <section class="card"><h2>Tidy up addresses</h2>
+      <p>Fill in postal codes and unit numbers from addresses you typed in full, and write every address in the same format. You’ll see each change before anything is updated.</p>
+      <a class="btn" href="#/tidy">Check addresses</a></section>
     <section class="card"><h2>Your details</h2>
       <p>Your name, contact and the standard wording used in client letters and coverage summaries.</p>
       <a class="btn" href="#/me">Edit your details</a></section>
@@ -1831,9 +1843,9 @@ function parsePostal(addr) { const m = /(?:^|\D)(\d{6})(?!\d)/.exec(String(addr 
 function normUnit(u) {
   u = String(u || '').trim().toUpperCase().replace(/\s+/g, ''); if (!u) return '';
   if (/^\d{1,3}-\d{1,5}[A-Z]?$/.test(u)) u = '#' + u;
-  return u;
+  return u.replace(/^#(\d)-/, '#0$1-');
 }
-function parseUnit(addr) { const m = /#\s?\d{1,3}\s?-\s?\d{1,5}[A-Z]?/i.exec(String(addr || '')); return m ? normUnit(m[0].replace(/\s/g, '').slice(1)) : ''; }
+function parseUnit(addr) { const m = /(?:#|\bunit\s*#?|\bapt\.?\s*#?)\s?(\d{1,3}\s?-\s?\d{1,5}[A-Z]?)/i.exec(String(addr || '')); return m ? normUnit(m[1].replace(/\s/g, '')) : ''; }
 function clientPostal(c) { return String(c['Postal Code'] || '').replace(/\D/g, '') || parsePostal(c.Address); }
 function clientUnit(c) { return normUnit(c['Unit No']) || parseUnit(c.Address); }
 
@@ -2355,6 +2367,100 @@ function pageCalendar(q) {
           ${monthBd.map(b => bdRow(b, `${DOW[b.d.getDay()]} ${b.d.getDate()} ${MON[b.d.getMonth()]}`)).join('')}
           ${!monthBd.length && !monthPh.length ? '<p class="muted small">Nothing this month.</p>' : ''}</section>
       </aside></div></section>`;
+}
+
+
+/* =========================================================================
+   Tidy up addresses — fill postal code + unit and use one address format
+   ========================================================================= */
+const ROAD_ABBR = { AVE: 'AVENUE', AV: 'AVENUE', ST: 'STREET', STR: 'STREET', RD: 'ROAD', DR: 'DRIVE', CRES: 'CRESCENT', CRS: 'CRESCENT', CL: 'CLOSE',
+  CTRL: 'CENTRAL', CTR: 'CENTRE', NTH: 'NORTH', STH: 'SOUTH', UPP: 'UPPER', UPR: 'UPPER', JLN: 'JALAN', LOR: 'LORONG', BT: 'BUKIT', TG: 'TANJONG',
+  KG: 'KAMPONG', PK: 'PARK', PL: 'PLACE', TER: 'TERRACE', TCE: 'TERRACE', HTS: 'HEIGHTS', GDNS: 'GARDENS', GDN: 'GARDEN', WK: 'WALK', LK: 'LINK', LN: 'LANE',
+  AMK: 'ANG MO KIO', CCK: 'CHOA CHU KANG', TPY: 'TOA PAYOH', HG: 'HOUGANG', SK: 'SENGKANG', PG: 'PUNGGOL', BB: 'BUKIT BATOK', BP: 'BUKIT PANJANG', JW: 'JURONG WEST', JE: 'JURONG EAST', YCK: 'YIO CHU KANG', BKT: 'BUKIT', E: 'EAST', W: 'WEST', N: 'NORTH', S: 'SOUTH' };
+const normRoad = r => String(r || '').toUpperCase().replace(/[.,']/g, ' ').split(/\s+/).filter(Boolean).map(w => ROAD_ABBR[w] || w).join(' ');
+let _blkIndex = null;
+function blkIndex() {   // "101|ANG MO KIO AVENUE 3" -> postal code (only when there's exactly one)
+  if (_blkIndex || !_postal) return _blkIndex;
+  const m = new Map();
+  for (const l of _postal.map.values()) {
+    const [pc, , , blk, ri] = l.split('|'); if (!blk) continue;
+    const k = blk.toUpperCase() + '|' + _postal.R[+ri]; m.set(k, m.has(k) && m.get(k) !== pc ? null : pc);
+  }
+  return (_blkIndex = m);
+}
+function guessPostal(addr) {   // from "Blk 123 Ang Mo Kio Ave 3" (no postal code typed)
+  const idx = blkIndex(); if (!idx) return '';
+  for (const line of String(addr || '').split(/\n|,/)) {
+    const m = /^\s*(?:blk|block|bk)?\.?\s*(\d{1,4}[A-Z]?)\s+(.+?)\s*(?:#.*)?$/i.exec(line); if (!m) continue;
+    const pc = idx.get(m[1].toUpperCase() + '|' + normRoad(m[2])); if (pc) return pc;
+  }
+  return '';
+}
+let _tidy = null;
+function tidyPlan() {
+  const rows = [];
+  for (const c of db.clients) {
+    if (!hasAddr(c) && !c['Unit No']) continue;
+    let pc = String(c['Postal Code'] || '').replace(/\D/g, '') || parsePostal(c.Address), guessed = false;
+    if (!pc) { pc = guessPostal(c.Address); guessed = !!pc; }
+    const unit = normUnit(c['Unit No']) || parseUnit(c.Address), info = postalInfo(pc);
+    if (!pc) { rows.push({ c, kind: 'nopc' }); continue; }
+    if (!info) { rows.push({ c, kind: 'unknown', pc }); continue; }
+    const next = { 'Postal Code': pc, 'Unit No': unit, Address: formatAddress(info, unit) };
+    const same = next['Postal Code'] === String(c['Postal Code'] || '') && next['Unit No'] === String(c['Unit No'] || '') && next.Address === String(c.Address || '').trim();
+    let mismatch = false;
+    for (const line of String(c.Address || '').split(/\n|,/)) {
+      const m = /^\s*(?:blk|block|bk)?\.?\s*(\d{1,4}[A-Z]?)\s+([A-Za-z][A-Za-z0-9' .]+?)\s*(?:#.*|singapore.*|s\(.*)?$/i.exec(line); if (!m) continue;
+      const typed = normRoad(m[2]), real = String(info.road).toUpperCase();
+      if (typed && !real.startsWith(typed) && !typed.startsWith(real)) mismatch = `${m[1]} ${tcase(typed)}`; else if (info.blk && m[1].toUpperCase() !== String(info.blk).toUpperCase()) mismatch = `Blk ${m[1]}`;
+      break;
+    }
+    rows.push({ c, kind: same ? 'ok' : 'change', guessed, next, mismatch, lostUnit: !unit && /#|unit/i.test(c.Address || '') });
+  }
+  return rows;
+}
+function pageTidy() {
+  hooks.push(() => loadPostal().then(() => { _tidy = tidyPlan(); drawTidy(); }).catch(() => { $('#tidy-body').innerHTML = '<p class="banner warn">The postal code list hasn’t downloaded yet — open Client Book once with internet.</p>'; }));
+  return `<section class="card"><p class="crumb"><a href="#/data">‹ Backup &amp; data</a></p><h2>Tidy up addresses</h2>
+    <div id="tidy-body"><p class="muted">Checking addresses…</p></div></section>`;
+}
+function drawTidy() { drawTidy0(); tidyCount(); }
+function drawTidy0() {
+  const rows = _tidy, ch = rows.filter(r => r.kind === 'change'), ok = rows.filter(r => r.kind === 'ok');
+  const nopc = rows.filter(r => r.kind === 'nopc'), unk = rows.filter(r => r.kind === 'unknown');
+  const cur = r => [r.c['Postal Code'] ? `Postal code: ${r.c['Postal Code']}` : '', r.c['Unit No'] ? `Unit: ${r.c['Unit No']}` : '', r.c.Address || ''].filter(Boolean).join('\n') || '(empty)';
+  const nw = r => `${r.next.Address}`;
+  $('#tidy-body').innerHTML = `
+    <p class="stat"><span><b>${ch.length}</b> to update</span><span><b>${ok.length}</b> already tidy</span>${nopc.length ? `<span><b>${nopc.length}</b> need a postal code</span>` : ''}${unk.length ? `<span><b>${unk.length}</b> postal code not in the list</span>` : ''}</p>
+    ${ch.length ? `<div class="row-between" style="margin-top:10px"><h3 style="margin:0">Changes</h3><span class="row-btns"><button class="btn small" onclick="tidyAll(true)">Tick all</button><button class="btn small" onclick="tidyAll(false)">Untick all</button></span></div>
+      ${ch.map((r, i) => `<label class="tidy-row"><input type="checkbox" data-i="${rows.indexOf(r)}" ${r.mismatch || r.lostUnit ? '' : 'checked'} onchange="tidyCount()">
+        <div><b>${esc(r.c.Name)}</b>${r.guessed ? '<span class="flag">postal code worked out from block &amp; street — please check</span>' : ''}${r.lostUnit ? '<span class="flag">couldn’t read the unit number — left unticked</span>' : ''}
+          ${r.mismatch ? `<span class="flag">typed “${esc(r.mismatch)}”, but postal code ${esc(r.next['Postal Code'])} is ${esc(streetLine(postalInfo(r.next['Postal Code'])))} — left unticked</span>` : ''}
+          <div class="tidy-cmp"><div class="old">${esc(cur(r))}</div><div class="arr">→</div><div class="new">${esc(nw(r))}</div></div></div></label>`).join('')}
+      <div class="actions"><button class="btn primary" id="tidy-go" onclick="applyTidy()">Update</button><a class="btn" href="#/data">Cancel</a></div>
+      <p class="muted small">You can undo this afterwards from Backup &amp; data (“Restore the previous data”).</p>`
+      : '<p class="banner">All addresses with a postal code are already in the standard format.</p>'}
+    ${unk.length ? `<h3>Postal code not in the built-in list</h3><p class="muted small">Usually new blocks. Look them up on OneMap (only the postal codes are sent), then check again.</p>
+      <p><button class="btn small primary" id="tidy-om" onclick="tidyOneMap()">Look up ${unk.length} on OneMap</button></p>
+      ${unk.map(r => `<div class="tidy-row" style="grid-template-columns:1fr"><div><a href="#/c/${encodeURIComponent(r.c.ID)}/edit"><b>${esc(r.c.Name)} ›</b></a> <span class="muted small">${esc(r.pc)}</span></div></div>`).join('')}` : ''}
+    ${nopc.length ? `<h3>Need a postal code</h3><p class="muted small">No postal code in the address, and it couldn’t be worked out from the block and street. Open each to add it.</p>
+      ${nopc.map(r => `<div class="tidy-row" style="grid-template-columns:1fr"><div><a href="#/c/${encodeURIComponent(r.c.ID)}/edit"><b>${esc(r.c.Name)} ›</b></a><div class="muted small pre">${esc(r.c.Address || '')}</div></div></div>`).join('')}` : ''}`;
+}
+function tidyAll(on) { document.querySelectorAll('.tidy-row input[type=checkbox]').forEach(b => b.checked = on); tidyCount(); }
+function tidyCount() { const n = document.querySelectorAll('.tidy-row input[type=checkbox]:checked').length, b = $('#tidy-go'); if (b) { b.textContent = `Update ${n} address${n === 1 ? '' : 'es'}`; b.disabled = !n; } }
+async function applyTidy() {
+  const picked = [...document.querySelectorAll('.tidy-row input[type=checkbox]:checked')].map(b => _tidy[+b.dataset.i]);
+  if (!picked.length) return;
+  await kvSet('prev', JSON.parse(JSON.stringify(db)));   // undo point
+  for (const r of picked) { Object.assign(r.c, r.next); touch(r.c); }
+  await commit(`Updated ${picked.length} address${picked.length === 1 ? '' : 'es'}. You can undo this from Backup & data.`, '#/data', null, true);
+}
+async function tidyOneMap() {
+  const btn = $('#tidy-om'), list = [...new Set(_tidy.filter(r => r.kind === 'unknown').map(r => r.pc))]; btn.disabled = true;
+  let ok = 0, nf = [], err = null;
+  for (const [i, pc] of list.entries()) { btn.textContent = `Looking up ${i + 1} of ${list.length}…`; try { (await lookupOneMap(pc)) ? ok++ : nf.push(pc); } catch (e) { err = e; break; } }
+  if (err) toast(oneMapError(err), 'warn'); else toast(`${ok} found on OneMap.` + (nf.length ? ` Not found: ${nf.join(', ')}.` : ''), nf.length ? 'warn' : 'ok');
+  _tidy = tidyPlan(); drawTidy();
 }
 
 async function delClient(btn) {
