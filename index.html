@@ -275,6 +275,45 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 .map-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 12px; border: 1px solid var(--line); padding: 14px 18px; z-index: 6; box-shadow: 0 8px 24px rgba(0,0,0,.12); text-align: center; max-width: 86%; }
 @media (max-width: 640px) { .map-panel { top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); max-height: 46%; } }
 
+/* ---- calendar ---- */
+.cal-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-head h2 { margin: 0; font-size: 22px; min-width: 190px; }
+.cal-nav { display: flex; gap: 6px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg a { padding: 8px 14px; font-size: 14px; color: var(--ink); background: #fff; min-height: 40px; display: flex; align-items: center; }
+.seg a.on { background: var(--accent-2); color: #fff; }
+.cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--line); gap: 1px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cal .dow { background: #f8f6f1; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 8px 6px; text-align: center; }
+.cal .dow.we { color: #b0453a; }
+.cal .day { color: var(--ink); background: #fff; min-height: 104px; padding: 6px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; position: relative; min-width: 0; }
+.cal .day.out { background: #faf9f6; } .cal .day.out .num { color: #c2c6cc; }
+.cal .day.sel { box-shadow: inset 0 0 0 2px var(--accent-2); }
+.cal .day:active { background: var(--accent-soft); }
+.cal .num { font-size: 14px; font-weight: 650; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; }
+.cal .day.we .num, .cal .day.ph .num { color: #b0453a; }
+.cal .day.ph { background: #fff6f4; }
+.cal .day.today .num { background: var(--accent-2); color: #fff; }
+.cal .ph-tag { font-size: 11px; font-weight: 700; color: #b0453a; background: #fdecea; border-radius: 6px; padding: 2px 5px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal .ph-tag.obs { background: #fff4f2; font-weight: 600; }
+.cal .bd { display: flex; align-items: center; gap: 4px; font-size: 12px; line-height: 1.2; color: var(--ink); min-width: 0; }
+.cal .bd svg { flex: none; } .cal .bd span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal .more { font-size: 11.5px; color: var(--accent-2); font-weight: 600; }
+.cal-side .card { margin-bottom: 12px; }
+.cal-side h3 { margin: 0 0 10px; font-size: 16px; }
+.ev { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.ev:first-of-type { border-top: 0; }
+.ev .t { flex: 1; min-width: 0; } .ev .t b { display: block; } .ev .t span { font-size: 13px; color: var(--muted); }
+.ev .phi { width: 38px; height: 38px; border-radius: 50%; background: #fdecea; color: #b0453a; display: grid; place-items: center; font-weight: 800; font-size: 13px; flex: none; }
+.agenda .mon { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 4px; }
+.agenda .row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.agenda .date { width: 54px; text-align: center; flex: none; } .agenda .date b { display: block; font-size: 20px; line-height: 1.1; } .agenda .date span { font-size: 12px; color: var(--muted); text-transform: uppercase; }
+.agenda .date.ph b, .agenda .date.ph span { color: #b0453a; }
+.agenda .items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-top: 10px; align-items: center; }
+@media (max-width: 1000px) { .cal-wrap { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .cal .day { min-height: 64px; padding: 4px; } .cal .bd span, .cal .ph-tag { display: none; } .cal .bd { gap: 0; } .cal .dots { display: flex; flex-wrap: wrap; gap: 2px; } }
+
 @page { size: A4; margin: 16mm 16mm 18mm; }
 @media print {
   body { background: #fff; }
@@ -293,6 +332,9 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 640px) {
   .brand-text { display: none; }
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .topbar .search { order: 9; flex-basis: 100%; }
+  .topbar .brand { margin-right: auto; }
   .hero { flex-wrap: wrap; }
   .extra-row { grid-template-columns: 1fr auto; }
   .extra-row textarea { grid-column: 1 / 2; }
@@ -309,6 +351,7 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
     <div id="suggest" class="suggest" hidden></div>
   </div>
   <a class="btn light" href="#/new">+ New</a>
+  <a class="btn ghost" href="#/calendar" title="Calendar" aria-label="Calendar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></a>
   <a class="btn ghost" href="#/map" title="Map" aria-label="Map"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg></a>
   <a class="btn ghost" href="#/data" title="Backup &amp; data" aria-label="Backup and data">⇅</a>
 </header>
@@ -700,6 +743,7 @@ function render() {
     else if (parts[0] === 'data') html = pageData();
     else if (parts[0] === 'me') html = pageMe();
     else if (parts[0] === 'map') html = pageMap(q);
+    else if (parts[0] === 'calendar') html = pageCalendar(q);
     else html = pageNotFound();
   } catch (e) {
     console.error(e);
@@ -755,7 +799,7 @@ function pageHome() {
     <section class="card"><h2>Follow-ups due <small>next 14 days</small></h2>
       ${fu.length ? `<ul class="mini">${fu.map(c => `<li>${link(c)}<span class="${parseISO(c['Next Follow-up']) <= t ? 'due' : 'muted'}">${fmtDate(c['Next Follow-up'])} · ${ago(c['Next Follow-up'])}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing due.</p>'}
     </section>
-    <section class="card"><h2>Birthdays <small>next 30 days</small></h2>
+    <section class="card"><div class="row-between"><h2>Birthdays <small>next 30 days</small></h2><a class="small" href="#/calendar">Calendar ›</a></div>
       ${bd.length ? `<ul class="mini">${bd.map(b => `<li>${link(b.c)}<span class="muted">${pad(b.nb.getDate())} ${MON[b.nb.getMonth()]} · turns ${b.turns}${b.days === 0 ? ' · <b>today!</b>' : ` · in ${b.days}d`}</span></li>`).join('')}</ul>` : '<p class="muted">No birthdays coming up.</p>'}
     </section>
     <section class="card"><h2>Recently updated</h2>
@@ -1793,8 +1837,10 @@ function mapStart(focusCid) {
   const toW = (sx, sy) => [(sx - M.W / 2) / M.scale + M.cx, (sy - M.H / 2) / M.scale + M.cy];
   const geoW = (lat, lon) => { const d = _mapData; return [(lon - 103.6) * 1e5 * d.KX, -(lat - 1.2) * 1e5 * d.KY]; };
   const MINS = 0.012, MAXS = 4;
+  function fitHeight() { wrap.style.height = Math.max(300, window.innerHeight - wrap.getBoundingClientRect().top - window.scrollY) + 'px'; }
+  fitHeight();
   function onResize() {
-    const r = wrap.getBoundingClientRect(); M.W = r.width; M.H = r.height; M.dpr = window.devicePixelRatio || 1;
+    fitHeight(); const r = wrap.getBoundingClientRect(); M.W = r.width; M.H = r.height; M.dpr = window.devicePixelRatio || 1;
     cv.width = Math.round(M.W * M.dpr); cv.height = Math.round(M.H * M.dpr); draw();
   }
   window.addEventListener('resize', onResize);
@@ -2074,6 +2120,109 @@ function mapStart(focusCid) {
         M.ref = { kind: 'pc', pc: v, lat: info.lat, lon: info.lon, label: streetLine(info) }; flyTo(...geoW(info.lat, info.lon), Math.max(M.scale, 0.5)); renderPanel(); $('#pn-pc').focus(); } };
     el.querySelectorAll('.mrow[data-k]').forEach(r => r.onclick = () => { const h = M.hh.find(h => h.key === r.dataset.k); if (h) flyTo(h.x, h.y, Math.max(M.scale, 1.2), () => openPop(h)); });
   }
+}
+
+
+/* =========================================================================
+   Calendar — client birthdays + Singapore public holidays (Ministry of Manpower)
+   ========================================================================= */
+// Source: mom.gov.sg. Observed days are the Monday holidays when a holiday falls on a Sunday.
+const SG_HOLIDAYS = {
+  2025: [['01-01', 'New Year’s Day'], ['01-29', 'Chinese New Year'], ['01-30', 'Chinese New Year'], ['03-31', 'Hari Raya Puasa'], ['04-18', 'Good Friday'],
+         ['05-01', 'Labour Day'], ['05-03', 'Polling Day'], ['05-12', 'Vesak Day'], ['06-07', 'Hari Raya Haji'], ['08-09', 'National Day'], ['10-20', 'Deepavali'], ['12-25', 'Christmas Day']],
+  2026: [['01-01', 'New Year’s Day'], ['02-17', 'Chinese New Year'], ['02-18', 'Chinese New Year'], ['03-21', 'Hari Raya Puasa'], ['04-03', 'Good Friday'],
+         ['05-01', 'Labour Day'], ['05-27', 'Hari Raya Haji'], ['05-31', 'Vesak Day'], ['06-01', 'Vesak Day (observed)', 1], ['08-09', 'National Day'], ['08-10', 'National Day (observed)', 1],
+         ['11-08', 'Deepavali'], ['11-09', 'Deepavali (observed)', 1], ['12-25', 'Christmas Day']],
+  2027: [['01-01', 'New Year’s Day'], ['02-06', 'Chinese New Year'], ['02-07', 'Chinese New Year'], ['02-08', 'Chinese New Year (observed)', 1], ['03-10', 'Hari Raya Puasa'],
+         ['03-26', 'Good Friday'], ['05-01', 'Labour Day'], ['05-17', 'Hari Raya Haji'], ['05-20', 'Vesak Day'], ['08-09', 'National Day'], ['10-28', 'Deepavali'], ['12-25', 'Christmas Day']],
+};
+function holidaysOn(y) { const m = {}; for (const [d, n, o] of SG_HOLIDAYS[y] || []) (m[`${y}-${d}`] ||= []).push({ n, o: !!o }); return m; }
+function birthdayIn(c, y) {   // this person's birthday date in year y (29 Feb → 1 Mar in other years)
+  const d = parseISO(c['Date of Birth']); if (!d || d.getFullYear() > y) return null;
+  let dt = new Date(y, d.getMonth(), d.getDate()); if (dt.getMonth() !== d.getMonth()) dt = new Date(y, 2, 1);
+  return dt;
+}
+function eventsBetween(from, to) {   // { 'yyyy-mm-dd': { ph: [...], bd: [{c, turns}] } }
+  const out = {}, get = k => (out[k] ||= { ph: [], bd: [] });
+  for (let y = from.getFullYear(); y <= to.getFullYear(); y++) {
+    for (const [k, list] of Object.entries(holidaysOn(y))) { const d = parseISO(k); if (d >= from && d <= to) get(k).ph.push(...list); }
+    for (const c of db.clients) { const d = birthdayIn(c, y); if (d && d >= from && d <= to) get(isoOf(d)).bd.push({ c, turns: y - parseISO(c['Date of Birth']).getFullYear() }); }
+  }
+  for (const v of Object.values(out)) v.bd.sort((a, b) => byName(a.c, b.c));
+  return out;
+}
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function waLink(c, turns) {
+  const n = String(c.Phone || '').replace(/\D/g, ''); if (n.length < 8) return '';
+  const num = n.length === 8 ? '65' + n : n, first = c.Nickname || c.Name;
+  return `https://wa.me/${num}?text=${encodeURIComponent(`Happy birthday, ${first}! 🎂 Wishing you a wonderful year ahead.`)}`;
+}
+function bdRow(e, dateLabel) {
+  const c = e.c, wa = waLink(c, e.turns);
+  return `<div class="ev">${face(faceKind(c), 38)}<div class="t"><b><a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}${nick(c)}</a></b>
+    <span>🎂 turns ${e.turns}${dateLabel ? ' · ' + dateLabel : ''}${c.Phone ? ' · ' + esc(c.Phone) : ''}</span></div>
+    ${wa ? `<a class="btn small" href="${wa}" target="_blank" rel="noopener">Send wishes</a>` : ''}</div>`;
+}
+function phRow(h, d) {
+  return `<div class="ev"><div class="phi">PH</div><div class="t"><b>${esc(h.n)}</b><span>Public holiday${d ? ' · ' + DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()] : ''}</span></div></div>`;
+}
+function pageCalendar(q) {
+  const t = today(), view = q.get('v') === 'list' ? 'list' : 'month';
+  const ym = /^(\d{4})-(\d{2})$/.exec(q.get('m') || ''), y = ym ? +ym[1] : t.getFullYear(), m = ym ? +ym[2] - 1 : t.getMonth();
+  const selIso = /^\d{4}-\d{2}-\d{2}$/.test(q.get('d') || '') ? q.get('d') : (y === t.getFullYear() && m === t.getMonth() ? isoOf(t) : isoOf(new Date(y, m, 1)));
+  const mkey = (yy, mm) => { const d = new Date(yy, mm, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+  const link = o => { const u = new URLSearchParams({ v: o.v ?? view, m: o.m ?? mkey(y, m) }); if (o.d) u.set('d', o.d); return '#/calendar?' + u.toString(); };
+  const head = (title, prev, next) => `<div class="cal-head"><div class="cal-nav"><a class="btn small" href="${prev}" aria-label="Previous">‹</a><h2>${title}</h2><a class="btn small" href="${next}" aria-label="Next">›</a>
+      <a class="btn small" href="${link({ m: mkey(t.getFullYear(), t.getMonth()), d: isoOf(t) })}">Today</a></div>
+    <div class="seg"><a class="${view === 'month' ? 'on' : ''}" href="${link({ v: 'month' })}">Month</a><a class="${view === 'list' ? 'on' : ''}" href="${link({ v: 'list' })}">Upcoming</a></div></div>`;
+  const noHol = yy => !SG_HOLIDAYS[yy] ? `<p class="banner warn small">Singapore’s public holidays for ${yy} haven’t been announced yet (MOM usually publishes them around June of the year before).</p>` : '';
+  const noDob = db.clients.filter(c => !parseISO(c['Date of Birth'])).length;
+  const footer = `<div class="cal-legend"><span><span class="ph-tag" style="display:inline">PH</span> Singapore public holiday (MOM)</span><span>🎂 Client birthday</span>
+    ${noDob ? `<span>${noDob} client${noDob > 1 ? 's have' : ' has'} no date of birth yet</span>` : ''}</div>`;
+
+  if (view === 'list') {
+    const from = t, to = new Date(t.getFullYear(), t.getMonth() + 12, t.getDate()), ev = eventsBetween(from, to);
+    let lastM = -1, rows = '';
+    for (const k of Object.keys(ev).sort()) {
+      const d = parseISO(k), e = ev[k], mo = d.getFullYear() * 12 + d.getMonth();
+      if (mo !== lastM) { rows += `<div class="mon">${MONTHS[d.getMonth()]} ${d.getFullYear()}</div>`; lastM = mo; }
+      const dd = daysFrom(t, d);
+      rows += `<div class="row"><div class="date ${e.ph.length ? 'ph' : ''}"><b>${d.getDate()}</b><span>${DOW[d.getDay()]}</span></div><div class="items">
+        ${e.ph.map(h => `<div><span class="ph-tag" style="display:inline-block">PH</span> <b>${esc(h.n)}</b></div>`).join('')}
+        ${e.bd.map(b => bdRow(b, dd === 0 ? '<b>today</b>' : dd === 1 ? 'tomorrow' : `in ${dd} days`).replace('class="ev"', 'class="ev" style="border:0;padding:0"')).join('')}</div></div>`;
+    }
+    return `<section class="card">${head('Next 12 months', link({}), link({}))}${noHol(to.getFullYear())}
+      <div class="agenda">${rows || '<p class="muted">Nothing coming up. Add dates of birth to your clients to see their birthdays here.</p>'}</div>${footer}</section>`;
+  }
+
+  // month grid (Sunday first, 6 weeks)
+  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay()), end = new Date(start); end.setDate(start.getDate() + 41);
+  const ev = eventsBetween(start, end);
+  let cells = DOW.map((d, i) => `<div class="dow${i === 0 || i === 6 ? ' we' : ''}">${d}</div>`).join('');
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i); const k = isoOf(d), e = ev[k] || { ph: [], bd: [] };
+    const cls = ['day', d.getMonth() !== m ? 'out' : '', d.getDay() === 0 || d.getDay() === 6 ? 'we' : '', e.ph.length ? 'ph' : '', k === isoOf(t) ? 'today' : '', k === selIso ? 'sel' : ''].filter(Boolean).join(' ');
+    const bds = e.bd.slice(0, e.ph.length ? 2 : 3);
+    cells += `<a class="${cls}" href="${link({ m: mkey(d.getFullYear(), d.getMonth()), d: k })}#cal-day" onclick="location.replace(this.href); return false" aria-label="${d.getDate()} ${MONTHS[d.getMonth()]}${e.ph.length ? ', ' + e.ph.map(h => h.n).join(', ') : ''}${e.bd.length ? ', ' + e.bd.length + ' birthday' + (e.bd.length > 1 ? 's' : '') : ''}">
+      <span class="num">${d.getDate()}</span>
+      ${e.ph.map(h => `<span class="ph-tag${h.o ? ' obs' : ''}" title="${esc(h.n)}">${esc(h.n)}</span>`).join('')}
+      <span class="dots">${bds.map(b => `<span class="bd">${face(faceKind(b.c), 18)}<span>${esc(b.c.Nickname || b.c.Name)}</span></span>`).join('')}</span>
+      ${e.bd.length > bds.length ? `<span class="more">+${e.bd.length - bds.length} more</span>` : ''}</a>`;
+  }
+  const sd = parseISO(selIso), se = ev[selIso] || eventsBetween(sd, sd)[selIso] || { ph: [], bd: [] };
+  const monthBd = Object.entries(ev).filter(([k]) => parseISO(k).getMonth() === m).flatMap(([k, e]) => e.bd.map(b => ({ ...b, d: parseISO(k) })));
+  const monthPh = Object.entries(ev).filter(([k]) => parseISO(k).getMonth() === m).flatMap(([k, e]) => e.ph.map(h => ({ ...h, d: parseISO(k) })));
+  return `<section class="card">${head(`${MONTHS[m]} ${y}`, link({ m: mkey(y, m - 1) }), link({ m: mkey(y, m + 1) }))}${noHol(y)}
+    <div class="cal-wrap"><div><div class="cal">${cells}</div>${footer}</div>
+      <aside class="cal-side">
+        <section class="card" id="cal-day"><h3>${DOW[sd.getDay()]}, ${sd.getDate()} ${MONTHS[sd.getMonth()]} ${sd.getFullYear()}</h3>
+          ${se.ph.map(h => phRow(h)).join('')}${se.bd.map(b => bdRow(b)).join('')}
+          ${!se.ph.length && !se.bd.length ? '<p class="muted small">No birthdays or public holidays.</p>' : ''}</section>
+        <section class="card"><h3>In ${MONTHS[m]} <small class="muted">${monthBd.length} birthday${monthBd.length === 1 ? '' : 's'}</small></h3>
+          ${monthPh.map(h => phRow(h, h.d)).join('')}
+          ${monthBd.map(b => bdRow(b, `${DOW[b.d.getDay()]} ${b.d.getDate()} ${MON[b.d.getMonth()]}`)).join('')}
+          ${!monthBd.length && !monthPh.length ? '<p class="muted small">Nothing this month.</p>' : ''}</section>
+      </aside></div></section>`;
 }
 
 async function delClient(btn) {
