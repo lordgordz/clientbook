@@ -792,7 +792,7 @@ function pageHome() {
     .sort((a, b) => a['Next Follow-up'].localeCompare(b['Next Follow-up']));
   const bd = clients.filter(c => parseISO(c['Date of Birth'])).map(c => {
     const nb = nextBirthday(c['Date of Birth'], t); return { c, nb, days: daysFrom(t, nb), turns: ageOf(c['Date of Birth'], nb) };
-  }).filter(b => b.days <= 30).sort((a, b) => a.days - b.days);
+  }).filter(b => b.days <= 7).sort((a, b) => a.days - b.days);
   const recent = clients.filter(c => isISO(c['Last Updated'])).sort((a, b) => b['Last Updated'].localeCompare(a['Last Updated'])).slice(0, 6);
   const link = c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>${nick(c)}`;
   hooks.push(() => {
@@ -811,8 +811,8 @@ function pageHome() {
     <section class="card"><h2>Follow-ups due <small>next 14 days</small></h2>
       ${fu.length ? `<ul class="mini">${fu.map(c => `<li>${link(c)}<span class="${parseISO(c['Next Follow-up']) <= t ? 'due' : 'muted'}">${fmtDate(c['Next Follow-up'])} · ${ago(c['Next Follow-up'])}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing due.</p>'}
     </section>
-    <section class="card"><div class="row-between"><h2>Birthdays <small>next 30 days</small></h2><a class="small" href="#/calendar">Calendar ›</a></div>
-      ${bd.length ? `<ul class="mini">${bd.map(b => `<li>${link(b.c)}<span class="muted">${pad(b.nb.getDate())} ${MON[b.nb.getMonth()]} · turns ${b.turns}${b.days === 0 ? ' · <b>today!</b>' : ` · in ${b.days}d`}</span></li>`).join('')}</ul>` : '<p class="muted">No birthdays coming up.</p>'}
+    <section class="card"><div class="row-between"><h2>Birthdays <small>next 7 days</small></h2><a class="small" href="#/calendar">Calendar ›</a></div>
+      ${bd.length ? `<ul class="mini">${bd.map(b => `<li>${link(b.c)}<span class="muted">${pad(b.nb.getDate())} ${MON[b.nb.getMonth()]} · turns ${b.turns}${b.days === 0 ? ' · <b>today!</b>' : b.days === 1 ? ' · tomorrow' : ` · ${DOW[b.nb.getDay()]}, in ${b.days}d`}</span></li>`).join('')}</ul>` : '<p class="muted">No birthdays in the next 7 days.</p>'}
     </section>
     <section class="card"><h2>Recently updated</h2>
       ${recent.length ? `<ul class="mini">${recent.map(c => `<li>${link(c)}<span class="muted">${ago(c['Last Updated'])}</span></li>`).join('')}</ul>` : `<p class="muted">No clients yet — <a href="#/new">add your first one</a>, or <a href="#/data">import your Excel file</a>.</p>`}
