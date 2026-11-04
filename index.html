@@ -171,6 +171,8 @@ ul.family b { color: var(--accent-2); }
 .suggest-links { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
 .suggest-links ul { margin: 6px 0 10px; padding-left: 18px; }
 .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag.twin { background: #efe6fb; color: #6b3fa0; margin-right: 4px; }
+.faces-stack { display: flex; flex: none; }
 .tidy-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); align-items: start; }
 .tidy-row input[type=checkbox] { width: 22px; height: 22px; min-height: 0; margin-top: 2px; -webkit-appearance: checkbox; appearance: checkbox; }
 .tidy-cmp { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 6px; font-size: 14px; }
@@ -623,10 +625,35 @@ async function dismissSuggested(btn) {
   for (const l of inferLinks().filter(l => grp.has(l.a) || grp.has(l.b))) ignorePair(l.a, l.b);
   await commit('OK — those won’t be suggested again.', location.hash, 'family');
 }
+// ---- twins / triplets: brothers and sisters (linked as siblings or sharing a parent) born on the same day ----
+function twinsOf(id) {
+  const c = getClient(id), dob = c && isISO(c['Date of Birth']) ? c['Date of Birth'].slice(0, 10) : ''; if (!dob) return [];
+  const ids = new Set(db.family.filter(f => f['Client ID'] === id && f.Relationship === 'sibling').map(f => f['Related ID']));
+  for (const f of db.family) if (f['Client ID'] === id && f.Relationship === 'parent')
+    for (const g of db.family) if (g['Client ID'] === f['Related ID'] && g.Relationship === 'child') ids.add(g['Related ID']);
+  return [...ids].map(getClient).filter(o => o && o.ID !== id && isISO(o['Date of Birth']) && o['Date of Birth'].slice(0, 10) === dob).sort(byName);
+}
+const multWord = n => n === 2 ? 'Twin' : n === 3 ? 'Triplet' : n === 4 ? 'Quadruplet' : 'Multiple-birth';
+const multPlural = n => n === 2 ? 'Twins' : n === 3 ? 'Triplets' : n === 4 ? 'Quadruplets' : 'Multiples';
+function relLabelFor(fromId, other, key) {
+  if (key === 'sibling') { const tw = twinsOf(fromId); if (tw.some(o => o.ID === other.ID)) return `${multWord(tw.length + 1)} ${other.Gender === 'Male' ? 'brother' : other.Gender === 'Female' ? 'sister' : 'sibling'}`; }
+  return relLabel(key, other.Gender);
+}
+function groupTwins(list) {   // merge birthday entries of twins into one entry with people: [...]
+  const out = [], used = new Set();
+  for (const e of list) {
+    if (used.has(e.c.ID)) continue;
+    const tw = new Set(twinsOf(e.c.ID).map(o => o.ID)), people = [e.c, ...list.filter(o => tw.has(o.c.ID)).map(o => o.c)];
+    people.forEach(p => used.add(p.ID)); out.push({ ...e, people });
+  }
+  return out;
+}
+const andNames = ps => andList(ps.map(p => p.Name));
+const ampJoin = parts => parts.length < 2 ? parts.join('') : parts.slice(0, -1).join(', ') + ' &amp; ' + parts[parts.length - 1];
 function familyOf(id) {
   const order = Object.keys(RELATIONS);
   return db.family.filter(f => f['Client ID'] === id).map(f => {
-    const c = getClient(f['Related ID']); return c && { c, key: f.Relationship, label: relLabel(f.Relationship, c.Gender), age: ageOf(c['Date of Birth']) };
+    const c = getClient(f['Related ID']); return c && { c, key: f.Relationship, label: relLabelFor(id, c, f.Relationship), age: ageOf(c['Date of Birth']) };
   }).filter(Boolean).sort((x, y) => ((order.indexOf(x.key) + 100) % 100 - (order.indexOf(y.key) + 100) % 100) || byName(x.c, y.c));
 }
 function distinct(values, starters = []) {
@@ -792,7 +819,8 @@ function pageHome() {
     .sort((a, b) => a['Next Follow-up'].localeCompare(b['Next Follow-up']));
   const bd = clients.filter(c => parseISO(c['Date of Birth'])).map(c => {
     const nb = nextBirthday(c['Date of Birth'], t); return { c, nb, days: daysFrom(t, nb), turns: ageOf(c['Date of Birth'], nb) };
-  }).filter(b => b.days <= 7).sort((a, b) => a.days - b.days);
+  }).filter(b => b.days <= 7).sort((a, b) => a.days - b.days || byName(a.c, b.c));
+  const bdG = groupTwins(bd);
   const recent = clients.filter(c => isISO(c['Last Updated'])).sort((a, b) => b['Last Updated'].localeCompare(a['Last Updated'])).slice(0, 6);
   const link = c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>${nick(c)}`;
   hooks.push(() => {
@@ -812,7 +840,7 @@ function pageHome() {
       ${fu.length ? `<ul class="mini">${fu.map(c => `<li>${link(c)}<span class="${parseISO(c['Next Follow-up']) <= t ? 'due' : 'muted'}">${fmtDate(c['Next Follow-up'])} · ${ago(c['Next Follow-up'])}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing due.</p>'}
     </section>
     <section class="card"><div class="row-between"><h2>Birthdays <small>next 7 days</small></h2><a class="small" href="#/calendar">Calendar ›</a></div>
-      ${bd.length ? `<ul class="mini">${bd.map(b => `<li>${link(b.c)}<span class="muted">${pad(b.nb.getDate())} ${MON[b.nb.getMonth()]} · turns ${b.turns}${b.days === 0 ? ' · <b>today!</b>' : b.days === 1 ? ' · tomorrow' : ` · ${DOW[b.nb.getDay()]}, in ${b.days}d`}</span></li>`).join('')}</ul>` : '<p class="muted">No birthdays in the next 7 days.</p>'}
+      ${bd.length ? `<ul class="mini">${bdG.map(b => `<li><span>${b.people.length > 1 ? ampJoin(b.people.map(link)) + ` <span class="tag twin">${multPlural(b.people.length)}</span>` : link(b.c)}</span><span class="muted">${pad(b.nb.getDate())} ${MON[b.nb.getMonth()]} · turn${b.people.length > 1 ? '' : 's'} ${b.turns}${b.days === 0 ? ' · <b>today!</b>' : b.days === 1 ? ' · tomorrow' : ` · ${DOW[b.nb.getDay()]}, in ${b.days}d`}</span></li>`).join('')}</ul>` : '<p class="muted">No birthdays in the next 7 days.</p>'}
     </section>
     <section class="card"><h2>Recently updated</h2>
       ${recent.length ? `<ul class="mini">${recent.map(c => `<li>${link(c)}<span class="muted">${ago(c['Last Updated'])}</span></li>`).join('')}</ul>` : `<p class="muted">No clients yet — <a href="#/new">add your first one</a>, or <a href="#/data">import your Excel file</a>.</p>`}
@@ -1099,7 +1127,8 @@ function pageProfile(cid) {
   const first = esc(c.Nickname || String(c.Name || '').split(' ')[0]);
   const relOpts = `<option value="">They are ${first}’s…</option>` + Object.entries(RELATIONS).map(([k, r]) => `<option value="${k}">${r[3]}</option>`).join('');
   const F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
-  const sub = [c.Gender, age != null ? 'Age ' + age : '', c.Occupation, c.Company].filter(Boolean).map(esc).join(' · ') || 'No details yet';
+  const tw = twinsOf(cid);
+  const sub = [c.Gender, age != null ? 'Age ' + age : '', tw.length ? `${multWord(tw.length + 1)} of ${andNames(tw)}` : '', c.Occupation, c.Company].filter(Boolean).map(esc).join(' · ') || 'No details yet';
   const fu = c['Next Follow-up'], fuDue = parseISO(fu) && parseISO(fu) <= today();
   return `
   <section class="card hero">
@@ -2127,11 +2156,11 @@ function mapStart(focusCid) {
   // ---- household card ----
   function openPop(h) {
     M.sel = h; const pop = $('#m-pop'), head = h.people[0], info = h.info;
-    const relOf = p => { if (p === head) return ''; const f = db.family.find(x => x['Client ID'] === head.ID && x['Related ID'] === p.ID); return f ? relLabel(f.Relationship, p.Gender) : ''; };
+    const relOf = p => { if (p === head) return ''; const f = db.family.find(x => x['Client ID'] === head.ID && x['Related ID'] === p.ID); return f ? relLabelFor(head.ID, p, f.Relationship) : ''; };
     const fam = h.people.length > 1 ? (() => { const sur = head.Name.split(' ')[0]; return h.people.filter(p => p.Name.split(' ')[0] === sur).length > 1 ? ` · ${sur} family` : ''; })() : '';
     pop.innerHTML = `<div class="h"><b>${esc(streetLine(info))}${h.unit ? ', ' + esc(h.unit) : ''}</b><div>${info.building && !info.hdb ? esc(info.building) + ' · ' : ''}Singapore ${esc(info.pc)} · ${h.people.length} ${h.people.length === 1 ? 'person' : 'people'}${esc(fam)}</div>
         <button class="icon x" aria-label="Close" id="pop-x">✕</button></div>
-      ${h.people.map(p => { const a = ageOf(p['Date of Birth']), rl = relOf(p); return `<a class="mrow" href="#/c/${encodeURIComponent(p.ID)}">${face(faceKind(p), 38)}<div class="t"><b>${esc(p.Name)}${nick(p)} ›</b><span>${rl ? `<span class="rel">${esc(rl)}</span>${a != null ? ' · ' : ''}` : ''}${a != null ? 'age ' + a : ''}${!rl && a == null ? (p.Phone ? esc(p.Phone) : '&nbsp;') : ''}</span></div></a>`; }).join('')}
+      ${h.people.map(p => { const a = ageOf(p['Date of Birth']), tw = twinsOf(p.ID), rl = relOf(p) + (tw.length && !/^(Twin|Triplet|Quadruplet)/.test(relOf(p)) ? `${relOf(p) ? ' · ' : ''}${multWord(tw.length + 1).toLowerCase()}` : ''); return `<a class="mrow" href="#/c/${encodeURIComponent(p.ID)}">${face(faceKind(p), 38)}<div class="t"><b>${esc(p.Name)}${nick(p)} ›</b><span>${rl ? `<span class="rel">${esc(rl)}</span>${a != null ? ' · ' : ''}` : ''}${a != null ? 'age ' + a : ''}${!rl && a == null ? (p.Phone ? esc(p.Phone) : '&nbsp;') : ''}</span></div></a>`; }).join('')}
       <div class="foot"><a class="btn small" href="https://maps.apple.com/?daddr=${info.lat.toFixed(6)},${info.lon.toFixed(6)}" target="_blank" rel="noopener">Directions in Maps</a></div>`;
     pop.hidden = false; pop._w = 0; $('#pop-x').onclick = closePop; draw();
   }
@@ -2292,7 +2321,7 @@ function eventsBetween(from, to) {   // { 'yyyy-mm-dd': { ph: [...], bd: [{c, tu
     for (const [k, list] of Object.entries(holidaysOn(y))) { const d = parseISO(k); if (d >= from && d <= to) get(k).ph.push(...list); }
     for (const c of db.clients) { const d = birthdayIn(c, y); if (d && d >= from && d <= to) get(isoOf(d)).bd.push({ c, turns: y - parseISO(c['Date of Birth']).getFullYear() }); }
   }
-  for (const v of Object.values(out)) v.bd.sort((a, b) => byName(a.c, b.c));
+  for (const v of Object.values(out)) { v.bd.sort((a, b) => byName(a.c, b.c)); v.bd = groupTwins(v.bd); }
   return out;
 }
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -2302,6 +2331,14 @@ function waLink(c, turns) {
   return `https://wa.me/${num}?text=${encodeURIComponent(`Happy birthday, ${first}! 🎂 Wishing you a wonderful year ahead.`)}`;
 }
 function bdRow(e, dateLabel) {
+  const ps = e.people || [e.c];
+  if (ps.length > 1) {
+    const btns = ps.map(p => { const wa = waLink(p, e.turns); return wa ? `<a class="btn small" href="${wa}" target="_blank" rel="noopener">Wish ${esc(p.Nickname || p.Name)}</a>` : ''; }).join('');
+    return `<div class="ev"><span class="faces-stack">${ps.map((p, i) => `<span style="margin-left:${i ? -14 : 0}px">${face(faceKind(p), 38)}</span>`).join('')}</span>
+      <div class="t"><b>${ampJoin(ps.map(p => `<a href="#/c/${encodeURIComponent(p.ID)}">${esc(p.Name)}</a>`))}</b>
+      <span><span class="tag twin">${multPlural(ps.length)}</span> 🎂 turn ${e.turns}${dateLabel ? ' · ' + dateLabel : ''}</span></div>
+      ${btns ? `<span class="row-btns">${btns}</span>` : ''}</div>`;
+  }
   const c = e.c, wa = waLink(c, e.turns);
   return `<div class="ev">${face(faceKind(c), 38)}<div class="t"><b><a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}${nick(c)}</a></b>
     <span>🎂 turns ${e.turns}${dateLabel ? ' · ' + dateLabel : ''}${c.Phone ? ' · ' + esc(c.Phone) : ''}</span></div>
@@ -2350,11 +2387,12 @@ function pageCalendar(q) {
     cells += `<a class="${cls}" href="${link({ m: mkey(d.getFullYear(), d.getMonth()), d: k })}#cal-day" onclick="location.replace(this.href); return false" aria-label="${d.getDate()} ${MONTHS[d.getMonth()]}${e.ph.length ? ', ' + e.ph.map(h => h.n).join(', ') : ''}${e.bd.length ? ', ' + e.bd.length + ' birthday' + (e.bd.length > 1 ? 's' : '') : ''}">
       <span class="num">${d.getDate()}</span>
       ${e.ph.map(h => `<span class="ph-tag${h.o ? ' obs' : ''}" title="${esc(h.n)}">${esc(h.n)}</span>`).join('')}
-      <span class="dots">${bds.map(b => `<span class="bd">${face(faceKind(b.c), 18)}<span>${esc(b.c.Nickname || b.c.Name)}</span></span>`).join('')}</span>
-      ${e.bd.length > bds.length ? `<span class="more">+${e.bd.length - bds.length} more</span>` : ''}</a>`;
+      <span class="dots">${bds.map(b => { const ps = b.people || [b.c]; return `<span class="bd">${ps.map(p => face(faceKind(p), 18)).join('')}<span>${ps.length > 1 ? esc(multPlural(ps.length)) + ': ' : ''}${ampJoin(ps.map(p => esc(p.Nickname || p.Name)))}</span></span>`; }).join('')}</span>
+      ${e.bd.length > bds.length ? `<span class="more">+${e.bd.slice(bds.length).reduce((t, b) => t + (b.people || [1]).length, 0)} more</span>` : ''}</a>`;
   }
   const sd = parseISO(selIso), se = ev[selIso] || eventsBetween(sd, sd)[selIso] || { ph: [], bd: [] };
   const monthBd = Object.entries(ev).filter(([k]) => parseISO(k).getMonth() === m).flatMap(([k, e]) => e.bd.map(b => ({ ...b, d: parseISO(k) })));
+  const monthBdCount = monthBd.reduce((t, b) => t + (b.people || [1]).length, 0);
   const monthPh = Object.entries(ev).filter(([k]) => parseISO(k).getMonth() === m).flatMap(([k, e]) => e.ph.map(h => ({ ...h, d: parseISO(k) })));
   return `<section class="card">${head(`${MONTHS[m]} ${y}`, link({ m: mkey(y, m - 1) }), link({ m: mkey(y, m + 1) }))}${noHol(y)}
     <div class="cal-wrap"><div><div class="cal">${cells}</div>${footer}</div>
@@ -2362,7 +2400,7 @@ function pageCalendar(q) {
         <section class="card" id="cal-day"><h3>${DOW[sd.getDay()]}, ${sd.getDate()} ${MONTHS[sd.getMonth()]} ${sd.getFullYear()}</h3>
           ${se.ph.map(h => phRow(h)).join('')}${se.bd.map(b => bdRow(b)).join('')}
           ${!se.ph.length && !se.bd.length ? '<p class="muted small">No birthdays or public holidays.</p>' : ''}</section>
-        <section class="card"><h3>In ${MONTHS[m]} <small class="muted">${monthBd.length} birthday${monthBd.length === 1 ? '' : 's'}</small></h3>
+        <section class="card"><h3>In ${MONTHS[m]} <small class="muted">${monthBdCount} birthday${monthBdCount === 1 ? '' : 's'}</small></h3>
           ${monthPh.map(h => phRow(h, h.d)).join('')}
           ${monthBd.map(b => bdRow(b, `${DOW[b.d.getDay()]} ${b.d.getDate()} ${MON[b.d.getMonth()]}`)).join('')}
           ${!monthBd.length && !monthPh.length ? '<p class="muted small">Nothing this month.</p>' : ''}</section>
