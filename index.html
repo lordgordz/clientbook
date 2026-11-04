@@ -376,14 +376,15 @@ const SHEETS = {
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Coverage', 'Status', 'End Date', 'Notes',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
   'Settings': ['Key', 'Value'],
+  'Added Postal Codes': ['Postal Code', 'Latitude', 'Longitude', 'Block', 'Road', 'Building', 'Added'],
 };
 // Columns that were renamed — older Excel files and saved data are upgraded automatically.
 const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
-              'Interactions': 'interactions', 'Policies': 'policies', 'Settings': 'settings' };
+              'Interactions': 'interactions', 'Policies': 'policies', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
 const DATE_F = new Set(['Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
-const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value']);
+const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value', 'Latitude', 'Longitude']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
 const SETTING_KEYS = ['My Name', 'My Title', 'My Company', 'My Phone', 'My Email', 'My Address', 'My Rep No', 'Letter Wording'];
 
@@ -508,7 +509,7 @@ function nextId(rows, prefix) {
 /* =========================================================================
    Storage — kept on this device (IndexedDB, falls back to localStorage)
    ========================================================================= */
-function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], settings: [], meta: { lastExport: null, lastChange: null } }; }
+function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
 let db = emptyDb();
 let _idb;
 function openIdb() {
@@ -1114,7 +1115,7 @@ function pageProfile(cid) {
 }
 
 function pageData() {
-  const counts = Object.entries(KEY).filter(([n]) => n !== 'Settings').map(([n, k]) => `<span><b>${db[k].length}</b> ${n === 'Clients' ? 'clients' : n.toLowerCase()}</span>`).join('');
+  const counts = Object.entries(KEY).filter(([n]) => n !== 'Settings' && n !== 'Added Postal Codes').map(([n, k]) => `<span><b>${db[k].length}</b> ${n === 'Clients' ? 'clients' : n.toLowerCase()}</span>`).join('');
   hooks.push(async () => {
     const prev = await kvGet('prev'), w = $('#undo-wrap');
     if (prev && w) w.innerHTML = `Imported or erased by mistake? <button class="link" onclick="undoImport()">Restore the previous data</button> (${prev.clients.length} clients).`;
@@ -1710,13 +1711,39 @@ function loadPostal() {
   }).catch(e => { _postalP = null; throw e; });
 }
 const tcase = s => String(s || '').toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase()).replace(/'S\b/g, "'s");
+function hdbGuess(blk, pc) { const n = parseInt(blk, 10); return !isNaN(n) && n % 1000 === parseInt(String(pc).slice(3), 10); }
+function addedPostalInfo(pc) {
+  const r = (db.addedPostal || []).find(x => String(x['Postal Code']).padStart(6, '0') === String(pc)); if (!r) return null;
+  const lat = +r.Latitude, lon = +r.Longitude; if (!lat || !lon) return null;
+  return { pc: String(pc), lat, lon, x: Math.round((lon - 103.6) * 1e5), y: Math.round((lat - 1.2) * 1e5), blk: r.Block || '', road: tcase(r.Road), building: tcase(r.Building), hdb: hdbGuess(r.Block, pc), added: true };
+}
 function postalInfo(pc) {
-  if (!_postal || !pc) return null;
-  const l = _postal.map.get(String(pc)); if (!l) return null;
+  if (!pc) return null;
+  const l = _postal && _postal.map.get(String(pc)); if (!l) return addedPostalInfo(pc);
   const [p, la, lo, blk, ri, bi] = l.split('|');
   const lat = 1.2 + la / 1e5, lon = 103.6 + lo / 1e5, n = parseInt(blk, 10);
   return { pc: p, lat, lon, x: +lo, y: +la, blk, road: tcase(_postal.R[+ri]), building: bi !== '' && bi != null ? tcase(_postal.B[+bi]) : '',
            hdb: !isNaN(n) && n % 1000 === parseInt(p.slice(3), 10) };
+}
+async function lookupOneMap(pc) {
+  if (!navigator.onLine) throw new Error('offline');
+  const url = `https://www.onemap.gov.sg/api/common/elastic/search?searchVal=${encodeURIComponent(pc)}&returnGeom=Y&getAddrDetails=Y&pageNum=1`;
+  let res;
+  try { res = await fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' }); } catch (e) { throw new Error('unreachable'); }
+  if (!res.ok) throw new Error('unreachable');
+  const j = await res.json(), hit = (j.results || []).find(r => r.POSTAL === pc);
+  if (!hit) return null;
+  const clean = v => (!v || v === 'NIL') ? '' : String(v).trim();
+  const b = clean(hit.BUILDING);
+  db.addedPostal = (db.addedPostal || []).filter(x => String(x['Postal Code']).padStart(6, '0') !== pc);
+  db.addedPostal.push({ 'Postal Code': pc, Latitude: +hit.LATITUDE, Longitude: +hit.LONGITUDE, Block: clean(hit.BLK_NO), Road: clean(hit.ROAD_NAME),
+    Building: /ESTATE|CONSERVATION AREA/.test(b) ? '' : b, Added: nowStamp() });
+  await persist();
+  return postalInfo(pc);
+}
+function oneMapError(e) {
+  return e.message === 'offline' ? 'No internet right now — try again when you’re online, or type the address yourself.'
+       : 'OneMap didn’t respond. Try again later, or type the address yourself.';
 }
 function streetLine(info) { return `${info.hdb ? 'Blk ' : ''}${info.blk} ${info.road}`.trim(); }
 function formatAddress(info, unit) {
@@ -1744,7 +1771,19 @@ document.addEventListener('input', e => {
     hint.textContent = 'Looking up…';
     loadPostal().then(() => {
       const info = postalInfo(t.value);
-      if (!info) { hint.innerHTML = '<span class="bad">Not in the built-in list — it may be very new. Type the address yourself.</span>'; if (addr.dataset.auto === '1') { addr.value = ''; addr.dataset.auto = '0'; } return; }
+      if (!info) {
+        if (addr.dataset.auto === '1') { addr.value = ''; addr.dataset.auto = '0'; }
+        hint.innerHTML = '<span class="bad">Not in the built-in list — it may be a new block.</span> <button type="button" class="btn small" id="om-look">Look up on OneMap</button>';
+        $('#om-look').onclick = async ev => {
+          const btn = ev.target; btn.disabled = true; btn.textContent = 'Looking up…';
+          try {
+            const found = await lookupOneMap(t.value);
+            if (!found) { hint.innerHTML = '<span class="bad">OneMap doesn’t have this postal code either — check the digits, or type the address yourself.</span>'; return; }
+            t.dispatchEvent(new Event('input', { bubbles: true }));   // fill in from the saved result
+          } catch (e) { hint.innerHTML = `<span class="bad">${oneMapError(e)}</span>`; }
+        };
+        return;
+      }
       const unitEl = form.querySelector('[name=unit_no]'), full = formatAddress(info, normUnit(unitEl && unitEl.value));
       const blank = !addr.value.trim() || addr.dataset.auto === '1' || addr.value.trim() === full;
       hint.innerHTML = `<span class="good">✓ ${esc(streetLine(info))}${info.building ? ' · ' + esc(info.building) : ''}</span>` +
@@ -2099,9 +2138,24 @@ function mapStart(focusCid) {
   function renderPanel() {
     const el = $('#m-panel'); el.hidden = false;
     if (M.panel === 'miss') {
-      el.innerHTML = `<div class="ph"><h3>Not on the map <button class="icon" id="pn-x" aria-label="Close">✕</button></h3><div class="ctl">Add a postal code to put them on the map.</div></div>
+      const unknown = [...new Set(M.missing.map(m => clientPostal(m.c)).filter(Boolean))];
+      el.innerHTML = `<div class="ph"><h3>Not on the map <button class="icon" id="pn-x" aria-label="Close">✕</button></h3><div class="ctl">Add a postal code to put them on the map.</div>
+        ${unknown.length ? `<p style="margin:8px 0 0"><button class="btn small primary" id="pn-om">Look up ${unknown.length} postal code${unknown.length > 1 ? 's' : ''} on OneMap</button></p><p class="muted small" style="margin:4px 0 0">Only the postal codes are sent — never names or other details.</p>` : ''}</div>
         <div class="pb">${M.missing.map(m => `<a class="mrow" href="#/c/${encodeURIComponent(m.c.ID)}/edit">${face(faceKind(m.c), 34)}<div class="t"><b>${esc(m.c.Name)} ›</b><span>${esc(m.why)}</span></div></a>`).join('')}</div>`;
-      $('#pn-x').onclick = () => togglePanel('miss'); return;
+      $('#pn-x').onclick = () => togglePanel('miss');
+      const om = $('#pn-om');
+      if (om) om.onclick = async () => {
+        om.disabled = true; let ok = 0, nf = [], err = null;
+        for (const [i, pc] of unknown.entries()) {
+          om.textContent = `Looking up ${i + 1} of ${unknown.length}…`;
+          try { (await lookupOneMap(pc)) ? ok++ : nf.push(pc); } catch (e) { err = e; break; }
+        }
+        buildHouseholds(); M.clusters = null; draw(); renderPanel();
+        if (err) toast(oneMapError(err), 'warn');
+        else toast(`${ok} postal code${ok === 1 ? '' : 's'} added to the map.` + (nf.length ? ` Not found: ${nf.join(', ')}.` : ''), nf.length ? 'warn' : 'ok');
+        if (!M.missing.length) togglePanel('miss');
+      };
+      return;
     }
     let ref = M.ref;
     if ((!ref || ref.kind === 'me') && M.loc) ref = { kind: 'me', lat: M.loc.lat, lon: M.loc.lon, label: 'your location' };
@@ -2266,6 +2320,7 @@ function parseLoose(s, withTime) {
 }
 function cellIn(h, v) {
   if (v == null || v === '') return blank(h);
+  if (h === 'Postal Code') { const t = String(v).trim(); return /^\d{1,6}$/.test(t) ? t.padStart(6, '0') : t; }
   if (DATE_F.has(h)) return typeof v === 'number' ? fromSerial(v).slice(0, 10) : (parseLoose(String(v), false) || String(v));
   if (STAMP_F.has(h)) return typeof v === 'number' ? fromSerial(v) : (parseLoose(String(v), true) || String(v));
   if (NUM_F.has(h)) { if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[,$\s]/g, '')); return isNaN(n) ? String(v) : n; }
