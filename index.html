@@ -255,6 +255,13 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 .hh .faces { display: flex; align-items: center; filter: drop-shadow(0 2px 3px rgba(0,0,0,.28)); }
 .hh .faces > * { flex: none; }
 .hh .more { margin-left: -8px; background: #1f3a5f; color: #fff; border-radius: 999px; font-size: 12px; font-weight: 700; padding: 2px 7px; border: 2px solid #fff; }
+.wtm-ring { position: relative; display: inline-block; border-radius: 50%; box-shadow: 0 0 0 3px #f2b01e; }
+.wtm-ring > svg { display: block; }
+.wtm-ring i { position: absolute; right: -5px; top: -6px; font-style: normal; font-size: 12px; line-height: 17px; width: 18px; height: 18px; text-align: center; border-radius: 50%; background: #f2b01e; color: #fff; border: 1.5px solid #fff; }
+.wtm-tag { font-size: 11px; font-weight: 700; color: #8a5a00; background: #fdf0cf; border-radius: 999px; padding: 1px 7px; margin-left: 4px; white-space: nowrap; }
+.btn.wtm-btn.on, .map-tools .btn.wtm-btn.on { background: #f2b01e; border-color: #f2b01e; color: #3b2a00; font-weight: 600; }
+.mrow-wrap { display: flex; align-items: center; border-bottom: 1px solid #f0ede6; } .mrow-wrap .mrow { flex: 1; border-bottom: 0; min-width: 0; }
+.star { background: none; border: 0; font-size: 22px; color: #c9c2b2; width: 46px; height: 46px; cursor: pointer; flex: none; } .star.on { color: #f2b01e; }
 .hh .pin { width: 10px; height: 10px; border-radius: 50%; background: #1f3a5f; border: 2px solid #fff; align-self: center; margin-top: 2px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 .hh .lbl { align-self: center; font-size: 12px; font-weight: 700; color: #1f3a5f; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; margin-top: 1px; }
 .hh.cluster .count { position: absolute; right: -6px; top: -6px; background: #c0392b; color: #fff; border: 2px solid #fff; border-radius: 999px; font-size: 12px; font-weight: 800; padding: 1px 7px; }
@@ -379,7 +386,7 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 const SHEETS = {
   'Clients': ['ID', 'Name', 'Nickname', 'Gender', 'NRIC', 'Date of Birth', 'Phone', 'Email', 'Postal Code', 'Unit No', 'Address',
               'Occupation', 'Company', 'Income Range', 'How We Met', 'First Met', 'Last Met',
-              'Next Follow-up', 'Remarks', 'Created', 'Last Updated'],
+              'Next Follow-up', 'Who To Meet', 'Remarks', 'Created', 'Last Updated'],
   'Family': ['Client ID', 'Related ID', 'Relationship'],
   'Extra Details': ['Client ID', 'Field', 'Value'],
   'Notes': ['ID', 'Client ID', 'Added', 'Note'],
@@ -394,7 +401,7 @@ const SHEETS = {
 const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
               'Interactions': 'interactions', 'Policies': 'policies', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
-const DATE_F = new Set(['Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
+const DATE_F = new Set(['Who To Meet', 'Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
 const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value', 'Latitude', 'Longitude']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
@@ -1139,6 +1146,7 @@ function pageProfile(cid) {
         <span>Profile updated: <b>${fmtDate(c['Last Updated']) || '—'}</b></span>
         ${fu ? `<span class="${fuDue ? 'due' : ''}">Follow-up: <b>${fmtDate(fu)}</b></span>` : ''}</p></div>
     <div class="hero-actions"><a class="btn primary" href="#/c/${encodeURIComponent(cid)}/edit">Edit profile</a>
+      <button class="btn wtm-btn ${isWtm(c) ? 'on' : ''}" data-cid="${id}" onclick="toggleWtm(this.dataset.cid)" title="${isWtm(c) ? 'Flagged ' + esc(fmtDate(c['Who To Meet'])) + ' — tap to remove' : 'Flag to meet'}">${isWtm(c) ? '★ Who to Meet' : '☆ Who to Meet'}</button>
       <a class="btn" href="#/c/${encodeURIComponent(cid)}/letter">✉︎ Write letter</a></div>
   </section>
   <div class="cols">
@@ -1331,7 +1339,8 @@ async function addInteraction(e) {
     if (!isISO(c['First Met'])) c['First Met'] = d;
   }
   const nf = String(fd.get('next_follow_up') || ''); if (isISO(nf)) c['Next Follow-up'] = nf;
-  touch(c); await commit('Interaction logged.' + (IN_PERSON.has(type) ? ' Last met updated.' : ''), location.hash, 'log'); return false;
+  const cleared = IN_PERSON.has(type) && isWtm(c); if (cleared) c['Who To Meet'] = null;
+  touch(c); await commit('Interaction logged.' + (IN_PERSON.has(type) ? ' Last met updated.' : '') + (cleared ? ' Removed from Who to Meet.' : ''), location.hash, 'log'); return false;
 }
 async function delInteraction(btn) {
   if (!confirm('Delete this entry?')) return;
@@ -1974,10 +1983,22 @@ function haversine(lat1, lon1, lat2, lon2) {
 }
 const fmtDist = m => m < 950 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(m < 9950 ? 1 : 0)} km`;
 
+/* ---- Who to Meet: clients you've flagged to catch up with ---- */
+const isWtm = c => !!(c && c['Who To Meet']);
+async function toggleWtm(cid, quiet) {
+  const c = getClient(cid); if (!c) return;
+  const on = !isWtm(c); c['Who To Meet'] = on ? todayISO() : null; touch(c);
+  if (quiet) { await persist(); return on; }
+  await commit(on ? `${c.Name} added to Who to Meet.` : `${c.Name} removed from Who to Meet.`, location.hash);
+  return on;
+}
+function wtmFace(p, size) { return isWtm(p) ? `<span class="wtm-ring" title="Who to Meet">${face(faceKind(p), size)}<i>★</i></span>` : face(faceKind(p), size); }
+let mapWtmOnly = false;
+
 function pageMap(q) {
   hooks.push(() => mapStart(q.get('c')));
   return `<div class="mapwrap" id="mapwrap"><canvas id="mapc"></canvas><div id="mapov"></div>
-    <div class="map-tools"><button class="btn" id="m-loc">◎ My location</button><button class="btn" id="m-near">Nearby</button><button class="btn" id="m-miss" hidden></button></div>
+    <div class="map-tools"><button class="btn" id="m-loc">◎ My location</button><button class="btn" id="m-near">Nearby</button><button class="btn wtm-btn" id="m-wtm">★ Who to Meet</button><button class="btn" id="m-miss" hidden></button></div>
     <div class="map-zoom"><button id="m-in" aria-label="Zoom in">+</button><button id="m-out" aria-label="Zoom out">−</button></div>
     <div class="map-credit" id="m-credit"></div>
     <div class="map-panel" id="m-panel" hidden></div>
@@ -2025,8 +2046,13 @@ function mapStart(focusCid) {
       by.get(key).people.push(c);
     }
     const links = id => db.family.filter(f => f['Client ID'] === id).length;
-    M.hh = [...by.values()];
-    for (const h of M.hh) h.people.sort((a, b) => links(b.ID) - links(a.ID) || (ageOf(b['Date of Birth']) ?? -1) - (ageOf(a['Date of Birth']) ?? -1));
+    M.hhAll = [...by.values()];
+    for (const h of M.hhAll) h.people.sort((a, b) => links(b.ID) - links(a.ID) || (ageOf(b['Date of Birth']) ?? -1) - (ageOf(a['Date of Birth']) ?? -1));
+    // Who to Meet filter: only flagged people (the Nearby list still shows everyone)
+    M.hh = mapWtmOnly ? M.hhAll.map(h => ({ ...h, people: h.people.filter(isWtm) })).filter(h => h.people.length) : M.hhAll;
+    const nW = db.clients.filter(isWtm).length, wb = $('#m-wtm');
+    wb.classList.toggle('on', mapWtmOnly); wb.textContent = mapWtmOnly ? `★ Who to Meet only (${nW})` : `★ Who to Meet${nW ? ' (' + nW + ')' : ''}`;
+    for (const [k, el] of M.els) { el.remove(); M.els.delete(k); } M.clusters = null;
     // households sharing a block (same postal code) sit side by side
     const byPc = {}; for (const h of M.hh) (byPc[h.pc] ||= []).push(h);
     for (const list of Object.values(byPc)) list.sort((a, b) => a.unit.localeCompare(b.unit)).forEach((h, i) => { h.slot = i - (list.length - 1) / 2; });
@@ -2116,7 +2142,7 @@ function mapStart(focusCid) {
   // ---- avatars (HTML on top of the map) ----
   function hhHtml(h, size, label) {
     const ps = h.people, shown = ps.slice(0, 3);
-    return `<div class="faces">${shown.map((p, i) => `<div style="margin-left:${i ? -size * 0.42 : 0}px;z-index:${3 - i}">${face(faceKind(p), size)}</div>`).join('')}${ps.length > 3 ? `<span class="more">+${ps.length - 3}</span>` : ''}</div>
+    return `<div class="faces">${shown.map((p, i) => `<div style="margin-left:${i ? -size * 0.42 : 0}px;z-index:${3 - i}">${wtmFace(p, size)}</div>`).join('')}${ps.length > 3 ? `<span class="more">+${ps.length - 3}</span>` : ''}</div>
       <span class="pin"></span>${label ? `<span class="lbl">${esc(label)}</span>` : ''}`;
   }
   function layout() {
@@ -2135,7 +2161,8 @@ function mapStart(focusCid) {
         const k = c.key + '@' + size + (s > 0.9 ? 'L' : ''); keep.add(k); c.ek = k;
         if (M.els.has(k)) continue;
         const el = document.createElement('div'); el.className = 'hh' + (c.list ? ' cluster' : ''); el.dataset.k = c.key;
-        if (c.list) { const n = c.list.reduce((t, h) => t + h.people.length, 0); el.innerHTML = `<div class="faces">${face(faceKind(c.list[0].people[0]), size + 4)}</div><span class="count">${n}</span><span class="pin"></span>`; }
+        if (c.list) { const n = c.list.reduce((t, h) => t + h.people.length, 0), anyW = c.list.flatMap(h => h.people).find(isWtm);
+          el.innerHTML = `<div class="faces">${wtmFace(anyW || c.list[0].people[0], size + 4)}</div><span class="count">${n}</span><span class="pin"></span>`; }
         else el.innerHTML = hhHtml(c.h, size, s > 0.9 ? (c.h.info.hdb ? 'Blk ' + c.h.info.blk : c.h.info.building || c.h.info.blk) + (c.h.unit ? ' ' + c.h.unit : '') : '');
         el.style.visibility = 'hidden'; ov.appendChild(el); M.els.set(k, el);
       }
@@ -2160,9 +2187,16 @@ function mapStart(focusCid) {
     const fam = h.people.length > 1 ? (() => { const sur = head.Name.split(' ')[0]; return h.people.filter(p => p.Name.split(' ')[0] === sur).length > 1 ? ` · ${sur} family` : ''; })() : '';
     pop.innerHTML = `<div class="h"><b>${esc(streetLine(info))}${h.unit ? ', ' + esc(h.unit) : ''}</b><div>${info.building && !info.hdb ? esc(info.building) + ' · ' : ''}Singapore ${esc(info.pc)} · ${h.people.length} ${h.people.length === 1 ? 'person' : 'people'}${esc(fam)}</div>
         <button class="icon x" aria-label="Close" id="pop-x">✕</button></div>
-      ${h.people.map(p => { const a = ageOf(p['Date of Birth']), tw = twinsOf(p.ID), rl = relOf(p) + (tw.length && !/^(Twin|Triplet|Quadruplet)/.test(relOf(p)) ? `${relOf(p) ? ' · ' : ''}${multWord(tw.length + 1).toLowerCase()}` : ''); return `<a class="mrow" href="#/c/${encodeURIComponent(p.ID)}">${face(faceKind(p), 38)}<div class="t"><b>${esc(p.Name)}${nick(p)} ›</b><span>${rl ? `<span class="rel">${esc(rl)}</span>${a != null ? ' · ' : ''}` : ''}${a != null ? 'age ' + a : ''}${!rl && a == null ? (p.Phone ? esc(p.Phone) : '&nbsp;') : ''}</span></div></a>`; }).join('')}
+      ${h.people.map(p => { const a = ageOf(p['Date of Birth']), tw = twinsOf(p.ID), rl = relOf(p) + (tw.length && !/^(Twin|Triplet|Quadruplet)/.test(relOf(p)) ? `${relOf(p) ? ' · ' : ''}${multWord(tw.length + 1).toLowerCase()}` : ''); return `<div class="mrow-wrap"><a class="mrow" href="#/c/${encodeURIComponent(p.ID)}">${wtmFace(p, 38)}<div class="t"><b>${esc(p.Name)}${nick(p)} ›</b><span>${rl ? `<span class="rel">${esc(rl)}</span>${a != null ? ' · ' : ''}` : ''}${a != null ? 'age ' + a : ''}${!rl && a == null ? (p.Phone ? esc(p.Phone) : '&nbsp;') : ''}</span></div></a>
+        <button class="star ${isWtm(p) ? 'on' : ''}" data-wtm="${esc(p.ID)}" title="${isWtm(p) ? 'Remove from Who to Meet' : 'Add to Who to Meet'}" aria-label="Who to Meet">${isWtm(p) ? '★' : '☆'}</button></div>`; }).join('')}
       <div class="foot"><a class="btn small" href="https://maps.apple.com/?daddr=${info.lat.toFixed(6)},${info.lon.toFixed(6)}" target="_blank" rel="noopener">Directions in Maps</a></div>`;
-    pop.hidden = false; pop._w = 0; $('#pop-x').onclick = closePop; draw();
+    pop.hidden = false; pop._w = 0; $('#pop-x').onclick = closePop;
+    pop.querySelectorAll('[data-wtm]').forEach(b => b.onclick = async () => {
+      const on = await toggleWtm(b.dataset.wtm, true); toast(on ? 'Added to Who to Meet.' : 'Removed from Who to Meet.');
+      const keep = h.key; buildHouseholds(); const nh = M.hhAll.find(x => x.key === keep);
+      if (mapWtmOnly && !M.hh.some(x => x.key === keep)) closePop(); else if (nh) openPop(nh); draw();
+    });
+    draw();
   }
   function closePop() { M.sel = null; $('#m-pop').hidden = true; draw(); }
   function placePop() {
@@ -2226,6 +2260,11 @@ function mapStart(focusCid) {
     $('#m-loc').onclick = startLocation;
     $('#m-near').onclick = () => togglePanel('near');
     $('#m-miss').onclick = () => togglePanel('miss');
+    $('#m-wtm').onclick = () => {
+      if (!mapWtmOnly && !db.clients.some(isWtm)) { toast('No one is flagged yet — tap ☆ Who to Meet on a client’s profile, or the ☆ next to their name on the map.', 'warn'); return; }
+      mapWtmOnly = !mapWtmOnly; closePop(); buildHouseholds(); draw();
+      if (mapWtmOnly) toast(`Showing only Who to Meet. The Nearby list still shows everyone.`);
+    };
   }
 
   // ---- my location ----
@@ -2278,12 +2317,12 @@ function mapStart(focusCid) {
     }
     let ref = M.ref;
     if ((!ref || ref.kind === 'me') && M.loc) ref = { kind: 'me', lat: M.loc.lat, lon: M.loc.lon, label: 'your location' };
-    const rows = ref ? M.hh.map(h => ({ h, d: haversine(ref.lat, ref.lon, h.info.lat, h.info.lon) })).filter(r => !radius || r.d <= radius).sort((a, b) => a.d - b.d) : [];
+    const rows = ref ? M.hhAll.map(h => ({ h, d: haversine(ref.lat, ref.lon, h.info.lat, h.info.lon) })).filter(r => !radius || r.d <= radius).sort((a, b) => a.d - b.d) : [];
     el.innerHTML = `<div class="ph"><h3>Nearby <button class="icon" id="pn-x" aria-label="Close">✕</button></h3>
       <div class="ctl">From <button class="btn small ${ref && ref.kind === 'me' ? 'on' : ''}" id="pn-me">◎ Me</button> or postal code <input id="pn-pc" inputmode="numeric" maxlength="6" placeholder="560101" value="${ref && ref.kind === 'pc' ? esc(ref.pc) : ''}">
         within <select id="pn-r">${[[1000, '1 km'], [3000, '3 km'], [5000, '5 km'], [10000, '10 km'], [0, 'any distance']].map(([v, t]) => `<option value="${v}"${v === radius ? ' selected' : ''}>${t}</option>`).join('')}</select></div></div>
       <div class="pb">${!ref ? `<p class="muted small" style="padding:12px 14px">Tap <b>◎ Me</b> to use where you are, or type a postal code (e.g. where you’re meeting someone).</p>`
-        : rows.length ? rows.map(({ h, d }) => { const p = h.people[0]; return `<div class="mrow" data-k="${esc(h.key)}">${face(faceKind(p), 38)}<div class="t"><b>${esc(p.Name)}${h.people.length > 1 ? ` + ${h.people.length - 1}` : ''}</b><span>${esc(streetLine(h.info))}${h.unit ? ' ' + esc(h.unit) : ''}</span></div><div class="d">${fmtDist(d)}</div></div>`; }).join('')
+        : rows.length ? rows.map(({ h, d }) => { const p = h.people.find(isWtm) || h.people[0], nw = h.people.filter(isWtm).length; return `<div class="mrow" data-k="${esc(h.key)}">${wtmFace(p, 38)}<div class="t"><b>${esc(p.Name)}${h.people.length > 1 ? ` + ${h.people.length - 1}` : ''}${nw ? ` <span class="wtm-tag">★ Who to Meet${nw > 1 ? ' ×' + nw : ''}</span>` : ''}</b><span>${esc(streetLine(h.info))}${h.unit ? ' ' + esc(h.unit) : ''}</span></div><div class="d">${fmtDist(d)}</div></div>`; }).join('')
         : `<p class="muted small" style="padding:12px 14px">No clients within ${radius / 1000} km of ${esc(ref.label)}.</p>`}</div>`;
     $('#pn-x').onclick = () => togglePanel('near');
     $('#pn-me').onclick = () => { M.ref = { kind: 'me' }; if (!M.loc) startLocation(); renderPanel(); };
@@ -2291,7 +2330,7 @@ function mapStart(focusCid) {
     $('#pn-pc').oninput = e => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); e.target.value = v;
       if (v.length === 6) { const info = postalInfo(v); if (!info) { toast('That postal code isn’t in the built-in list.', 'warn'); return; }
         M.ref = { kind: 'pc', pc: v, lat: info.lat, lon: info.lon, label: streetLine(info) }; flyTo(...geoW(info.lat, info.lon), Math.max(M.scale, 0.5)); renderPanel(); $('#pn-pc').focus(); } };
-    el.querySelectorAll('.mrow[data-k]').forEach(r => r.onclick = () => { const h = M.hh.find(h => h.key === r.dataset.k); if (h) flyTo(h.x, h.y, Math.max(M.scale, 1.2), () => openPop(h)); });
+    el.querySelectorAll('.mrow[data-k]').forEach(r => r.onclick = () => { const h = M.hhAll.find(h => h.key === r.dataset.k); if (h) flyTo(h.x, h.y, Math.max(M.scale, 1.2), () => openPop(h)); });
   }
 }
 
