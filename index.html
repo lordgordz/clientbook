@@ -140,6 +140,10 @@ details[open] > summary { margin-bottom: 12px; }
 
 /* profile */
 .hero { display: flex; gap: 16px; align-items: center; }
+#clients td { vertical-align: middle; }
+.name-cell { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+.name-cell .nc-face { flex: none; line-height: 0; display: block; }
+.name-cell .wtm-ring i { width: 15px; height: 15px; line-height: 14px; font-size: 10px; right: -4px; top: -4px; }
 .avatar-face { flex: none; line-height: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
 .avatar-face .wtm-ring i { width: 22px; height: 22px; line-height: 21px; font-size: 14px; }
 ul.family li a.fam-row { flex-direction: row; align-items: center; gap: 10px; }
@@ -870,7 +874,7 @@ function pageHome() {
       ${clients.length ? '<input id="filter" class="filter" type="search" placeholder="Filter by anything…" autocomplete="off" autocorrect="off" autocapitalize="off">' : ''}</div>
     ${clients.length ? `<div class="table-wrap"><table class="list" id="clients">
       <thead><tr><th>Name</th><th>Age</th><th>Phone</th><th>Company</th><th>Last met</th><th>Updated</th></tr></thead><tbody>
-      ${clients.map(c => `<tr data-id="${esc(c.ID)}"><td>${link(c)}<div class="whybox"></div></td><td>${ageOf(c['Date of Birth']) ?? ''}</td><td class="nowrap">${esc(c.Phone)}</td><td>${esc(c.Company)}</td>
+      ${clients.map(c => `<tr data-id="${esc(c.ID)}"><td><div class="name-cell"><a href="#/c/${encodeURIComponent(c.ID)}" class="nc-face" tabindex="-1" aria-hidden="true">${wtmFace(c, 34)}</a><div>${link(c)}<div class="whybox"></div></div></div></td><td>${ageOf(c['Date of Birth']) ?? ''}</td><td class="nowrap">${esc(c.Phone)}</td><td>${esc(c.Company)}</td>
         <td class="nowrap">${fmtDate(c['Last Met'])}</td><td class="muted nowrap">${ago(c['Last Updated'])}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">Your client book is empty.</p>'}
   </section>`;
@@ -2837,7 +2841,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.06b';
+const APP_VERSION = '2026.11.06c';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
