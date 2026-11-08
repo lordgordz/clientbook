@@ -179,6 +179,9 @@ ul.family b { color: var(--accent-2); }
 .suggest-links { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
 .suggest-links ul { margin: 6px 0 10px; padding-left: 18px; }
 .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.backup-status { margin: 12px 0 4px; padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.5; }
+.backup-status.ok { background: var(--ok-soft); color: var(--ok); } .backup-status.warn { background: var(--warn-soft); color: var(--warn); }
+.backup-status.bad { background: var(--err-soft); color: var(--err); } .backup-status b { color: var(--ink); }
 .ptr { position: fixed; left: 50%; top: calc(70px + env(safe-area-inset-top)); z-index: 30; display: flex; align-items: center; gap: 8px;
   background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px 7px 10px; box-shadow: 0 6px 18px rgba(0,0,0,.14);
   font-size: 14px; font-weight: 600; color: var(--accent); transform: translate(-50%, -140px); opacity: 0; pointer-events: none; }
@@ -1268,7 +1271,6 @@ function pageData() {
       <span class="small muted">Version ${APP_VERSION} <button class="btn small" onclick="refreshApp(true)">Check for updates</button></span></div>
       <p class="stat">${counts}</p>
       <p class="muted small">Everything is stored on this iPad only. Storage status: <span id="persisted">checking…</span></p>
-      <p class="muted small">Last Excel backup: <b>${db.meta.lastExport ? esc(fmtDate(db.meta.lastExport)) + ' (' + ago(db.meta.lastExport) + ')' : 'never'}</b></p>
     </section>
     <section class="card"><h2>Tidy up addresses</h2>
       <p>Fill in postal codes and unit numbers from addresses you typed in full, and write every address in the same format. You’ll see each change before anything is updated.</p>
@@ -1279,6 +1281,12 @@ function pageData() {
     <section class="card"><h2>Export to Excel</h2>
       <p>Creates an Excel file with everything in it — use it as a backup, to open in Excel, or to move your data to the computer version.</p>
       <button class="btn primary" onclick="exportExcel()">Export to Excel</button>
+      ${(() => { const le = db.meta.lastExport, lc = db.meta.lastChange;
+        if (!le) return '<p class="backup-status bad">Last backed up: <b>never</b> — your clients are only on this iPad.</p>';
+        const d = parseISO(le), when = `${DOW[d.getDay()]}, ${fmtDate(le)}`, a = ago(le);
+        const changed = lc && lc > le;
+        return `<p class="backup-status ${changed ? 'warn' : 'ok'}">Last backed up: <b>${esc(when)}</b> (${a === 'today' ? 'today' : esc(a)})<br>
+          <span>${changed ? 'You’ve made changes since then — back up again to include them.' : '✓ Includes all your latest changes.'}</span></p>`; })()}
       <p class="muted small">On iPad you’ll get the Share menu — choose <b>Save to Files</b> (or AirDrop / email it to yourself).
         To use it in the computer version, rename it to <b>clients.xlsx</b> and put it in the ClientBook folder.</p>
     </section>
@@ -2841,7 +2849,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.06c';
+const APP_VERSION = '2026.11.08';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
