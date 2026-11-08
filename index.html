@@ -2901,7 +2901,7 @@ async function remShow(state) {
   const d = parseISO(last.at), when = `${DOW[d.getDay()]}, ${fmtDate(last.at)}`;
   el.className = 'backup-status ' + (last.hash === now ? 'ok' : 'warn');
   el.innerHTML = `Reminders last updated: <b>${esc(when)}</b> (${last.count} birthday${last.count === 1 ? '' : 's'})<br><span>${last.hash === now
-    ? '✓ Includes all your latest changes. You’ll get a Telegram message around 9am on days with birthdays coming up.'
+    ? '✓ Includes all your latest changes. You’ll get your Telegram reminder around 9am.'
     : navigator.onLine ? 'Sending your latest changes…' : 'You’ve made changes — they’ll be sent next time you have internet.'}</span>`;
 }
 function remCard() {
@@ -2949,7 +2949,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.08b';
+const APP_VERSION = '2026.11.08c';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
