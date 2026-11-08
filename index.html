@@ -579,6 +579,7 @@ async function persist() {
   _docs = null;
   db.meta.lastChange = nowStamp();
   await kvSet('db', JSON.parse(JSON.stringify(db)));
+  remSchedule();
   if (!askedPersist && navigator.storage && navigator.storage.persist) { askedPersist = true; navigator.storage.persist().catch(() => {}); }
 }
 
@@ -1278,6 +1279,7 @@ function pageData() {
     <section class="card"><h2>Your details</h2>
       <p>Your name, contact and the standard wording used in client letters and coverage summaries.</p>
       <a class="btn" href="#/me">Edit your details</a></section>
+    ${remCard()}
     <section class="card"><h2>Export to Excel</h2>
       <p>Creates an Excel file with everything in it — use it as a backup, to open in Excel, or to move your data to the computer version.</p>
       <button class="btn primary" onclick="exportExcel()">Export to Excel</button>
@@ -2842,6 +2844,104 @@ async function undoImport() {
 })();
 
 /* =========================================================================
+   Telegram birthday reminders
+   A small Google Apps Script in the user's own Google account sends the 9am
+   Telegram message. Client Book keeps its birthday list up to date: only names,
+   nicknames, dates of birth, mobile numbers and twin grouping are sent.
+   ========================================================================= */
+const remConfigured = () => !!(setting('Reminder URL') && setting('Reminder Key'));
+function remPeople() {
+  const gid = {};
+  return db.clients.filter(c => c.Name && isISO(c['Date of Birth'])).sort(byName).map(c => {
+    if (!(c.ID in gid)) { const tw = twinsOf(c.ID); const g = tw.length ? [c.ID, ...tw.map(o => o.ID)].sort()[0] : ''; [c, ...tw].forEach(o => gid[o.ID] = g); }
+    const n = String(c.Phone || '').replace(/\D/g, '');
+    return { n: c.Name, nick: c.Nickname || '', dob: c['Date of Birth'].slice(0, 10), phone: n.length === 8 ? '65' + n : n, g: gid[c.ID] };
+  });
+}
+function remHash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; }
+let remTimer = null, remBusy = false, remLastError = '';
+function remSchedule(delay = 4000) {
+  clearTimeout(remTimer);
+  if (remConfigured()) remTimer = setTimeout(() => remSync(), delay);
+}
+async function remSync(action = 'sync', manual = false) {
+  if (!remConfigured()) { if (manual) toast('Paste the reminder link and key first.', 'warn'); return false; }
+  if (!navigator.onLine) { if (manual) toast('You’re offline — reminders will update next time you have internet.', 'warn'); remShow(); return false; }
+  const people = remPeople(), hash = remHash(JSON.stringify(people) + '|' + setting('Reminder URL')), last = (await kvGet('rem')) || {};
+  if (action === 'sync' && !manual && last.hash === hash) return true;
+  if (remBusy) { remSchedule(1500); return false; }
+  remBusy = true; remShow('sending');
+  const body = JSON.stringify({ key: setting('Reminder Key'), action, people });
+  let ok = false, count = people.length, msg = '';
+  try {
+    const res = await fetch(setting('Reminder URL'), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, redirect: 'follow' });
+    const txt = await res.text(); let j = null; try { j = JSON.parse(txt); } catch (_) {}
+    if (j && j.ok) { ok = true; count = j.count ?? count; }
+    else msg = j && j.error === 'Wrong key' ? 'the key doesn’t match the one in your Google script'
+      : j && j.error ? j.error : /<html|<!doctype/i.test(txt) ? 'that link isn’t a working reminder web app (check it ends in /exec and access is “Anyone”)' : 'unexpected reply';
+  } catch (e) {
+    // Some browsers won't let us read the reply; send anyway so the list still updates.
+    try { await fetch(setting('Reminder URL'), { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body }); ok = true; }
+    catch (_) { msg = 'couldn’t reach Google — check the link'; }
+  }
+  remBusy = false;
+  if (ok) { remLastError = ''; await kvSet('rem', { hash, at: nowStamp(), count }); }
+  else remLastError = msg;
+  remShow();
+  if (manual) toast(ok ? (action === 'test' ? 'Test sent — check Telegram.' : `Reminders updated (${count} birthdays).`) : 'Reminders not updated: ' + msg, ok ? 'ok' : 'error');
+  return ok;
+}
+async function remShow(state) {
+  const el = $('#rem-status'); if (!el) return;
+  if (!remConfigured()) { el.className = 'backup-status bad'; el.innerHTML = 'Not set up yet — follow the steps you were given, then paste the link and key below.'; return; }
+  if (state === 'sending') { el.className = 'backup-status warn'; el.innerHTML = 'Updating reminders…'; return; }
+  const last = (await kvGet('rem')) || {}, now = remHash(JSON.stringify(remPeople()) + '|' + setting('Reminder URL'));
+  if (remLastError) { el.className = 'backup-status bad'; el.innerHTML = `Couldn’t update reminders: ${esc(remLastError)}.`; return; }
+  if (!last.at) { el.className = 'backup-status warn'; el.innerHTML = 'Not sent yet — tap <b>Update reminders now</b>.'; return; }
+  const d = parseISO(last.at), when = `${DOW[d.getDay()]}, ${fmtDate(last.at)}`;
+  el.className = 'backup-status ' + (last.hash === now ? 'ok' : 'warn');
+  el.innerHTML = `Reminders last updated: <b>${esc(when)}</b> (${last.count} birthday${last.count === 1 ? '' : 's'})<br><span>${last.hash === now
+    ? '✓ Includes all your latest changes. You’ll get a Telegram message around 9am on days with birthdays coming up.'
+    : navigator.onLine ? 'Sending your latest changes…' : 'You’ve made changes — they’ll be sent next time you have internet.'}</span>`;
+}
+function remCard() {
+  hooks.push(() => remShow());
+  const on = remConfigured();
+  return `<section class="card" id="reminders"><h2>Telegram birthday reminders</h2>
+    <p>Every morning around 9am you get a Telegram message with birthdays today and in the next 7 days, each with a WhatsApp link. Client Book keeps the list up to date by itself whenever you have internet.</p>
+    <p id="rem-status" class="backup-status">Checking…</p>
+    ${on ? `<p class="row-btns"><button class="btn" onclick="remSync('sync', true)">Update reminders now</button>
+      <button class="btn" onclick="remSync('test', true)">Send a test message</button></p>` : ''}
+    <details${on ? '' : ' open'}><summary class="link">${on ? 'Change reminder link or key' : 'Set up'}</summary>
+      <form class="form" onsubmit="return saveReminders(event)" autocomplete="off"><div class="grid">
+        <label class="wide"><span>Google web app link</span><input name="url" type="url" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(setting('Reminder URL'))}"></label>
+        <label><span>Key</span><input name="key" autocapitalize="off" spellcheck="false" value="${esc(setting('Reminder Key'))}"></label>
+      </div>
+      <div class="actions"><button class="btn primary">Save &amp; send a test</button>${on ? '<button type="button" class="btn danger" onclick="stopReminders()">Turn off</button>' : ''}</div></form>
+    </details>
+    <p class="muted small">Only names, nicknames, birthdays, mobile numbers and who are twins are sent to your Google script — never NRIC, addresses, policies or notes.</p>
+  </section>`;
+}
+async function saveReminders(e) {
+  e.preventDefault(); const f = e.target, url = f.url.value.trim(), key = f.key.value.trim();
+  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url)) { toast('That doesn’t look like a Google web app link (it starts with https://script.google.com/macros/s/).', 'error'); return false; }
+  if (!key) { toast('Paste the key too.', 'error'); return false; }
+  setSetting('Reminder URL', url); setSetting('Reminder Key', key); remLastError = '';
+  clearTimeout(remTimer);
+  await kvSet('rem', {});
+  if (!(await commit('Reminder link saved.', '#/data', 'reminders', true))) return false;
+  clearTimeout(remTimer);
+  await remSync('test', true);
+  return false;
+}
+async function stopReminders() {
+  if (!confirm('Turn off reminders from Client Book? (To stop the 9am messages completely, also delete the trigger in your Google script.)')) return;
+  setSetting('Reminder URL', ''); setSetting('Reminder Key', ''); await kvSet('rem', {});
+  await commit('Reminders turned off in Client Book.', '#/data', 'reminders', true);
+}
+window.addEventListener('online', () => remSchedule(1500));
+
+/* =========================================================================
    Start
    ========================================================================= */
 window.addEventListener('hashchange', render);
@@ -2849,7 +2949,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.08';
+const APP_VERSION = '2026.11.08b';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
@@ -2899,7 +2999,7 @@ function afterRefresh() {
   for (const [sheet, map] of Object.entries(RENAMED)) for (const r of db[KEY[sheet]])
     for (const [o, n] of Object.entries(map)) if (o in r) { if (!r[n]) r[n] = r[o]; delete r[o]; }
   migratePolicies(db);
-  render(); afterRefresh();
+  render(); afterRefresh(); remSchedule(3000);
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
