@@ -116,6 +116,10 @@ table.list td a { display: block; }
 .dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
 .dhint.bad, .dhint .bad { color: var(--err); }
 .dhint .good { color: var(--ok); }
+.phone-grp { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+.phone-num { font-weight: 650; margin-bottom: 4px; } .phone-num .tag { margin-left: 6px; }
+.phone-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.phone-row .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dhint.warn { color: var(--warn); } .dhint.warn b { color: var(--ink); }
 label > span { font-size: 14px; font-weight: 600; }
 em { font-style: normal; font-weight: 500; font-size: 12px; color: #a7acb4; margin-left: 4px; }
@@ -811,6 +815,7 @@ function render() {
     else if (parts[0] === 'map') html = pageMap(q);
     else if (parts[0] === 'calendar') html = pageCalendar(q);
     else if (parts[0] === 'tidy') html = pageTidy();
+    else if (parts[0] === 'phones') html = pagePhones();
     else html = pageNotFound();
   } catch (e) {
     console.error(e);
@@ -1296,6 +1301,13 @@ function pageData() {
     <section class="card"><h2>Tidy up addresses</h2>
       <p>Fill in postal codes and unit numbers from addresses you typed in full, and write every address in the same format. You’ll see each change before anything is updated.</p>
       <a class="btn" href="#/tidy">Check addresses</a></section>
+    ${(() => { const g = sharedPhones(), other = g.filter(x => !x.family).length;
+      return `<section class="card"><h2>Shared phone numbers</h2>
+      <p>See which clients have the same phone number — handy for spotting typos or the same person entered twice.</p>
+      <p class="backup-status ${g.length ? (other ? 'warn' : 'ok') : 'ok'}">${g.length
+        ? `<b>${g.length}</b> number${g.length === 1 ? ' is' : 's are'} shared by more than one client${g.length - other ? ` (${g.length - other} within the same family)` : ''}.`
+        : '✓ No two clients have the same phone number.'}</p>
+      ${g.length ? '<a class="btn" href="#/phones">Check phone numbers</a>' : ''}</section>`; })()}
     <section class="card"><h2>Your details</h2>
       <p>Your name, contact and the standard wording used in client letters and coverage summaries.</p>
       <a class="btn" href="#/me">Edit your details</a></section>
@@ -2543,6 +2555,28 @@ function tidyPlan() {
   }
   return rows;
 }
+function sharedPhones() {   // [{ key, people, family }] numbers used by 2+ clients
+  const by = new Map();
+  for (const c of db.clients) for (const k of new Set(phoneKeys(c.Phone))) { if (!by.has(k)) by.set(k, []); by.get(k).push(c); }
+  return [...by.entries()].filter(([, ps]) => ps.length > 1).map(([key, ps]) => {
+    ps.sort(byName); const fam = familyGroup(ps[0].ID);
+    return { key, people: ps, family: ps.every(p => fam.has(p.ID)) };
+  }).sort((a, b) => a.family - b.family || byName(a.people[0], b.people[0]));
+}
+const fmtPhoneKey = k => k.length === 8 ? k.slice(0, 4) + ' ' + k.slice(4) : '+' + k;
+function pagePhones() {
+  const g = sharedPhones(), other = g.filter(x => !x.family), fam = g.filter(x => x.family);
+  const group = x => `<div class="phone-grp"><div class="phone-num">📞 ${esc(fmtPhoneKey(x.key))}${x.family ? ' <span class="tag">Family</span>' : ''}</div>
+    ${x.people.map(c => `<div class="phone-row"><span class="faces">${face(faceKind(c), 34)}</span>
+      <div class="t"><a href="#/c/${encodeURIComponent(c.ID)}"><b>${esc(c.Name)}</b></a>${nick(c)}<span class="muted small">${esc(c.Phone)}${ageOf(c['Date of Birth']) != null ? ' · age ' + ageOf(c['Date of Birth']) : ''}</span></div>
+      <a class="btn small" href="#/c/${encodeURIComponent(c.ID)}/edit">Edit</a></div>`).join('')}</div>`;
+  return `<section class="card"><p class="crumb"><a href="#/data">‹ Backup &amp; data</a></p><h2>Shared phone numbers</h2>
+    ${!g.length ? '<p class="banner">✓ No two clients have the same phone number.</p>' : `
+    <p class="muted">“9123 4567”, “+65 9123-4567” and “6591234567” count as the same number. Tap <b>Edit</b> to fix a typo — you’ll come back to the client’s page.</p>
+    ${other.length ? `<h3>Not linked as family <small>${other.length}</small></h3><p class="muted small">Could be a typo, the same person entered twice, or family you haven’t linked yet.</p>${other.map(group).join('')}` : ''}
+    ${fam.length ? `<h3>Within the same family <small>${fam.length}</small></h3><p class="muted small">Usually fine — e.g. a child using a parent’s number.</p>${fam.map(group).join('')}` : ''}`}
+  </section>`;
+}
 function pageTidy() {
   hooks.push(() => loadPostal().then(() => { _tidy = tidyPlan(); drawTidy(); }).catch(() => { $('#tidy-body').innerHTML = '<p class="banner warn">The postal code list hasn’t downloaded yet — open Client Book once with internet.</p>'; }));
   return `<section class="card"><p class="crumb"><a href="#/data">‹ Backup &amp; data</a></p><h2>Tidy up addresses</h2>
@@ -2969,7 +3003,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.09';
+const APP_VERSION = '2026.11.09b';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
