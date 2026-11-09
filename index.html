@@ -126,6 +126,8 @@ table.list td a { display: block; }
 .st-months .col span { display: block; width: 100%; background: var(--accent-2); }
 .st-months small { font-size: 11px; color: var(--muted); } .st-months b { font-size: 12px; font-variant-numeric: tabular-nums; }
 .st-months button.on .col span { background: var(--accent); } .st-months button.on small { color: var(--accent); font-weight: 700; }
+.st-nodob { display: block; width: 100%; text-align: left; margin-top: 10px; border: 1px solid #ecd9a8; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.st-nodob.on { border-color: var(--warn); font-weight: 600; }
 .st-mwho { font-size: 13px; line-height: 1.8; margin-top: 8px; } .st-mwho a { margin-right: 10px; white-space: nowrap; }
 .st-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
 .st-tile { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; }
@@ -2620,11 +2622,13 @@ function stMonths(rows) {
   _stMonths = rows; const months = rows.filter(r => !r[2]), un = rows.find(r => r[2]), max = Math.max(1, ...months.map(r => r[1].length));
   return `<div class="st-months">${months.map(([m, ps], i) => `<button type="button" onclick="stMonthPick(${i}, this)"><b>${ps.length || ''}</b>
       <span class="col"><span style="height:${(ps.length / max * 100).toFixed(0)}%"></span></span><small>${m.slice(0, 3)}</small></button>`).join('')}</div>
-    <div class="st-mwho" id="st-mwho"><span class="muted">Tap a month to see who.</span>${un ? ` <span class="muted">· ${un[1].length} with no date of birth</span>` : ''}</div>`;
+    ${un ? `<button type="button" class="st-nodob" onclick="stMonthPick(${rows.indexOf(un)}, this)">⚠ ${un[1].length} client${un[1].length === 1 ? '' : 's'} with no date of birth — tap to see who</button>` : ''}
+    <div class="st-mwho" id="st-mwho"><span class="muted">Tap a month to see who.</span></div>`;
 }
 function stMonthPick(i, btn) {
-  document.querySelectorAll('.st-months button').forEach(b => b.classList.toggle('on', b === btn));
-  const [m, ps] = _stMonths[i];
+  document.querySelectorAll('.st-months button, .st-nodob').forEach(b => b.classList.toggle('on', b === btn));
+  const [m, ps, unset] = _stMonths[i];
+  if (unset) { $('#st-mwho').innerHTML = `<b>No date of birth:</b> ` + ps.slice().sort(byName).map(c => `<a href="#/c/${encodeURIComponent(c.ID)}/edit">${esc(c.Name)}</a>`).join(' ') + ' <span class="muted">— tap a name to add it.</span>'; return; }
   $('#st-mwho').innerHTML = `<b>${m}:</b> ` + (ps.length ? ps.slice().sort((a, b) => (parseISO(a['Date of Birth']).getDate() - parseISO(b['Date of Birth']).getDate()) || byName(a, b))
     .map(c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)} <span class="muted">${parseISO(c['Date of Birth']).getDate()}</span></a>`).join(' ') : '<span class="muted">No one</span>');
 }
@@ -3133,7 +3137,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.09d';
+const APP_VERSION = '2026.11.09e';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
