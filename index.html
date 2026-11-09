@@ -116,16 +116,24 @@ table.list td a { display: block; }
 .dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
 .dhint.bad, .dhint .bad { color: var(--err); }
 .dhint .good { color: var(--ok); }
-.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
-.st-grid > .card { margin: 0; }
-@media (max-width: 760px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }
-.st-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.st-tile { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; }
-.st-tile b { font-size: 26px; line-height: 1.15; font-variant-numeric: tabular-nums; } .st-tile span { font-size: 13px; color: var(--muted); }
-.st-split { display: flex; height: 30px; border-radius: 8px; overflow: hidden; margin: 6px 0 10px; }
+.st-grid { columns: 2; column-gap: 14px; }
+.st-grid > .card { break-inside: avoid; display: inline-block; width: 100%; margin: 0 0 14px; padding: 14px 16px; }
+.st-grid > .card h2 { margin-bottom: 8px; }
+@media (max-width: 760px) { .st-grid { columns: 1; } }
+.st-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end; }
+.st-months button { border: 0; background: none; padding: 0; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink); }
+.st-months .col { width: 100%; max-width: 26px; height: 64px; background: #efece6; border-radius: 4px; display: flex; align-items: flex-end; overflow: hidden; }
+.st-months .col span { display: block; width: 100%; background: var(--accent-2); }
+.st-months small { font-size: 11px; color: var(--muted); } .st-months b { font-size: 12px; font-variant-numeric: tabular-nums; }
+.st-months button.on .col span { background: var(--accent); } .st-months button.on small { color: var(--accent); font-weight: 700; }
+.st-mwho { font-size: 13px; line-height: 1.8; margin-top: 8px; } .st-mwho a { margin-right: 10px; white-space: nowrap; }
+.st-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.st-tile { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; }
+.st-tile b { font-size: 22px; line-height: 1.15; font-variant-numeric: tabular-nums; } .st-tile span { font-size: 12px; line-height: 1.3; color: var(--muted); }
+.st-split { display: flex; height: 26px; border-radius: 8px; overflow: hidden; margin: 2px 0 6px; }
 .st-split > div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; }
 .st-bars details { border-top: 1px solid var(--line); } .st-bars details:first-child { border-top: 0; }
-.st-bars summary { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 74px; gap: 10px; align-items: center; padding: 7px 0; cursor: pointer; margin: 0; }
+.st-bars summary { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 74px; gap: 10px; align-items: center; padding: 4px 0; cursor: pointer; margin: 0; }
 .st-bars summary .l { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .st-bars summary .track { height: 14px; background: #efece6; border-radius: 4px; overflow: hidden; }
 .st-bars summary .fill { height: 100%; background: var(--accent-2); border-radius: 4px; }
@@ -133,7 +141,7 @@ table.list td a { display: block; }
 .st-bars summary .n { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; } .st-bars summary .n small { color: var(--muted); }
 .st-bars .who { padding: 2px 0 10px; font-size: 13px; line-height: 1.8; } .st-bars .who a { margin-right: 10px; white-space: nowrap; }
 .st-bars details[open] summary { margin-bottom: 0; }
-.st-note { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.st-note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 .phone-grp { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
 .phone-num { font-weight: 650; margin-bottom: 4px; } .phone-num .tag { margin-left: 6px; }
 .phone-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
@@ -2590,7 +2598,7 @@ function stBars(rows, opts = {}) {   // rows: [label, clients[], unset?]
   return `<div class="st-bars">${shown.map(([label, ps, unset]) => `<details${unset ? ' class="unset"' : ''}><summary>
       <span class="l">${esc(label)}</span><span class="track"><span class="fill" style="width:${(ps.length / max * 100).toFixed(1)}%;display:block"></span></span>
       <span class="n">${ps.length}${total ? ` <small>${Math.round(ps.length / total * 100)}%</small>` : ''}</span></summary>
-      <div class="who">${ps.length ? ps.slice().sort(byName).map(c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>`).join('') : '<span class="muted">No one</span>'}</div></details>`).join('')}</div>`;
+      <div class="who">${ps.length ? ps.slice().sort(byName).map(c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>`).join(' ') : '<span class="muted">No one</span>'}</div></details>`).join('')}</div>`;
 }
 function stGroup(list, keyFn, order, unsetLabel = 'Not filled in') {
   const m = new Map(order.map(k => [k, []])), unset = [];
@@ -2606,6 +2614,19 @@ function areaOfClient(c, md) {
   const x = info.x * md.KX, y = -info.y * md.KY;
   for (const a of md.areas) for (const r of a.r) if (inPoly(x, y, r)) return { area: tcase(a.n), hdb: info.hdb };
   return { area: null, hdb: info.hdb };
+}
+let _stMonths = [];
+function stMonths(rows) {
+  _stMonths = rows; const months = rows.filter(r => !r[2]), un = rows.find(r => r[2]), max = Math.max(1, ...months.map(r => r[1].length));
+  return `<div class="st-months">${months.map(([m, ps], i) => `<button type="button" onclick="stMonthPick(${i}, this)"><b>${ps.length || ''}</b>
+      <span class="col"><span style="height:${(ps.length / max * 100).toFixed(0)}%"></span></span><small>${m.slice(0, 3)}</small></button>`).join('')}</div>
+    <div class="st-mwho" id="st-mwho"><span class="muted">Tap a month to see who.</span>${un ? ` <span class="muted">· ${un[1].length} with no date of birth</span>` : ''}</div>`;
+}
+function stMonthPick(i, btn) {
+  document.querySelectorAll('.st-months button').forEach(b => b.classList.toggle('on', b === btn));
+  const [m, ps] = _stMonths[i];
+  $('#st-mwho').innerHTML = `<b>${m}:</b> ` + (ps.length ? ps.slice().sort((a, b) => (parseISO(a['Date of Birth']).getDate() - parseISO(b['Date of Birth']).getDate()) || byName(a, b))
+    .map(c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)} <span class="muted">${parseISO(c['Date of Birth']).getDate()}</span></a>`).join(' ') : '<span class="muted">No one</span>');
 }
 function pageStats() {
   const C = db.clients, n = C.length;
@@ -2645,11 +2666,11 @@ function pageStats() {
     const top = rows.filter(r => !r[2]).slice(0, 12), rest = rows.filter(r => !r[2]).slice(12).flatMap(r => r[1]);
     if (rest.length) top.push([`${rows.filter(r => !r[2]).length - 12} other areas`, rest]);
     const home = stGroup(C, c => { const i = info.get(c.ID); return i ? (i.hdb ? 'HDB' : 'Private / landed / other') : null; }, ['HDB', 'Private / landed / other'], 'No address / postal code');
-    el.innerHTML = `<h3 style="margin-top:0">Neighbourhood</h3>${stBars([...top, ...rows.filter(r => r[2])], { total: n })}
-      <h3>Type of home</h3>${stBars(home, { total: n })}<p class="st-note">Worked out from the postal code. HDB is a guess from the block number.</p>`;
+    el.innerHTML = `<h2>Where they live</h2>${stBars([...top, ...rows.filter(r => r[2])], { total: n })}
+      <h3 style="margin:12px 0 4px">Type of home</h3>${stBars(home, { total: n })}<p class="st-note">Worked out from the postal code. HDB is a guess from the block number.</p>`;
   }).catch(() => { const el = $('#st-where'); if (el) el.innerHTML = '<p class="muted small">Open Client Book once with internet to load the map data.</p>'; }));
-  return `<section class="card"><h2>Client insights <small>${n} client${n === 1 ? '' : 's'}</small></h2>
-      <div class="st-tiles">${tile(n, 'clients')}${tile(covered.length, `with a policy in force <br>(${Math.round(covered.length / n * 100)}%)`)}
+  return `<section class="card" style="padding:14px 16px;margin-bottom:14px"><h2 style="margin-bottom:10px">Client insights <small>${n} client${n === 1 ? '' : 's'}</small></h2>
+      <div class="st-tiles">${tile(n, 'clients')}${tile(covered.length, `with a policy (${Math.round(covered.length / n * 100)}%)`)}
         ${tile(median != null ? median : '—', 'median age')}${tile(fams.size, `families · ${famPeople} people`)}${tile(live.length, 'policies in force')}${tile(newThisYear, `new in ${y}`)}</div>
       <p class="st-note">Tap any bar to see who’s in it. “Not filled in” shows where details are missing.</p></section>
     <div class="st-grid">
@@ -2657,11 +2678,10 @@ function pageStats() {
       ${card('Age', stBars(ageRows, { total: n }), ages.length ? `Youngest ${ages[0]}, oldest ${ages[ages.length - 1]}.` : '')}
       ${card('Income range', stBars(stGroup(C, c => c['Income Range'] || null, INCOME_RANGES), { total: n }))}
       ${card('How you met', stBars(stGroup(C, c => c['How We Met'] || null, HOW_MET.filter(h => C.some(c => c['How We Met'] === h))), { total: n }))}
-      ${card('Policies per client', stBars(polRows, { total: n }), 'Policies in force where they are the policy owner.')}
-      ${card('Who has which cover', stBars(typeRows, { total: n }), 'Clients who own at least one in-force policy of each type — % of all clients.')}
+      ${card('Policies', `<h3 style="margin:0 0 4px">Policies in force per client</h3>${stBars(polRows, { total: n })}<h3 style="margin:12px 0 4px">Clients with each type of cover</h3>${stBars(typeRows, { total: n })}`, 'Counted where the client is the policy owner.')}
       ${card('Last met', stBars(metRows, { total: n }))}
       ${card('Occupation', stBars([...occTop, ...(occRest.length ? [['Others', occRest]] : []), ...occUn], { total: n }))}
-      ${card('Birthday month', stBars(bmonth, { total: n, keepEmpty: true }))}
+      ${card('Birthday month', stMonths(bmonth))}
       <section class="card" id="st-where"><p class="muted">Working out neighbourhoods…</p></section>
     </div>`;
 }
@@ -3113,7 +3133,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.09c';
+const APP_VERSION = '2026.11.09d';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
