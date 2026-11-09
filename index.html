@@ -116,6 +116,24 @@ table.list td a { display: block; }
 .dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
 .dhint.bad, .dhint .bad { color: var(--err); }
 .dhint .good { color: var(--ok); }
+.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.st-grid > .card { margin: 0; }
+@media (max-width: 760px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }
+.st-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.st-tile { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; }
+.st-tile b { font-size: 26px; line-height: 1.15; font-variant-numeric: tabular-nums; } .st-tile span { font-size: 13px; color: var(--muted); }
+.st-split { display: flex; height: 30px; border-radius: 8px; overflow: hidden; margin: 6px 0 10px; }
+.st-split > div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; }
+.st-bars details { border-top: 1px solid var(--line); } .st-bars details:first-child { border-top: 0; }
+.st-bars summary { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 74px; gap: 10px; align-items: center; padding: 7px 0; cursor: pointer; margin: 0; }
+.st-bars summary .l { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-bars summary .track { height: 14px; background: #efece6; border-radius: 4px; overflow: hidden; }
+.st-bars summary .fill { height: 100%; background: var(--accent-2); border-radius: 4px; }
+.st-bars .unset .fill { background: #c4c0b8; } .st-bars .unset .l { color: var(--muted); font-style: italic; }
+.st-bars summary .n { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; } .st-bars summary .n small { color: var(--muted); }
+.st-bars .who { padding: 2px 0 10px; font-size: 13px; line-height: 1.8; } .st-bars .who a { margin-right: 10px; white-space: nowrap; }
+.st-bars details[open] summary { margin-bottom: 0; }
+.st-note { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
 .phone-grp { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
 .phone-num { font-weight: 650; margin-bottom: 4px; } .phone-num .tag { margin-left: 6px; }
 .phone-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
@@ -382,6 +400,9 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   .extra-row textarea { grid-column: 1 / 2; }
   .filter { width: 160px; }
 }
+@media (max-width: 430px) {
+  .topbar { gap: 6px; } .topbar .btn.ghost { padding-left: 8px; padding-right: 8px; } .topbar .btn.light { padding-left: 10px; padding-right: 10px; }
+}
 </style>
 </head>
 <body>
@@ -395,6 +416,7 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   <a class="btn light" href="#/new">+ New</a>
   <a class="btn ghost" href="#/calendar" title="Calendar" aria-label="Calendar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></a>
   <a class="btn ghost" href="#/map" title="Map" aria-label="Map"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg></a>
+  <a class="btn ghost" href="#/stats" title="Client insights" aria-label="Client insights"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg></a>
   <a class="btn ghost" href="#/data" title="Backup &amp; data" aria-label="Backup and data">⇅</a>
 </header>
 <main id="app" class="wrap"></main>
@@ -816,6 +838,7 @@ function render() {
     else if (parts[0] === 'calendar') html = pageCalendar(q);
     else if (parts[0] === 'tidy') html = pageTidy();
     else if (parts[0] === 'phones') html = pagePhones();
+    else if (parts[0] === 'stats') html = pageStats();
     else html = pageNotFound();
   } catch (e) {
     console.error(e);
@@ -2555,6 +2578,93 @@ function tidyPlan() {
   }
   return rows;
 }
+/* =========================================================================
+   Client insights — simple counts across the whole client book
+   ========================================================================= */
+const isLive = p => !p.Status || p.Status === 'In force';
+const AGE_BANDS = [[0, 17, 'Under 18'], [18, 24, '18 – 24'], [25, 34, '25 – 34'], [35, 44, '35 – 44'], [45, 54, '45 – 54'], [55, 64, '55 – 64'], [65, 200, '65 and above']];
+function stBars(rows, opts = {}) {   // rows: [label, clients[], unset?]
+  const total = opts.total || rows.reduce((t, r) => t + r[1].length, 0), max = Math.max(1, ...rows.map(r => r[1].length));
+  const shown = rows.filter(r => r[1].length || opts.keepEmpty);
+  if (!shown.length) return '<p class="muted small">Nothing to show yet.</p>';
+  return `<div class="st-bars">${shown.map(([label, ps, unset]) => `<details${unset ? ' class="unset"' : ''}><summary>
+      <span class="l">${esc(label)}</span><span class="track"><span class="fill" style="width:${(ps.length / max * 100).toFixed(1)}%;display:block"></span></span>
+      <span class="n">${ps.length}${total ? ` <small>${Math.round(ps.length / total * 100)}%</small>` : ''}</span></summary>
+      <div class="who">${ps.length ? ps.slice().sort(byName).map(c => `<a href="#/c/${encodeURIComponent(c.ID)}">${esc(c.Name)}</a>`).join('') : '<span class="muted">No one</span>'}</div></details>`).join('')}</div>`;
+}
+function stGroup(list, keyFn, order, unsetLabel = 'Not filled in') {
+  const m = new Map(order.map(k => [k, []])), unset = [];
+  for (const c of list) { const k = keyFn(c); if (k == null || k === '') unset.push(c); else { if (!m.has(k)) m.set(k, []); m.get(k).push(c); } }
+  const rows = [...m.entries()].map(([k, ps]) => [k, ps]);
+  if (!order.length) rows.sort((a, b) => b[1].length - a[1].length || String(a[0]).localeCompare(String(b[0])));
+  if (unset.length) rows.push([unsetLabel, unset, true]);
+  return rows;
+}
+function inPoly(x, y, r) { let ins = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) { const xi = r[i], yi = r[i + 1], xj = r[j], yj = r[j + 1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
+function areaOfClient(c, md) {
+  const pc = String(c['Postal Code'] || '').trim() || parsePostal(c.Address); const info = pc && postalInfo(pc); if (!info) return null;
+  const x = info.x * md.KX, y = -info.y * md.KY;
+  for (const a of md.areas) for (const r of a.r) if (inPoly(x, y, r)) return { area: tcase(a.n), hdb: info.hdb };
+  return { area: null, hdb: info.hdb };
+}
+function pageStats() {
+  const C = db.clients, n = C.length;
+  if (!n) return `<section class="card"><h2>Client insights</h2><p class="muted">Add some clients first — this page sums up your client book.</p></section>`;
+  const live = db.policies.filter(isLive), owners = new Set(live.map(p => p['Client ID'])), insured = new Set(live.map(p => p['Insured ID'] || p['Client ID']));
+  const covered = C.filter(c => owners.has(c.ID) || insured.has(c.ID));
+  const ages = C.map(c => ageOf(c['Date of Birth'])).filter(a => a != null).sort((a, b) => a - b);
+  const median = ages.length ? (ages.length % 2 ? ages[(ages.length - 1) / 2] : Math.round((ages[ages.length / 2 - 1] + ages[ages.length / 2]) / 2)) : null;
+  const fams = new Set(), seen = new Set(); let famPeople = 0;
+  for (const c of C) if (!seen.has(c.ID)) { const g = familyGroup(c.ID); g.forEach(id => seen.add(id)); if (g.size > 1) { fams.add(c.ID); famPeople += g.size; } }
+  const y = String(today().getFullYear()), newThisYear = C.filter(c => String(c['First Met'] || c.Created || '').startsWith(y)).length;
+  const tile = (v, l) => `<div class="st-tile"><b>${v}</b><span>${l}</span></div>`;
+  const card = (title, body, note) => `<section class="card"><h2>${title}</h2>${body}${note ? `<p class="st-note">${note}</p>` : ''}</section>`;
+  // gender split bar
+  const M = C.filter(c => c.Gender === 'Male'), F = C.filter(c => c.Gender === 'Female'), gU = C.filter(c => c.Gender !== 'Male' && c.Gender !== 'Female');
+  const seg = (ps, col, lab) => ps.length ? `<div style="flex:${ps.length};background:${col}" title="${lab}">${ps.length / n >= .12 ? `${lab} ${Math.round(ps.length / n * 100)}%` : ''}</div>` : '';
+  const gender = `<div class="st-split">${seg(M, '#2f5d8f', 'Male')}${seg(F, '#c0587e', 'Female')}${seg(gU, '#c4c0b8', '')}</div>` +
+    stBars([['Male', M], ['Female', F], ...(gU.length ? [['Not filled in', gU, true]] : [])], { total: n });
+  // age
+  const ageRows = stGroup(C, c => { const a = ageOf(c['Date of Birth']); if (a == null) return null; return AGE_BANDS.find(b => a >= b[0] && a <= b[1])[2]; }, AGE_BANDS.map(b => b[2]), 'No date of birth');
+  // policies per client
+  const polCount = c => live.filter(p => p['Client ID'] === c.ID).length;
+  const polRows = stGroup(C, c => { const k = polCount(c); return k === 0 ? 'None (as owner)' : k === 1 ? '1 policy' : k === 2 ? '2 policies' : k <= 4 ? '3 – 4 policies' : '5 or more'; }, ['None (as owner)', '1 policy', '2 policies', '3 – 4 policies', '5 or more']);
+  const typeMap = new Map(); for (const p of live) { const t = p['Policy Type'] || 'Type not filled in'; typeMap.set(t, (typeMap.get(t) || new Set()).add(p['Client ID'])); }
+  const typeRows = [...typeMap.entries()].map(([t, ids]) => [t, [...ids].map(getClient).filter(Boolean), t === 'Type not filled in']).sort((a, b) => (a[2] - b[2]) || b[1].length - a[1].length);
+  // last met
+  const lastMet = c => { const d = parseISO(c['Last Met']); if (!d) return null; const m = daysFrom(d, today()) / 30.44; return m <= 3 ? 'Within 3 months' : m <= 6 ? '3 – 6 months ago' : m <= 12 ? '6 – 12 months ago' : m <= 24 ? '1 – 2 years ago' : 'Over 2 years ago'; };
+  const metRows = stGroup(C, lastMet, ['Within 3 months', '3 – 6 months ago', '6 – 12 months ago', '1 – 2 years ago', 'Over 2 years ago'], 'Never recorded');
+  // occupation (top 10)
+  const occ = stGroup(C, c => String(c.Occupation || '').trim() ? tcase(String(c.Occupation).trim()) : null, []);
+  const occTop = occ.filter(r => !r[2]).slice(0, 10), occRest = occ.filter(r => !r[2]).slice(10).flatMap(r => r[1]), occUn = occ.filter(r => r[2]);
+  const bmonth = stGroup(C, c => { const d = parseISO(c['Date of Birth']); return d ? MONTHS[d.getMonth()] : null; }, MONTHS, 'No date of birth');
+  hooks.push(() => Promise.all([loadPostal(), loadMapData()]).then(([, md]) => {
+    const el = $('#st-where'); if (!el) return;
+    const info = new Map(C.map(c => [c.ID, areaOfClient(c, md)]));
+    const rows = stGroup(C, c => { const i = info.get(c.ID); return i ? (i.area || 'Outside the map') : null; }, [], 'No address / postal code');
+    const top = rows.filter(r => !r[2]).slice(0, 12), rest = rows.filter(r => !r[2]).slice(12).flatMap(r => r[1]);
+    if (rest.length) top.push([`${rows.filter(r => !r[2]).length - 12} other areas`, rest]);
+    const home = stGroup(C, c => { const i = info.get(c.ID); return i ? (i.hdb ? 'HDB' : 'Private / landed / other') : null; }, ['HDB', 'Private / landed / other'], 'No address / postal code');
+    el.innerHTML = `<h3 style="margin-top:0">Neighbourhood</h3>${stBars([...top, ...rows.filter(r => r[2])], { total: n })}
+      <h3>Type of home</h3>${stBars(home, { total: n })}<p class="st-note">Worked out from the postal code. HDB is a guess from the block number.</p>`;
+  }).catch(() => { const el = $('#st-where'); if (el) el.innerHTML = '<p class="muted small">Open Client Book once with internet to load the map data.</p>'; }));
+  return `<section class="card"><h2>Client insights <small>${n} client${n === 1 ? '' : 's'}</small></h2>
+      <div class="st-tiles">${tile(n, 'clients')}${tile(covered.length, `with a policy in force <br>(${Math.round(covered.length / n * 100)}%)`)}
+        ${tile(median != null ? median : '—', 'median age')}${tile(fams.size, `families · ${famPeople} people`)}${tile(live.length, 'policies in force')}${tile(newThisYear, `new in ${y}`)}</div>
+      <p class="st-note">Tap any bar to see who’s in it. “Not filled in” shows where details are missing.</p></section>
+    <div class="st-grid">
+      ${card('Gender', gender)}
+      ${card('Age', stBars(ageRows, { total: n }), ages.length ? `Youngest ${ages[0]}, oldest ${ages[ages.length - 1]}.` : '')}
+      ${card('Income range', stBars(stGroup(C, c => c['Income Range'] || null, INCOME_RANGES), { total: n }))}
+      ${card('How you met', stBars(stGroup(C, c => c['How We Met'] || null, HOW_MET.filter(h => C.some(c => c['How We Met'] === h))), { total: n }))}
+      ${card('Policies per client', stBars(polRows, { total: n }), 'Policies in force where they are the policy owner.')}
+      ${card('Who has which cover', stBars(typeRows, { total: n }), 'Clients who own at least one in-force policy of each type — % of all clients.')}
+      ${card('Last met', stBars(metRows, { total: n }))}
+      ${card('Occupation', stBars([...occTop, ...(occRest.length ? [['Others', occRest]] : []), ...occUn], { total: n }))}
+      ${card('Birthday month', stBars(bmonth, { total: n, keepEmpty: true }))}
+      <section class="card" id="st-where"><p class="muted">Working out neighbourhoods…</p></section>
+    </div>`;
+}
 function sharedPhones() {   // [{ key, people, family }] numbers used by 2+ clients
   const by = new Map();
   for (const c of db.clients) for (const k of new Set(phoneKeys(c.Phone))) { if (!by.has(k)) by.set(k, []); by.get(k).push(c); }
@@ -3003,7 +3113,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.09b';
+const APP_VERSION = '2026.11.09c';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
