@@ -116,6 +116,7 @@ table.list td a { display: block; }
 .dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
 .dhint.bad, .dhint .bad { color: var(--err); }
 .dhint .good { color: var(--ok); }
+.dhint.warn { color: var(--warn); } .dhint.warn b { color: var(--ink); }
 label > span { font-size: 14px; font-weight: 600; }
 em { font-style: normal; font-weight: 500; font-size: 12px; color: #a7acb4; margin-left: 4px; }
 em.req { color: var(--err); }
@@ -905,6 +906,7 @@ function fieldHtml(f, val, sugg) {
     const caps = f.caps ? ` autocapitalize="${f.caps}"` : f.type === 'text' ? ' autocapitalize="words"' : '';
     input = `<input type="${f.type}" name="${n}" value="${esc(val ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.required ? ' required' : ''}${caps}${f.inputmode ? ` inputmode="${f.inputmode}"` : ''}${f.autofill ? ` list="dl_${n}" autocomplete="off"` : ''}>`;
     if (f.autofill) input += datalist('dl_' + n, sugg[f.sugg || f.label] || []);
+    if (f.label === 'Phone') input += '<small class="dhint" id="phone-hint"></small>';
   }
   if (f.label === 'NRIC') input = input.replace('<input ', '<input data-nric="1" maxlength="20" ') + `<small class="dhint" id="nric-hint">${nricHint(val)}</small>`;
   return `<label class="${f.wide ? 'wide' : ''}"><span>${esc(f.show || f.label)} ${tag}</span>${input}</label>`;
@@ -1022,6 +1024,24 @@ function checkDupLive() {
 document.addEventListener('input', e => { if (e.target.closest && e.target.closest('form[data-cid]') && ['name', 'nric', 'date_of_birth'].includes(e.target.name)) checkDupLive(); });
 document.addEventListener('focusout', e => { if (e.target.name === 'date_of_birth' && e.target.closest('form[data-cid]')) setTimeout(checkDupLive, 0); });
 
+/* ---- same phone number as someone else ---- */
+function phoneKeys(v) {   // every number in the field, as 8 digits (SG) or the full international number
+  const runs = String(v || '').replace(/(\d)[\s\-().]+(?=\d)/g, '$1').match(/\d{8,}/g) || [];
+  return runs.map(n => n.length === 10 && n.startsWith('65') ? n.slice(2) : n);
+}
+function phoneClashes(v, ownId) {
+  const mine = new Set(phoneKeys(v)); if (!mine.size) return [];
+  return db.clients.filter(c => c.ID !== ownId && phoneKeys(c.Phone).some(k => mine.has(k))).sort(byName);
+}
+function checkPhoneLive() {
+  const form = document.querySelector('form[data-cid]'), el = form && form.querySelector('[name=phone]'), hint = document.getElementById('phone-hint');
+  if (!el || !hint) return;
+  const hits = phoneClashes(el.value, form.dataset.cid || null);
+  hint.classList.toggle('warn', hits.length > 0);
+  hint.innerHTML = hits.length ? `⚠ Same number as ${andList(hits.map(c => `<b>${esc(c.Name)}</b>`))}` : '';
+}
+document.addEventListener('input', e => { if (e.target.name === 'phone' && e.target.closest('form[data-cid]')) checkPhoneLive(); });
+
 /* ---- children 18 and under share their parent's address ---- */
 const ADDR_KEYS = ['Postal Code', 'Unit No', 'Address'];
 const hasAddr = c => !!(c && (String(c.Address || '').trim() || String(c['Postal Code'] || '').trim()));
@@ -1066,7 +1086,7 @@ function pageForm(cid, linkId, rel) {
   }
   const extras = editing ? extrasOf(cid) : [{}];
   const cancel = editing ? `#/c/${encodeURIComponent(cid)}` : link ? `#/c/${encodeURIComponent(link.ID)}` : '#/';
-  hooks.push(checkPostalOnOpen, checkDupLive);
+  hooks.push(checkPostalOnOpen, checkDupLive, checkPhoneLive);
   return `<section class="card">
     <h2>${editing ? 'Edit ' + esc(c.Name) : 'New client'}</h2>
     ${link && RELATIONS[rel] ? `<p class="banner">This person will be linked as <b>${esc(link.Name)}’s ${RELATIONS[rel][3].toLowerCase()}</b>.</p>` : ''}
@@ -2949,7 +2969,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.08c';
+const APP_VERSION = '2026.11.09';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
