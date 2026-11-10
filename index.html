@@ -3032,19 +3032,45 @@ async function undoImport() {
 })();
 
 /* =========================================================================
-   Telegram birthday reminders
-   A small Google Apps Script in the user's own Google account sends the 9am
-   Telegram message. Client Book keeps its birthday list up to date: only names,
-   nicknames, dates of birth, mobile numbers and twin grouping are sent.
+   Telegram bots (Pig & Dog)
+   A Google Apps Script in the user's own Google account runs the Telegram bots.
+   Client Book keeps a slim client list there up to date — only client ID, name,
+   nickname, date of birth, mobile number, address and twin grouping are sent.
+   Notes sent to Pig on Telegram wait in a small inbox; Client Book imports them
+   when it syncs and the inbox is then cleared.
    ========================================================================= */
 const remConfigured = () => !!(setting('Reminder URL') && setting('Reminder Key'));
+function remAddress(c) {
+  const a = String(c.Address || '').trim(), pc = String(c['Postal Code'] || '').trim();
+  return a || (pc ? 'Singapore ' + pc : '');
+}
 function remPeople() {
   const gid = {};
-  return db.clients.filter(c => c.Name && isISO(c['Date of Birth'])).sort(byName).map(c => {
+  return db.clients.filter(c => c.Name).sort(byName).map(c => {
     if (!(c.ID in gid)) { const tw = twinsOf(c.ID); const g = tw.length ? [c.ID, ...tw.map(o => o.ID)].sort()[0] : ''; [c, ...tw].forEach(o => gid[o.ID] = g); }
     const n = String(c.Phone || '').replace(/\D/g, '');
-    return { n: c.Name, nick: c.Nickname || '', dob: c['Date of Birth'].slice(0, 10), phone: n.length === 8 ? '65' + n : n, g: gid[c.ID] };
+    return { id: c.ID, n: c.Name, nick: c.Nickname || '', dob: isISO(c['Date of Birth']) ? c['Date of Birth'].slice(0, 10) : '',
+             phone: n.length === 8 ? '65' + n : n, addr: remAddress(c), g: gid[c.ID] || '' };
   });
+}
+// Notes written to Pig on Telegram: add them to the client's notes (once), then tell Pig to clear them.
+async function remImportNotes(list) {
+  if (!Array.isArray(list) || !list.length) return 0;
+  const done = new Set(db.meta.pigImported || []), ids = []; let added = 0;
+  for (const x of list) {
+    if (!x || !x.id) continue;
+    ids.push(x.id);
+    if (done.has(x.id) || !getClient(x.cid) || !String(x.text || '').trim()) continue;
+    db.notes.push({ ID: nextId(db.notes, 'N'), 'Client ID': x.cid, Added: isISO(x.at) ? x.at : nowStamp(), Note: String(x.text).trim() });
+    touch(getClient(x.cid)); done.add(x.id); added++;
+  }
+  db.meta.pigImported = [...done].slice(-500);
+  if (added) await persist();
+  try {
+    await fetch(setting('Reminder URL'), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ key: setting('Reminder Key'), action: 'ack', ids }), redirect: 'follow' });
+  } catch (_) {}
+  if (added) { toast(`${added} note${added === 1 ? '' : 's'} from Pig added.`); if (location.hash.startsWith('#/c/')) render(); }
+  return added;
 }
 function remHash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; }
 let remTimer = null, remBusy = false, remLastError = '';
@@ -3052,11 +3078,11 @@ function remSchedule(delay = 4000) {
   clearTimeout(remTimer);
   if (remConfigured()) remTimer = setTimeout(() => remSync(), delay);
 }
-async function remSync(action = 'sync', manual = false) {
-  if (!remConfigured()) { if (manual) toast('Paste the reminder link and key first.', 'warn'); return false; }
-  if (!navigator.onLine) { if (manual) toast('You’re offline — reminders will update next time you have internet.', 'warn'); remShow(); return false; }
+async function remSync(action = 'sync', manual = false, force = false) {
+  if (!remConfigured()) { if (manual) toast('Paste the bot link and key first.', 'warn'); return false; }
+  if (!navigator.onLine) { if (manual) toast('You’re offline — the bots will update next time you have internet.', 'warn'); remShow(); return false; }
   const people = remPeople(), hash = remHash(JSON.stringify(people) + '|' + setting('Reminder URL')), last = (await kvGet('rem')) || {};
-  if (action === 'sync' && !manual && last.hash === hash) return true;
+  if (action === 'sync' && !manual && !force && last.hash === hash) return true;
   if (remBusy) { remSchedule(1500); return false; }
   remBusy = true; remShow('sending');
   const body = JSON.stringify({ key: setting('Reminder Key'), action, people });
@@ -3064,7 +3090,7 @@ async function remSync(action = 'sync', manual = false) {
   try {
     const res = await fetch(setting('Reminder URL'), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, redirect: 'follow' });
     const txt = await res.text(); let j = null; try { j = JSON.parse(txt); } catch (_) {}
-    if (j && j.ok) { ok = true; count = j.count ?? count; }
+    if (j && j.ok) { ok = true; count = j.count ?? count; if (j.notes && j.notes.length) setTimeout(() => remImportNotes(j.notes), 0); }
     else msg = j && j.error === 'Wrong key' ? 'the key doesn’t match the one in your Google script'
       : j && j.error ? j.error : /<html|<!doctype/i.test(txt) ? 'that link isn’t a working reminder web app (check it ends in /exec and access is “Anyone”)' : 'unexpected reply';
   } catch (e) {
@@ -3076,38 +3102,38 @@ async function remSync(action = 'sync', manual = false) {
   if (ok) { remLastError = ''; await kvSet('rem', { hash, at: nowStamp(), count }); }
   else remLastError = msg;
   remShow();
-  if (manual) toast(ok ? (action === 'test' ? 'Test sent — check Telegram.' : `Reminders updated (${count} birthdays).`) : 'Reminders not updated: ' + msg, ok ? 'ok' : 'error');
+  if (manual) toast(ok ? (action === 'test' ? 'Test sent — check the Client Book Pig topic.' : `Bots updated (${count} clients).`) : 'Bots not updated: ' + msg, ok ? 'ok' : 'error');
   return ok;
 }
 async function remShow(state) {
   const el = $('#rem-status'); if (!el) return;
   if (!remConfigured()) { el.className = 'backup-status bad'; el.innerHTML = 'Not set up yet — follow the steps you were given, then paste the link and key below.'; return; }
-  if (state === 'sending') { el.className = 'backup-status warn'; el.innerHTML = 'Updating reminders…'; return; }
+  if (state === 'sending') { el.className = 'backup-status warn'; el.innerHTML = 'Updating the bots…'; return; }
   const last = (await kvGet('rem')) || {}, now = remHash(JSON.stringify(remPeople()) + '|' + setting('Reminder URL'));
-  if (remLastError) { el.className = 'backup-status bad'; el.innerHTML = `Couldn’t update reminders: ${esc(remLastError)}.`; return; }
-  if (!last.at) { el.className = 'backup-status warn'; el.innerHTML = 'Not sent yet — tap <b>Update reminders now</b>.'; return; }
+  if (remLastError) { el.className = 'backup-status bad'; el.innerHTML = `Couldn’t update the bots: ${esc(remLastError)}.`; return; }
+  if (!last.at) { el.className = 'backup-status warn'; el.innerHTML = 'Not sent yet — tap <b>Update bots now</b>.'; return; }
   const d = parseISO(last.at), when = `${DOW[d.getDay()]}, ${fmtDate(last.at)}`;
   el.className = 'backup-status ' + (last.hash === now ? 'ok' : 'warn');
-  el.innerHTML = `Reminders last updated: <b>${esc(when)}</b> (${last.count} birthday${last.count === 1 ? '' : 's'})<br><span>${last.hash === now
-    ? '✓ Includes all your latest changes. You’ll get your Telegram reminder around 9am.'
+  el.innerHTML = `Bots last updated: <b>${esc(when)}</b> (${last.count} client${last.count === 1 ? '' : 's'})<br><span>${last.hash === now
+    ? '✓ Includes all your latest changes.'
     : navigator.onLine ? 'Sending your latest changes…' : 'You’ve made changes — they’ll be sent next time you have internet.'}</span>`;
 }
 function remCard() {
   hooks.push(() => remShow());
   const on = remConfigured();
-  return `<section class="card" id="reminders"><h2>Telegram birthday reminders</h2>
-    <p>Every morning around 9am you get a Telegram message with birthdays today and in the next 7 days, each with a WhatsApp link. Client Book keeps the list up to date by itself whenever you have internet.</p>
+  return `<section class="card" id="reminders"><h2>Telegram bots (Pig &amp; Dog)</h2>
+    <p>Pig answers client look-ups on Telegram and takes notes for you; Dog sends birthday reminders. Client Book keeps their client list up to date by itself whenever you have internet, and brings in notes you sent to Pig each time you open it.</p>
     <p id="rem-status" class="backup-status">Checking…</p>
-    ${on ? `<p class="row-btns"><button class="btn" onclick="remSync('sync', true)">Update reminders now</button>
+    ${on ? `<p class="row-btns"><button class="btn" onclick="remSync('sync', true)">Update bots now</button>
       <button class="btn" onclick="remSync('test', true)">Send a test message</button></p>` : ''}
-    <details${on ? '' : ' open'}><summary class="link">${on ? 'Change reminder link or key' : 'Set up'}</summary>
+    <details${on ? '' : ' open'}><summary class="link">${on ? 'Change bot link or key' : 'Set up'}</summary>
       <form class="form" onsubmit="return saveReminders(event)" autocomplete="off"><div class="grid">
         <label class="wide"><span>Google web app link</span><input name="url" type="url" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(setting('Reminder URL'))}"></label>
         <label><span>Key</span><input name="key" autocapitalize="off" spellcheck="false" value="${esc(setting('Reminder Key'))}"></label>
       </div>
       <div class="actions"><button class="btn primary">Save &amp; send a test</button>${on ? '<button type="button" class="btn danger" onclick="stopReminders()">Turn off</button>' : ''}</div></form>
     </details>
-    <p class="muted small">Only names, nicknames, birthdays, mobile numbers and who are twins are sent to your Google script — never NRIC, addresses, policies or notes.</p>
+    <p class="muted small">Only client IDs, names, nicknames, birthdays, mobile numbers, addresses and who are twins are sent to your Google script — never NRIC, policies, family details or your notes.</p>
   </section>`;
 }
 async function saveReminders(e) {
@@ -3117,15 +3143,15 @@ async function saveReminders(e) {
   setSetting('Reminder URL', url); setSetting('Reminder Key', key); remLastError = '';
   clearTimeout(remTimer);
   await kvSet('rem', {});
-  if (!(await commit('Reminder link saved.', '#/data', 'reminders', true))) return false;
+  if (!(await commit('Bot link saved.', '#/data', 'reminders', true))) return false;
   clearTimeout(remTimer);
   await remSync('test', true);
   return false;
 }
 async function stopReminders() {
-  if (!confirm('Turn off reminders from Client Book? (To stop the 9am messages completely, also delete the trigger in your Google script.)')) return;
+  if (!confirm('Stop sending your client list to the Telegram bots?')) return;
   setSetting('Reminder URL', ''); setSetting('Reminder Key', ''); await kvSet('rem', {});
-  await commit('Reminders turned off in Client Book.', '#/data', 'reminders', true);
+  await commit('Bots disconnected from Client Book.', '#/data', 'reminders', true);
 }
 window.addEventListener('online', () => remSchedule(1500));
 
@@ -3137,7 +3163,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.09e';
+const APP_VERSION = '2026.11.10a';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
@@ -3187,7 +3213,9 @@ function afterRefresh() {
   for (const [sheet, map] of Object.entries(RENAMED)) for (const r of db[KEY[sheet]])
     for (const [o, n] of Object.entries(map)) if (o in r) { if (!r[n]) r[n] = r[o]; delete r[o]; }
   migratePolicies(db);
-  render(); afterRefresh(); remSchedule(3000);
+  render(); afterRefresh();
+  if (remConfigured()) setTimeout(() => remSync('sync', false, true), 3000);   // also picks up notes sent to Pig
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && remConfigured()) remSync('sync', false, true); });
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
