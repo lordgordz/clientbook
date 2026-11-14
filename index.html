@@ -117,6 +117,41 @@ table.list td a { display: block; }
 .dhint { font-size: 13px; color: var(--muted); min-height: 18px; }
 .dhint.bad, .dhint .bad { color: var(--err); }
 .dhint .good { color: var(--ok); }
+/* dividend illustrations */
+.dv-goal { background: #faf6e8; border: 1px solid #ecdfb4; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+.dv-goal .grid { grid-template-columns: minmax(200px, 1fr) 2fr; } @media (max-width: 640px) { .dv-goal .grid { grid-template-columns: 1fr; } }
+.dv-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.dv-seg button { border: 0; background: #fff; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; color: var(--ink); }
+.dv-seg button.on { background: var(--accent); color: #fff; font-weight: 600; }
+.dv-hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.dv-warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 14px; margin: 10px 0 0; }
+.dv-wd { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.dv-wd .r { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; max-width: 420px; }
+.dv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.dv-kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.dv-kpi .l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.dv-kpi .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; } .dv-kpi .s { font-size: 12px; color: var(--muted); }
+.dv-kpi.big { background: var(--accent); border-color: var(--accent); color: #fff; } .dv-kpi.big .l, .dv-kpi.big .s { color: rgba(255,255,255,.75); }
+.dv-bon { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin-top: 10px; } .dv-bon b { color: var(--ink); }
+.dv-nonguar { font-size: 13px; color: var(--warn); margin: 0 0 10px; }
+.dv-chart { position: relative; } .dv-chart svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.dv-tip { position: absolute; top: 4px; transform: translateX(-50%); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); pointer-events: none; white-space: nowrap; display: none; }
+.dv-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin-top: 6px; } .dv-legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+table.dv-tab { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.dv-tab th { text-align: right; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.dv-tab td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.dv-tab th:first-child, table.dv-tab td:first-child { text-align: left; }
+table.dv-tab tr.hl td { background: var(--accent-soft); font-weight: 600; } table.dv-tab tr.short td { color: var(--err); }
+.dv-print { display: none; }
+ul.dv-list { list-style: none; margin: 0; padding: 0; }
+ul.dv-list li a { display: flex; justify-content: space-between; gap: 10px; padding: 10px 4px; border-top: 1px solid var(--line); color: var(--ink); }
+ul.dv-list li:first-child a { border-top: 0; }
+@media print {
+  .dv-form, .dv-actions, .dv-seg-q, .crumb { display: none !important; }
+  .dv-print { display: block; }
+  .dv-kpi.big { background: none; color: var(--ink); border: 2px solid var(--accent); } .dv-kpi.big .l, .dv-kpi.big .s { color: var(--muted); }
+  .dv-out .card { break-inside: avoid; } table.dv-tab tr { break-inside: avoid; }
+}
 .st-grid { columns: 2; column-gap: 14px; }
 .st-grid > .card { break-inside: avoid; display: inline-block; width: 100%; margin: 0 0 14px; padding: 14px 16px; }
 .st-grid > .card h2 { margin-bottom: 8px; }
@@ -412,6 +447,7 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   .filter { width: 160px; }
 }
 @media (max-width: 430px) {
+  .tb-div { display: none !important; }
   .topbar { gap: 6px; } .topbar .btn.ghost { padding-left: 8px; padding-right: 8px; } .topbar .btn.light { padding-left: 10px; padding-right: 10px; }
 }
 </style>
@@ -427,6 +463,7 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   <a class="btn light" href="#/new">+ New</a>
   <a class="btn ghost" href="#/calendar" title="Calendar" aria-label="Calendar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></a>
   <a class="btn ghost" href="#/map" title="Map" aria-label="Map"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg></a>
+  <a class="btn ghost tb-div" href="dividends/" title="Dividend calculator" aria-label="Dividend calculator"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.5-.9-1.6-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2s1.1 1.7 2.8 2.1 2.9.9 2.9 2.1-1.3 2.1-2.9 2.1c-1.3 0-2.4-.5-2.9-1.5M12 6.2v1.6M12 16.2v1.6"/></svg></a>
   <a class="btn ghost" href="#/stats" title="Client insights" aria-label="Client insights"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg></a>
   <a class="btn ghost" href="#/data" title="Backup &amp; data" aria-label="Backup and data">⇅</a>
 </header>
@@ -434,6 +471,7 @@ body.mappage .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 <div id="toast" class="toast" hidden></div>
 <div id="ptr" class="ptr" aria-hidden="true"><span class="ptr-icon">↻</span><span class="ptr-text">Pull to refresh</span></div>
 
+<script src="dividends/engine.js?v=20"></script>
 <script>
 'use strict';
 /* =========================================================================
@@ -451,16 +489,18 @@ const SHEETS = {
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Coverage', 'Status', 'End Date', 'Notes',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
+  'Illustrations': ['ID', 'Client ID', 'Title', 'Plan', 'Product', 'Amount', 'Premium Frequency', 'Dividend Option', 'Lump-sum Product', 'Lump-sum Amount',
+                    'Lump-sum Dividend Option', 'Start Date', 'Age at Start', 'Show Year', 'Withdrawals', 'Goal', 'Goal Details', 'Note ID', 'Created', 'Last Updated'],
   'Settings': ['Key', 'Value'],
   'Added Postal Codes': ['Postal Code', 'Latitude', 'Longitude', 'Block', 'Road', 'Building', 'Added'],
 };
 // Columns that were renamed — older Excel files and saved data are upgraded automatically.
 const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
-              'Interactions': 'interactions', 'Policies': 'policies', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
+              'Interactions': 'interactions', 'Policies': 'policies', 'Illustrations': 'illustrations', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
 const DATE_F = new Set(['Who To Meet', 'Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
-const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value', 'Latitude', 'Longitude']);
+const NUM_F = new Set(['Premium', 'Coverage', 'Premium Term Value', 'Amount', 'Lump-sum Amount', 'Age at Start', 'Show Year', 'Latitude', 'Longitude']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
 const SETTING_KEYS = ['My Name', 'My Title', 'My Company', 'My Phone', 'My Email', 'My Address', 'My Rep No', 'Letter Wording'];
 
@@ -585,7 +625,7 @@ function nextId(rows, prefix) {
 /* =========================================================================
    Storage — kept on this device (IndexedDB, falls back to localStorage)
    ========================================================================= */
-function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
+function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], illustrations: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
 let db = emptyDb();
 let _idb;
 function openIdb() {
@@ -838,6 +878,7 @@ function render() {
     else if (parts[0] === 'new') html = pageForm(null, q.get('link'), q.get('rel'));
     else if (parts[0] === 'c' && parts[2] === 'letter') html = pageLetter(parts[1], q);
     else if (parts[0] === 'c' && parts[2] === 'summary') html = pageSummary(parts[1], q);
+    else if (parts[0] === 'c' && parts[2] === 'div') html = pageDiv(parts[1], parts[3]);
     else if (parts[0] === 'c' && parts[2] === 'p' && parts[3] === 'new') html = pagePolicyForm(parts[1], null);
     else if (parts[0] === 'c' && parts[2] === 'p' && parts[4] === 'edit') html = pagePolicyForm(parts[1], parts[3]);
     else if (parts[0] === 'c' && parts[2] === 'p') html = pagePolicy(parts[1], parts[3]);
@@ -1291,9 +1332,11 @@ function pageProfile(cid) {
 
     <section class="card" id="policies"><div class="row-between"><h2>Policies <small>${pols.length}</small></h2>
         <div class="row-btns">${pols.length || insuredBy.length ? `<a class="btn small" href="#/c/${encodeURIComponent(cid)}/summary">⎙ Print coverage summary</a>` : ''}
+        <a class="btn small" href="#/c/${encodeURIComponent(cid)}/div/new">+ Dividend illustration</a>
         <a class="btn small primary" href="#/c/${encodeURIComponent(cid)}/p/new">+ Add policy</a></div></div>
       ${pols.length ? `<ul class="pols">${pols.map(x => policyRow(x)).join('')}</ul>` : `<p class="none">${insuredBy.length ? 'Doesn’t own any policies.' : 'No policies yet.'}</p>`}
       ${insuredBy.length ? `<h3>Insured under ${insuredBy.length === 1 ? 'a policy' : 'policies'} owned by others</h3><ul class="pols">${insuredBy.map(x => policyRow(x, cid)).join('')}</ul>` : ''}
+      ${divListHtml(cid)}
     </section>
 
     <section class="card danger-zone"><button class="link danger small" data-cid="${id}" onclick="delClient(this)">Delete this client</button></section>
@@ -1383,6 +1426,240 @@ function pageData() {
       <li>Export to Excel regularly and save it to Files or iCloud Drive — that’s your backup if the iPad is lost or reset.</li>
       <li>Works offline once it has been opened once with internet.</li>
     </ul></section>`;
+}
+
+/* =========================================================================
+   Dividend illustrations — new proposals for a client, saved to their profile.
+   All the maths comes from the Dividend calculator (dividends/engine.js), which now lives inside Client Book.
+   ========================================================================= */
+const DV = () => window.DivEngine;
+const DV_GOALS = ['Retirement income', 'Extra income — travel & lifestyle', 'Giving / donations', 'Children’s education', 'Legacy for family', 'Growing savings', 'Other'];
+const DV_SINGLE = ['SP', 'AH', 'FP', 'EP', 'TP', 'SRS'], DV_REG = ['FP', 'EP', 'TP'], DV_LUMP = ['SP', 'AH'];
+const dvMoney = n => (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString('en-US');
+const dvShort = n => { const a = Math.abs(n); return (n < 0 ? '-' : '') + '$' + (a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M' : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a)); };
+const dvPid = name => { const p = DV() && DV().BY_NAME[name]; return p ? p.id : ''; };
+function dvParseWd(t) { return String(t || '').split(/[;\n]/).map(x => /Y?\s*(\d+)\s*[:=]\s*\$?([\d,.]+)/i.exec(x)).filter(Boolean).map(m => ({ year: +m[1], amount: +m[2].replace(/,/g, '') })).filter(w => w.year > 0 && w.amount > 0); }
+const dvWdText = wd => wd.map(w => `Y${w.year}: ${w.amount}`).join('; ');
+function dvAgeAt(c, startIso) { const d = parseISO(c['Date of Birth']); return d ? ageOf(c['Date of Birth'], parseISO(startIso) || today()) : null; }
+function divListHtml(cid) {
+  const list = db.illustrations.filter(x => x['Client ID'] === cid).sort((a, b) => String(b['Last Updated'] || '').localeCompare(String(a['Last Updated'] || '')));
+  if (!list.length) return '';
+  return `<h3>Dividend illustrations <small>${list.length}</small></h3><ul class="dv-list">${list.map(x => {
+    const sub = x.Plan === 'Mixed' ? `${dvMoney(+x.Amount || 0)}/yr + ${dvMoney(+x['Lump-sum Amount'] || 0)} lump sum` : `${dvMoney(+x.Amount || 0)}${DV() && DV().PRODUCTS[dvPid(x.Product)] && DV().PRODUCTS[dvPid(x.Product)].kind === 'regular' ? '/yr' : ''}`;
+    return `<li><a href="#/c/${encodeURIComponent(cid)}/div/${encodeURIComponent(x.ID)}"><span><b>${esc(x.Title || x.Product || 'Illustration')} ›</b><br><span class="small muted">${esc(x.Plan === 'Mixed' ? 'Mixed planning' : x.Product || '')} · ${esc(sub)}</span></span>
+      <span class="small muted nowrap">${esc(fmtDate(String(x['Last Updated'] || x.Created || '').slice(0, 10)))}</span></a></li>`; }).join('')}</ul>`;
+}
+let _dv = null;   // the illustration being edited
+function pageDiv(cid, iid) {
+  const c = getClient(cid); if (!c) return pageNotFound();
+  if (!DV()) return `<section class="card"><h2>Dividend illustration</h2><p class="banner warn">The calculator hasn’t downloaded yet — open Client Book once with internet, then try again.</p></section>`;
+  const saved = iid && iid !== 'new' ? db.illustrations.find(x => x.ID === iid && x['Client ID'] === cid) : null;
+  if (iid && iid !== 'new' && !saved) return pageNotFound();
+  const P = DV().PRODUCTS, start = saved && isISO(saved['Start Date']) ? saved['Start Date'].slice(0, 10) : todayISO();
+  _dv = saved ? { id: saved.ID, plan: saved.Plan === 'Mixed' ? 'Mixed' : 'Single', title: saved.Title || '', product: dvPid(saved.Product) || 'FP', amount: +saved.Amount || 0,
+      freq: saved['Premium Frequency'] || 'Yearly', option: saved['Dividend Option'] || 'Reinvest', lump: dvPid(saved['Lump-sum Product']) || 'SP', lumpAmount: +saved['Lump-sum Amount'] || 0,
+      lumpOption: saved['Lump-sum Dividend Option'] || 'Reinvest', start, age: saved['Age at Start'] != null && saved['Age at Start'] !== '' ? +saved['Age at Start'] : null, show: +saved['Show Year'] || 20, wd: dvParseWd(saved.Withdrawals), q: false, goal: saved.Goal || '', goalNote: saved['Goal Details'] || '' }
+    : { id: null, plan: 'Single', title: '', product: 'FP', amount: 24000, freq: 'Yearly', option: 'Reinvest', lump: 'SP', lumpAmount: 258000, lumpOption: 'Reinvest', start, age: null, show: 20, wd: [], q: false, regAmount: 42000, goal: '', goalNote: '' };
+  _dv.regAmount = saved && _dv.plan === 'Mixed' ? _dv.amount : 42000;
+  if (saved && _dv.plan === 'Mixed') _dv.amount = 24000;
+  const dobAge = dvAgeAt(c, start), me = myDetails();
+  const opt = (ids, v) => ids.map(i => `<option value="${i}"${i === v ? ' selected' : ''}>${esc(P[i].name)}</option>`).join('');
+  const sel = (n, list, v) => `<select name="${n}">${list.map(o => `<option${o === v ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+  hooks.push(() => { dvWire(); dvRender(); });
+  return `<div class="dv-print"><div class="lh-mini"><b>Dividend benefit illustration</b> for <b>${esc(c.Name)}</b>${me.name ? ` · prepared by ${esc(me.name)}${me.phone ? ', ' + esc(me.phone) : ''}` : ''} · ${esc(fmtDate(todayISO()))}</div><p id="dv-psum" class="small muted"></p></div>
+  <section class="card dv-form"><p class="crumb"><a href="#/c/${encodeURIComponent(cid)}">‹ ${esc(c.Name)}</a></p>
+    <div class="row-between"><h2>${saved ? 'Dividend illustration' : 'New dividend illustration'}</h2>
+      <div class="dv-seg" id="dv-plan"><button type="button" data-v="Single">Single product</button><button type="button" data-v="Mixed">Mixed planning</button></div></div>
+    <form class="form" id="dv-form" autocomplete="off" onsubmit="return false">
+    <div class="dv-goal"><div class="grid">
+      <label><span>What’s their main goal?</span><select name="goal"><option value="">Choose…</option>${DV_GOALS.map(g => `<option${g === _dv.goal ? ' selected' : ''}>${esc(g)}</option>`).join('')}${_dv.goal && !DV_GOALS.includes(_dv.goal) ? `<option selected>${esc(_dv.goal)}</option>` : ''}</select></label>
+      <label><span>In their words <em>optional</em></span><input name="goalNote" value="${esc(_dv.goalNote)}" placeholder="e.g. $3,000 a month from age 65 · one big trip a year · give to church" autocapitalize="sentences"></label>
+    </div></div>
+    <div class="grid">
+      <label><span>Name for this illustration <em>optional</em></span><input name="title" value="${esc(_dv.title)}" placeholder="e.g. Retirement plan" autocapitalize="sentences"></label>
+      <label><span>Start date</span><input type="date" name="start" value="${esc(start)}"></label>
+      <label><span>Age at start</span><input type="number" name="age" min="0" max="99" inputmode="numeric" value="${_dv.age != null ? _dv.age : dobAge != null ? dobAge : ''}" ${dobAge != null && _dv.age == null ? 'data-auto="1"' : ''} placeholder="${dobAge == null ? 'No date of birth — type age' : ''}">
+        <small class="dhint" id="dv-agehint">${dobAge != null ? 'From their date of birth' : '<span class="bad">No date of birth in the profile — type their age</span>'}</small></label>
+      <label><span>Show results at year</span><input type="number" name="show" min="1" inputmode="numeric" value="${_dv.show}"></label>
+    </div>
+    <div class="grid" id="dv-single" style="margin-top:14px">
+      <label><span>Product</span><select name="product">${opt(DV_SINGLE, _dv.product)}</select></label>
+      <label><span id="dv-amtlab">Amount</span><input type="number" name="amount" min="0" step="100" inputmode="numeric" value="${_dv.plan === 'Single' ? _dv.amount : 24000}"></label>
+      <label id="dv-freqw"><span>Premium frequency</span>${sel('freq', ['Yearly', 'Semi-Annual', 'Quarterly', 'Monthly'], _dv.freq)}</label>
+      <label><span>Dividend option</span>${sel('option', ['Reinvest', 'Cash out'], _dv.option)}</label>
+    </div>
+    <div class="grid" id="dv-mixed" style="margin-top:14px">
+      <label><span>Regular-pay product</span><select name="reg">${opt(DV_REG, DV_REG.includes(_dv.product) ? _dv.product : 'FP')}</select></label>
+      <label><span>Regular annual premium</span><input type="number" name="regAmount" min="0" step="100" inputmode="numeric" value="${_dv.regAmount}"></label>
+      <label><span>Lump-sum product</span><select name="lump">${opt(DV_LUMP, _dv.lump)}</select></label>
+      <label><span>Lump-sum amount</span><input type="number" name="lumpAmount" min="0" step="1000" inputmode="numeric" value="${_dv.lumpAmount}"></label>
+      <label><span>Dividend option — regular side</span>${sel('regOption', ['Reinvest', 'Cash out'], _dv.option)}</label>
+      <label><span>Dividend option — lump-sum side</span>${sel('lumpOption', ['Reinvest', 'Cash out'], _dv.lumpOption)}</label>
+    </div>
+    <p class="dv-hint" id="dv-info"></p><div class="dv-warn" id="dv-warn" hidden></div>
+    <details style="margin-top:12px"${_dv.wd.length ? ' open' : ''}><summary class="link">Withdrawals <span class="tag" id="dv-wdcount">none</span></summary>
+      <p class="dv-hint" id="dv-wdhint"></p><div class="dv-wd" id="dv-wd"></div>
+      <button type="button" class="btn small" style="margin-top:8px" onclick="dvAddWd()">+ Add a withdrawal</button></details>
+    </form>
+    <div class="actions dv-actions"><button class="btn primary" onclick="dvSave()">${saved ? 'Save changes' : 'Save to ' + esc(c.Nickname || String(c.Name).split(' ')[0])}</button>
+      <button class="btn" onclick="window.print()">⎙ Print / PDF</button>
+      <a class="btn" href="dividends/">Full calculator (Compare, Funds) ›</a>
+      ${saved ? `<button class="btn danger" style="margin-left:auto" onclick="dvDelete()">Delete</button>` : `<a class="btn" href="#/c/${encodeURIComponent(cid)}">Cancel</a>`}</div>
+  </section>
+  <div class="dv-out" id="dv-out"></div>
+  <section class="card"><p class="small muted" style="margin:0"><b>Important:</b> all dividends shown are <b>non-guaranteed</b> and based on projections. Fund price is subject to market fluctuations; for this illustration it is assumed to stay at <b>$1</b> throughout. Figures depend entirely on the inputs above and are for discussion purposes only.</p></section>`;
+}
+function dvWdRow(w = {}) { return `<div class="r"><input type="number" min="1" placeholder="Policy year" inputmode="numeric" data-k="y" value="${w.year || ''}"><input type="number" min="0" placeholder="Amount" inputmode="numeric" data-k="a" value="${w.amount || ''}"><button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); dvRender()">✕</button></div>`; }
+function dvAddWd() { $('#dv-wd').insertAdjacentHTML('beforeend', dvWdRow()); $('#dv-wd').lastElementChild.querySelector('input').focus(); }
+function dvWire() {
+  const f = $('#dv-form'); if (!f) return;
+  $('#dv-wd').innerHTML = _dv.wd.map(dvWdRow).join('');
+  document.querySelectorAll('#dv-plan button').forEach(b => b.onclick = () => { _dv.plan = b.dataset.v; dvRender(); });
+  let t; const go = () => { clearTimeout(t); t = setTimeout(dvRender, 150); };
+  f.addEventListener('input', e => { if (e.target.name === 'age') delete e.target.dataset.auto; go(); });
+  f.addEventListener('change', e => {
+    if (e.target.name === 'start') { const a = f.age; const c = getClient(location.hash.split('/')[2] && decodeURIComponent(location.hash.split('/')[2])); const da = c && dvAgeAt(c, f.start.value); if (a.dataset.auto && da != null) a.value = da; }
+    dvRender();
+  });
+}
+function dvRead() {
+  const f = $('#dv-form'), num = n => parseFloat(f[n].value) || 0;
+  _dv.title = f.title.value.trim(); _dv.start = f.start.value || todayISO(); _dv.goal = f.goal.value; _dv.goalNote = f.goalNote.value.trim();
+  _dv.age = f.age.value === '' ? null : Math.max(0, Math.min(99, parseInt(f.age.value, 10) || 0)); _dv.show = parseInt(f.show.value, 10) || 20;
+  _dv.wd = [...document.querySelectorAll('#dv-wd .r')].map(r => ({ year: parseInt(r.querySelector('[data-k=y]').value, 10), amount: parseFloat(r.querySelector('[data-k=a]').value) })).filter(w => w.year >= 1 && w.amount > 0);
+  if (_dv.plan === 'Single') { _dv.product = f.product.value; _dv.amount = num('amount'); _dv.freq = f.freq.value; _dv.option = f.option.value; }
+  else { _dv.product = f.reg.value; _dv.regAmount = num('regAmount'); _dv.lump = f.lump.value; _dv.lumpAmount = num('lumpAmount'); _dv.option = f.regOption.value; _dv.lumpOption = f.lumpOption.value; }
+}
+function dvChart(series, labels, sel) {
+  const W = 900, H = 320, L = 64, R = 16, T = 14, B = 32, n = labels.length, COLS = ['#1f3a5f', '#c9a227', '#2f7a4d'];
+  let max = 0; series.forEach(s => s.values.forEach(v => { if (v > max) max = v; }));
+  const nice = r => { const p = Math.pow(10, Math.floor(Math.log10(r))), f = r / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
+  const step = nice(max / 5 || 1); max = Math.ceil(max / step) * step || step;
+  const x = i => L + (n < 2 ? 0 : i * (W - L - R) / (n - 1)), y = v => T + (H - T - B) * (1 - v / max);
+  let g = ''; for (let v = 0; v <= max + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#e4e0d8"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="12" fill="#6b7380">${dvShort(v)}</text>`;
+  const every = Math.max(1, Math.ceil(n / 10)); labels.forEach((l, i) => { if (i % every === 0 || i === n - 1) g += `<text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="12" fill="#6b7380">${l}</text>`; });
+  if (sel >= 1 && sel <= n) g += `<line x1="${x(sel - 1)}" x2="${x(sel - 1)}" y1="${T}" y2="${H - B}" stroke="#c9a227" stroke-dasharray="4 4"/>`;
+  const paths = series.map((s, k) => `<path d="${s.values.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join('')}" fill="none" stroke="${COLS[k]}" stroke-width="2.5" stroke-linejoin="round"/>`).join('');
+  return { html: `<div class="dv-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Projection chart">${g}${paths}<line class="cur" y1="${T}" y2="${H - B}" stroke="#1c2430" stroke-width="1" style="display:none"/></svg><div class="dv-tip"></div></div>
+    <div class="dv-legend">${series.map((s, k) => `<span><i style="background:${COLS[k]}"></i>${esc(s.name)}</span>`).join('')}</div>`,
+    wire(el) {
+      const svg = el.querySelector('svg'), tip = el.querySelector('.dv-tip'), cur = el.querySelector('.cur');
+      const move = ev => { const r = svg.getBoundingClientRect(), cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left, px = cx / r.width * W;
+        let i = Math.round((px - L) / ((W - L - R) / Math.max(1, n - 1))); i = Math.max(0, Math.min(n - 1, i));
+        cur.setAttribute('x1', x(i)); cur.setAttribute('x2', x(i)); cur.style.display = ''; tip.style.display = 'block'; tip.style.left = (x(i) / W * r.width) + 'px';
+        tip.innerHTML = `<b>${labels[i]}</b><br>` + series.map(s => `${esc(s.name)}: ${dvMoney(s.values[i])}`).join('<br>'); };
+      svg.addEventListener('mousemove', move); svg.addEventListener('touchstart', move, { passive: true }); svg.addEventListener('touchmove', move, { passive: true });
+      svg.addEventListener('mouseleave', () => { cur.style.display = 'none'; tip.style.display = 'none'; });
+    } };
+}
+function dvRender() {
+  if (!$('#dv-form')) return; dvRead();
+  const E = DV(), P = E.PRODUCTS, d = _dv, mixed = d.plan === 'Mixed';
+  document.querySelectorAll('#dv-plan button').forEach(b => b.classList.toggle('on', b.dataset.v === d.plan));
+  $('#dv-single').style.display = mixed ? 'none' : ''; $('#dv-mixed').style.display = mixed ? '' : 'none';
+  const out = $('#dv-out'), warn = $('#dv-warn'), msgs = [];
+  if (d.age == null) { out.innerHTML = '<section class="card"><p class="muted">Type the client’s age at the start date to see the illustration.</p></section>'; warn.hidden = true; return; }
+  const [sy, sm, sd] = d.start.split('-').map(Number), inv = E.mk(sy, sm, sd), yrs = E.horizon(d.age), sel = Math.min(Math.max(1, d.show), yrs);
+  $('#dv-wdcount').textContent = d.wd.length ? d.wd.length + ' entered' : 'none';
+  const tbl = (cols, rows) => `<div class="table-wrap"><table class="dv-tab"><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr class="${r.cls || ''}">${r.cells.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const kpi = (l, v, s, hero) => `<div class="dv-kpi${hero ? ' big' : ''}"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  const qSeg = `<div class="dv-seg dv-seg-q"><button type="button" data-q="0" class="${d.q ? '' : 'on'}">Yearly</button><button type="button" data-q="1" class="${d.q ? 'on' : ''}">Quarterly</button></div>`;
+  const bonusHtml = b => { const l = []; if (b.welcome > 0) l.push(['Welcome bonus', b.welcome]); if (b.investment > 0) l.push(['Investment bonus', b.investment]); if (b.performance > 0) l.push(['Performance bonus', b.performance]); return l.length ? `<div class="dv-bon">${l.map(x => `<span>${x[0]}: <b>${dvMoney(x[1])}</b></span>`).join('')}</div>` : ''; };
+  let h = '', chart, cols, rows, sum;
+  const dfmt = t => { const p = E.parts(t); return pad(p.d) + ' ' + MON[p.m - 1] + ' ' + p.y; };
+  if (!mixed) {
+    const pid = d.product, p = P[pid], A = d.amount;
+    $('#dv-amtlab').textContent = p.kind === 'regular' ? 'Annual premium' : 'Investment amount';
+    $('#dv-freqw').style.display = (pid === 'FP' || pid === 'EP') ? '' : 'none';
+    $('#dv-info').textContent = (p.kind === 'regular' ? `${+(p.rate * 100).toFixed(2)}% p.a. dividends paid quarterly · ${p.term} years of premium · minimum $${p.min.toLocaleString('en-US')} a year`
+      : `${+(p.rate * 100).toFixed(2)}% p.a. dividends paid quarterly · single payment` + (p.min ? ` · minimum $${p.min.toLocaleString('en-US')}` : '') + (p.admin ? ` · ${p.admin * 100}% admin charge` : ' · no admin charge')) + (p.lock ? ` · capital locked until year ${p.lock}` : '');
+    $('#dv-wdhint').textContent = 'Taken from dividends first, then from capital once the lock-in has passed. Enter the policy year and the amount withdrawn that year.';
+    const m = E.checkMin(pid, A); if (m) msgs.push('⚠ ' + m);
+    const o = { product: pid, amount: A, invDate: inv, freq: (pid === 'FP' || pid === 'EP') ? d.freq : 'Yearly', option: d.option, years: yrs };
+    const base = E.project(o), W = E.projectWithdrawals(o, d.wd), useW = d.wd.length > 0, by = E.yearly(base), wy = E.yearly(W), bs = by[sel - 1], ws = wy[sel - 1];
+    const paid = p.kind === 'lump' ? A : A * Math.min(sel, p.term), totalW = useW ? W.slice(0, sel * 4).reduce((a, b) => a + b.withdrawn, 0) : 0;
+    if (useW && W.some(r => r.shortfall > 0.005)) msgs.push('⚠ Some withdrawals can’t be fully met — they are larger than what’s available (capital stays locked until year ' + p.lock + ').');
+    _dv.result = { year: sel, age: d.age + sel, total: useW ? ws.total : bs.total };
+    h += `<section class="card"><h2>Results at year ${sel} · age ${d.age + sel}</h2><p class="dv-nonguar"><b>Non-guaranteed.</b> Dividends are projections only; fund price assumed to stay at $1.</p><div class="dv-kpis">`
+      + kpi('Total account value', dvMoney(useW ? ws.total : bs.total), d.option === 'Cash out' ? 'dividends paid out in cash are excluded' : '', true)
+      + kpi('Capital paid in', dvMoney(paid), p.admin ? `${dvMoney(A * (1 - p.admin))} invested after ${p.admin * 100}% admin charge` : '')
+      + kpi('Dividends earned to date', dvMoney(bs.cumDiv), d.option === 'Cash out' ? `${dvMoney(bs.cashPaid)} paid out in cash` : 'earned across all quarters')
+      + kpi(useW ? 'Total withdrawn' : 'Bonuses to date', useW ? dvMoney(totalW) : dvMoney(bs.bonus), useW ? '' : 'welcome + investment + performance')
+      + `</div>${bonusHtml(bs)}</section>`;
+    const labels = by.map((_, i) => 'Y' + (i + 1));
+    chart = dvChart(useW ? [{ name: 'Total value (after withdrawals)', values: wy.map(r => r.total) }, { name: 'Capital', values: wy.map(r => r.capital) }, { name: 'Total dividends earned', values: by.map(r => r.cumDiv) }]
+      : [{ name: 'Total account value', values: by.map(r => r.total) }, { name: 'Capital + bonus', values: by.map(r => r.main + r.bonus) }, { name: 'Total dividends earned', values: by.map(r => r.cumDiv) }], labels, sel);
+    if (!d.q) {
+      if (useW) { cols = ['Year', 'Age', 'Capital', 'Dividend account', 'Dividends this year', 'Withdrawn', 'Total value'];
+        rows = wy.map((r, i) => { const yq = W.slice(i * 4, i * 4 + 4), wdn = yq.reduce((a, b) => a + b.withdrawn, 0), sh = yq.reduce((a, b) => a + b.shortfall, 0), dv = yq.reduce((a, b) => a + b.qDiv, 0);
+          return { cls: (i + 1 === sel ? 'hl ' : '') + (sh > 0.005 ? 'short' : ''), cells: [i + 1, d.age + i + 1, dvMoney(r.capital), dvMoney(r.divAcct), dvMoney(dv), wdn ? dvMoney(wdn) + (sh > 0.005 ? ' ⚠' : '') : '–', dvMoney(r.total)] }; }); }
+      else { cols = ['Year', 'Age', 'Main account', 'Bonus account', 'Dividend account', 'Dividends this year', 'Total value'];
+        rows = by.map((r, i) => ({ cls: i + 1 === sel ? 'hl' : '', cells: [i + 1, d.age + i + 1, dvMoney(r.main), dvMoney(r.bonus), dvMoney(r.divAcct), dvMoney(base.slice(i * 4, i * 4 + 4).reduce((a, b) => a + b.qDiv, 0)), dvMoney(r.total)] })); }
+    } else {
+      if (useW) { cols = ['Quarter', 'Pay date', 'Capital', 'Dividend account', 'Quarterly dividend', 'Withdrawn', 'Total value']; rows = W.map(r => ({ cls: r.shortfall > 0.005 ? 'short' : '', cells: ['Y' + r.year + ' Q' + r.qtr, dfmt(r.date), dvMoney(r.capital), dvMoney(r.divAcct), dvMoney(r.qDiv), r.withdrawn ? dvMoney(r.withdrawn) : '–', dvMoney(r.total)] })); }
+      else { cols = ['Quarter', 'Pay date', 'Main account', 'Bonus account', 'Dividend account', 'Quarterly dividend', 'Total value']; rows = base.map(r => ({ cells: ['Y' + r.year + ' Q' + r.qtr, dfmt(r.date), dvMoney(r.main), dvMoney(r.bonus), dvMoney(r.divAcct), dvMoney(r.qDiv), dvMoney(r.total)] })); }
+    }
+    sum = `${p.name} · ${dvMoney(A)}${p.kind === 'regular' ? ' a year' + ((pid === 'FP' || pid === 'EP') && d.freq !== 'Yearly' ? ', paid ' + d.freq.toLowerCase() : '') : ''} · dividends ${d.option === 'Reinvest' ? 'reinvested' : 'paid out in cash'}`;
+  } else {
+    const reg = d.product, lump = d.lump, prem = d.regAmount, la = d.lumpAmount;
+    $('#dv-info').textContent = 'A regular-pay plan paired with a lump-sum policy. Year 1’s premium comes from cash; each later premium is taken from the lump sum (capital first, then dividends).';
+    $('#dv-wdhint').textContent = 'Taken in this order: lump-sum dividends → lump-sum capital → regular-pay dividends → regular-pay capital (only once its lock-in has passed).';
+    const mn = E.checkMin(reg, prem); if (mn) msgs.push('⚠ ' + mn);
+    const R = E.mixed({ regProduct: reg, lumpProduct: lump, regPremium: prem, lumpAmount: la, invDate: inv, regOption: d.option, lumpOption: d.lumpOption, years: yrs }, d.wd);
+    const yr = E.yearly(R), r = yr[sel - 1], short = R.find(x => x.premiumShort > 0.5);
+    if (short) msgs.push(`⚠ The lump-sum side runs out — from Y${short.year} Q${short.qtr} a regular-pay premium can’t be fully funded, so the shortfall must come from cash.`);
+    const bb = E.yearly(E.project({ product: reg, amount: prem, invDate: inv, freq: 'Yearly', option: d.option, years: yrs }))[sel - 1];
+    const totalW = R.slice(0, sel * 4).reduce((a, b) => a + b.withdrawn, 0);
+    _dv.result = { year: sel, age: d.age + sel, total: r.total };
+    h += `<section class="card"><h2>Results at year ${sel} · age ${d.age + sel}</h2><p class="dv-nonguar"><b>Non-guaranteed.</b> Dividends are projections only; fund price assumed to stay at $1.</p><div class="dv-kpis">`
+      + kpi('Combined total value', dvMoney(r.total), 'regular-pay + lump-sum', true)
+      + kpi('Regular-pay plan', dvMoney(r.regTotal), 'incl. ' + dvMoney(r.regDiv) + ' dividends')
+      + kpi('Lump-sum policy', dvMoney(r.lumpTotal), 'capital ' + dvMoney(r.lumpCap) + ' · dividends ' + dvMoney(r.lumpDiv))
+      + kpi(d.wd.length ? 'Withdrawn' : 'Dividends this year', d.wd.length ? dvMoney(totalW) : dvMoney(R.slice(sel * 4 - 4, sel * 4).reduce((a, b) => a + b.qDiv, 0)), d.wd.length ? 'on top of premium funding' : 'both sides combined')
+      + `</div>${bonusHtml(bb)}</section>`;
+    chart = dvChart([{ name: 'Combined total', values: yr.map(x => x.total) }, { name: 'Regular-pay plan', values: yr.map(x => x.regTotal) }, { name: 'Lump-sum policy', values: yr.map(x => x.lumpTotal) }], yr.map((_, i) => 'Y' + (i + 1)), sel);
+    if (!d.q) { cols = ['Year', 'Age', 'Regular: capital', 'Regular: dividends', 'Lump: capital', 'Lump: dividends', 'Withdrawn', 'Combined total'];
+      rows = yr.map((x, i) => { const yq = R.slice(i * 4, i * 4 + 4), w = yq.reduce((a, b) => a + b.withdrawn, 0), sh = yq.some(z => z.shortfall > 0.005 || z.premiumShort > 0.5);
+        return { cls: (i + 1 === sel ? 'hl ' : '') + (sh ? 'short' : ''), cells: [i + 1, d.age + i + 1, dvMoney(x.regMain), dvMoney(x.regDiv), dvMoney(x.lumpCap), dvMoney(x.lumpDiv), w > 0 ? dvMoney(w) : '–', dvMoney(x.total)] }; }); }
+    else { cols = ['Quarter', 'Pay date', 'Regular: capital', 'Regular: dividends', 'Lump: capital', 'Lump: dividends', 'Withdrawn', 'Combined total'];
+      rows = R.map(x => ({ cls: x.premiumShort > 0.5 ? 'short' : '', cells: ['Y' + x.year + ' Q' + x.qtr, dfmt(x.date), dvMoney(x.regMain), dvMoney(x.regDiv), dvMoney(x.lumpCap), dvMoney(x.lumpDiv), x.withdrawn > 0 ? dvMoney(x.withdrawn) : '–', dvMoney(x.total)] })); }
+    sum = `Mixed planning · ${P[reg].name} ${dvMoney(prem)} a year + ${P[lump].name} ${dvMoney(la)} lump sum`;
+  }
+  if (d.wd.length) sum += ' · withdrawals: ' + d.wd.map(w => `year ${w.year} ${dvMoney(w.amount)}`).join(', ');
+  warn.hidden = !msgs.length; warn.innerHTML = msgs.map(esc).join('<br>');
+  h += `<section class="card"><h2>Growth over time</h2>${chart.html}</section>
+    <section class="card"><div class="row-between"><h2>Year by year</h2>${qSeg}</div>${tbl(cols, rows)}</section>`;
+  out.innerHTML = h; chart.wire(out.querySelector('.dv-chart'));
+  out.querySelectorAll('.dv-seg-q button').forEach(b => b.onclick = () => { _dv.q = b.dataset.q === '1'; dvRender(); });
+  _dv.sum = sum;
+  $('#dv-psum').textContent = `${d.goal ? 'Main goal: ' + d.goal + (d.goalNote ? ` (“${d.goalNote}”)` : '') + ' · ' : ''}${sum} · starting ${fmtDate(d.start)} at age ${d.age}`;
+}
+async function dvSave() {
+  dvRead(); const cid = decodeURIComponent(location.hash.split('/')[2]), c = getClient(cid), d = _dv, P = DV().PRODUCTS; if (!c) return;
+  if (d.age == null) { toast('Type the client’s age at the start date first.', 'error'); return; }
+  if (!d.goal) { const g = $('#dv-form').goal; g.focus(); g.scrollIntoView({ block: 'center' }); toast('Choose their main goal first — it’s saved with the discussion note.', 'error'); return; }
+  const dobAge = dvAgeAt(c, d.start), mixed = d.plan === 'Mixed';
+  const row = { 'Client ID': cid, Title: d.title, Plan: mixed ? 'Mixed' : 'Single', Product: P[d.product].name, Amount: mixed ? d.regAmount : d.amount,
+    'Premium Frequency': !mixed && (d.product === 'FP' || d.product === 'EP') ? d.freq : 'Yearly', 'Dividend Option': d.option,
+    'Lump-sum Product': mixed ? P[d.lump].name : '', 'Lump-sum Amount': mixed ? d.lumpAmount : null, 'Lump-sum Dividend Option': mixed ? d.lumpOption : '',
+    'Start Date': d.start, 'Age at Start': dobAge === d.age ? null : d.age, 'Show Year': d.show, Withdrawals: dvWdText(d.wd), Goal: d.goal, 'Goal Details': d.goalNote, 'Last Updated': nowStamp() };
+  let x = d.id && db.illustrations.find(r => r.ID === d.id);
+  if (x) Object.assign(x, row); else { x = { ID: nextId(db.illustrations, 'D'), Created: nowStamp(), ...row }; db.illustrations.push(x); d.id = x.ID; }
+  // the discussion is also kept as a note on the client (updated, not duplicated, when the illustration is changed)
+  const r = d.result || {}, text = `💬 Discussed dividend illustration${d.title ? ` “${d.title}”` : ''}.\n`
+    + `Main goal: ${d.goal}${d.goalNote ? ` (“${d.goalNote}”)` : ''}\n`
+    + `Plan: ${d.sum || ''}\nStarting ${fmtDate(d.start)} at age ${d.age}.`
+    + (r.total != null ? `\nProjected total value at year ${r.year} (age ${r.age}): ${dvMoney(r.total)} — non-guaranteed.` : '');
+  let note = x['Note ID'] && db.notes.find(n => n.ID === x['Note ID'] && n['Client ID'] === cid);
+  const had = !!note;
+  if (note) note.Note = text; else { note = { ID: nextId(db.notes, 'N'), 'Client ID': cid, Added: nowStamp(), Note: text }; db.notes.push(note); x['Note ID'] = note.ID; }
+  touch(c);
+  await commit(had ? 'Illustration and its note updated.' : 'Illustration saved, and a note added to ' + c.Name + '’s notes.', `#/c/${encodeURIComponent(cid)}/div/${encodeURIComponent(x.ID)}`, null, true);
+}
+async function dvDelete() {
+  const cid = decodeURIComponent(location.hash.split('/')[2]); if (!confirm('Delete this illustration? The note about the discussion stays in their notes.')) return;
+  db.illustrations = db.illustrations.filter(r => r.ID !== _dv.id);
+  await commit('Illustration deleted.', `#/c/${encodeURIComponent(cid)}`, 'policies', true);
 }
 
 function pageNotFound() { return `<section class="card"><h2>Not found</h2><p class="muted">That client doesn’t exist (they may have been deleted).</p><a class="btn" href="#/">Home</a></section>`; }
@@ -2772,7 +3049,7 @@ async function delClient(btn) {
   if (!confirm(`Delete ${c.Name} and all their notes, policies and family links?`)) return;
   db.clients = db.clients.filter(x => x.ID !== cid);
   db.family = db.family.filter(f => f['Client ID'] !== cid && f['Related ID'] !== cid);
-  for (const k of ['extras', 'notes', 'interactions', 'policies']) db[k] = db[k].filter(r => r['Client ID'] !== cid);
+  for (const k of ['extras', 'notes', 'interactions', 'policies', 'illustrations']) db[k] = db[k].filter(r => r['Client ID'] !== cid);
   await commit(`Deleted ${c.Name}.`, '#/', null, true);
 }
 async function eraseAll() {
@@ -2995,7 +3272,7 @@ function bookToDb(book) {
   nd.clients = nd.clients.filter(c => c.Name);
   moveNicknames(nd); migratePolicies(nd);
   for (const c of nd.clients) if (!c.ID) c.ID = nextId(nd.clients, 'C');
-  for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
+  for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P'], ['illustrations', 'D']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
   return nd;
 }
 async function importExcel(input) {
@@ -3175,7 +3452,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.14';
+const APP_VERSION = '2026.11.14d';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;

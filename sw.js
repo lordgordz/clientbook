@@ -1,7 +1,7 @@
 // Lets Client Book open with no internet once it has been loaded once.
 // Your client data is NOT here — it lives in the iPad's own storage.
-const CACHE = 'clientbook-v2';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './data/postal.txt', './data/map.json'];
+const CACHE = 'clientbook-v3';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './data/postal.txt', './data/map.json', './dividends/', './dividends/index.html', './dividends/engine.js', './dividends/app.js', './dividends/funds.js', './dividends/styles.css'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
