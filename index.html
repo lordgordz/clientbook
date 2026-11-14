@@ -80,6 +80,7 @@ h1 .nick { font-size: 20px; }
 .toast.warn { background: var(--warn-soft); color: var(--warn); border: 1px solid #ecd9a5; }
 .toast.error { background: var(--err); color: #fff; }
 .banner { background: var(--accent-soft); padding: 12px 14px; border-radius: 10px; margin: 0 0 12px; }
+.banner.err { background: var(--err-soft); color: var(--err); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; } .banner.err b, .banner.warn.dup-warn b { color: inherit; }
 .banner.warn { background: var(--warn-soft); color: var(--warn); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 
 /* dashboard */
@@ -1051,13 +1052,24 @@ function findDuplicate(d, ownId) {
 }
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 function dupMessage(dup) { return `Looks like ${dup.c.Name} is already in your book — same ${andList(dup.m)}.`; }
+// Layer 1: an NRIC can only belong to one client — any exact match is flagged straight away.
+const normNric = v => String(v || '').toUpperCase().replace(/\s+/g, '');
+function nricOwner(nric, ownId) { nric = normNric(nric); return nric ? db.clients.find(c => c.ID !== ownId && normNric(c.NRIC) === nric) || null : null; }
+const dupWho = c => [ageOf(c['Date of Birth']) != null ? 'age ' + ageOf(c['Date of Birth']) : '', c.Phone || ''].filter(Boolean).join(' · ');
 function checkDupLive() {
   const form = document.querySelector('form[data-cid]'), box = document.getElementById('dup-warn'); if (!form || !box) return;
-  const g = n => (form.querySelector(`[name=${n}]`) || {}).value || '';
-  const dup = findDuplicate({ Name: g('name'), NRIC: g('nric').toUpperCase().replace(/\s+/g, ''), 'Date of Birth': parseTyped(g('date_of_birth')) || '' }, form.dataset.cid || null);
-  box.hidden = !dup;
-  if (dup) box.innerHTML = `<b>${esc(dupMessage(dup))}</b> You can’t add the same person twice. <a href="#/c/${encodeURIComponent(dup.c.ID)}">Open ${esc(dup.c.Name)}’s profile ›</a>`;
-  return dup;
+  const g = n => (form.querySelector(`[name=${n}]`) || {}).value || '', own = form.dataset.cid || null;
+  const open = c => `<a href="#/c/${encodeURIComponent(c.ID)}">Open ${esc(c.Name)}’s profile ›</a>`;
+  const owner = nricOwner(g('nric'), own);
+  if (owner) {   // layer 1
+    box.hidden = false; box.className = 'banner err dup-warn';
+    box.innerHTML = `<span><b>⛔ This NRIC already belongs to ${esc(owner.Name)}</b>${dupWho(owner) ? ` (${esc(dupWho(owner))})` : ''}. An NRIC can only belong to one client, so this can’t be saved.</span> ${open(owner)}`;
+    return { c: owner, m: ['NRIC'], layer: 1 };
+  }
+  const dup = findDuplicate({ Name: g('name'), NRIC: normNric(g('nric')), 'Date of Birth': parseTyped(g('date_of_birth')) || '' }, own);   // layer 2
+  box.hidden = !dup; box.className = 'banner warn dup-warn';
+  if (dup) box.innerHTML = `<span><b>⚠ Looks like ${esc(dup.c.Name)} is already in your book</b>${dupWho(dup.c) ? ` (${esc(dupWho(dup.c))})` : ''} — same ${esc(andList(dup.m))}. You can’t add the same person twice.</span> ${open(dup.c)}`;
+  return dup ? { ...dup, layer: 2 } : null;
 }
 document.addEventListener('input', e => { if (e.target.closest && e.target.closest('form[data-cid]') && ['name', 'nric', 'date_of_birth'].includes(e.target.name)) checkDupLive(); });
 document.addEventListener('focusout', e => { if (e.target.name === 'date_of_birth' && e.target.closest('form[data-cid]')) setTimeout(checkDupLive, 0); });
@@ -1170,8 +1182,8 @@ async function saveClient(e) {
   }
   if (data.NRIC) {
     if (data.NRIC.length === 9 && !/^[STFGM]\d{7}[A-Z]$/.test(data.NRIC)) warn.push(`NRIC “${data.NRIC}” doesn’t look like a standard NRIC/FIN — saved anyway.`);
-    const dup = db.clients.find(c => c.ID !== cid && String(c.NRIC || '').toUpperCase() === data.NRIC);
-    if (dup) { toast(`That NRIC already belongs to ${dup.Name} (${dup.ID}).`, 'error'); return false; }
+    const dup = nricOwner(data.NRIC, cid);
+    if (dup) { checkDupLive(); document.getElementById('dup-warn').scrollIntoView({ block: 'center' }); toast(`That NRIC already belongs to ${dup.Name}. Not saved.`, 'error'); return false; }
   }
   const dupe = findDuplicate(data, cid || null);
   if (dupe) { checkDupLive(); document.getElementById('dup-warn').scrollIntoView({ block: 'center' }); toast(dupMessage(dupe) + ' Not saved.', 'error'); return false; }
@@ -3163,7 +3175,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.10a';
+const APP_VERSION = '2026.11.14';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
