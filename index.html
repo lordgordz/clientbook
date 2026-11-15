@@ -3284,7 +3284,13 @@ async function importExcel(input) {
     if (!confirm(msg)) return;
     if (db.clients.length) await kvSet('prev', JSON.parse(JSON.stringify(db)));
     nd.meta = { lastExport: nowStamp(), lastChange: null };
-    db = nd; await commit(`Imported ${db.clients.length} clients.`, '#/', null, true);
+    // The Telegram bot link never comes in from a file: each device is connected on purpose.
+    // A device that is already connected stays connected; one that isn't stays disconnected.
+    const BOT = ['Reminder URL', 'Reminder Key'], fileHadBot = nd.settings.some(r => BOT.includes(r.Key) && String(r.Value || '').trim());
+    nd.settings = nd.settings.filter(r => !BOT.includes(r.Key)).concat((db.settings || []).filter(r => BOT.includes(r.Key)));
+    db = nd;
+    const botNote = fileHadBot && !remConfigured() ? ' The Telegram bot link wasn’t copied — connect this device in Backup & data only if it’s your main book.' : '';
+    await commit(`Imported ${db.clients.length} clients.${botNote}`, '#/', null, true, botNote ? 'warn' : 'ok');
   } catch (e) { console.error(e); toast('Import failed: ' + e.message, 'error'); }
 }
 async function undoImport() {
@@ -3452,7 +3458,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.14d';
+const APP_VERSION = '2026.11.15';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
