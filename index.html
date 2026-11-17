@@ -519,10 +519,13 @@ const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']
 const POLICY_STATUS = ['In force', 'Lapsed', 'Surrendered', 'Matured', 'Claimed', 'Terminated'];
 const POLICY_TYPES = ['Whole life', 'Term', 'Investment-linked (ILP)', 'Endowment', 'Accident & health', 'Disability care', 'Universal life'];
 const BENEFIT_TYPES = ['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)',
-  'Accidental Death (AD)', 'Accident Medical', 'Disability Income (DI)', 'Long-Term Care (LTC)', 'Hospitalisation', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Other'];
+  'Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Disability Income (DI)',
+  'Long-Term Care (LTC)', 'Hospitalisation Expenses', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Other'];
 const OLD_BENEFIT = { 'Total & permanent disability': 'Total Permanent Disability (TPD)', 'Terminal illness': 'Terminal Illness (TI)', 'Early critical illness': 'Early Critical Illness (ECI)',
-  'Critical illness': 'Critical Illness (CI)', 'Accidental death': 'Accidental Death (AD)', 'Accident medical': 'Accident Medical', 'Disability income': 'Disability Income (DI)',
-  'Long-term care': 'Long-Term Care (LTC)', 'Hospital cash': 'Hospital Cash', 'Savings / maturity': 'Savings / Maturity', 'Waiver of premium': 'Waiver of Premium (WOP)' };
+  'Critical illness': 'Critical Illness (CI)', 'Accidental death': 'Accidental Death (Acc Death)', 'Accidental Death (AD)': 'Accidental Death (Acc Death)',
+  'Accident medical': 'Accidental Medical Reimbursement (Acc MR)', 'Accident Medical': 'Accidental Medical Reimbursement (Acc MR)', 'Disability income': 'Disability Income (DI)',
+  'Long-term care': 'Long-Term Care (LTC)', 'Hospitalisation': 'Hospitalisation Expenses', 'Hospital cash': 'Hospital Cash', 'Savings / maturity': 'Savings / Maturity',
+  'Waiver of premium': 'Waiver of Premium (WOP)' };
 const NO_TOTALS = new Set(['Accident & health']);   // these don't show premiums paid
 const FREQUENCIES = ['Single premium', 'Annual', 'Semi-annual', 'Quarterly', 'Monthly'];
 const FREQ_MONTHS = { 'Annual': 12, 'Semi-annual': 6, 'Quarterly': 3, 'Monthly': 1 };
