@@ -197,13 +197,14 @@ textarea { resize: vertical; }
 input:disabled, select:disabled { background: #f1efe9; color: var(--muted); -webkit-text-fill-color: var(--muted); opacity: 1; }
 input:focus, select:focus, textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent-2); }
 .actions { display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); margin-top: 10px; }
-.benefit-row { display: grid; grid-template-columns: 1.3fr 1.2fr 1fr 1.3fr auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.benefit-row { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr 1.1fr 1.1fr auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px dashed var(--line); }
 .benefit-row label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .benefit-row label span { font-size: 13px; }
 #benefits { margin-bottom: 12px; }
 table.ben .good { color: var(--ok); font-weight: 600; } table.ben .bad { color: var(--err); font-weight: 600; }
 table.ben { width: 100%; border-collapse: collapse; } table.ben .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-@media (max-width: 760px) { .benefit-row { grid-template-columns: 1fr 1fr auto; } .benefit-row label:nth-child(3), .benefit-row .bn { grid-column: span 1; } .benefit-row .icon { grid-row: 1; grid-column: 3; } }
+@media (max-width: 760px) { .benefit-row { grid-template-columns: 1fr 1fr auto; } .benefit-row label:nth-child(3), .benefit-row .bn { grid-column: span 1; } .benefit-row .icon { grid-row: 1; grid-column: 3; } .benefit-row .termbox { grid-template-columns: minmax(0, 1fr) 64px; } }
+.benefit-row .termbox { grid-template-columns: minmax(0, 1fr) 64px; }
 .extra-row { display: grid; grid-template-columns: 220px 1fr auto; gap: 10px; margin-bottom: 10px; align-items: start; }
 .inline-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .inline-form input, .inline-form select { width: auto; }
@@ -338,6 +339,42 @@ ul.pols li a:active { background: var(--accent-soft); }
 .sheet .kpis span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #555; }
 .sheet .kpis b { font-size: 20px; color: #1f3a5f; }
 .sheet h2.sec { font-size: 15px; margin: 22px 0 4px; color: #1f3a5f; }
+/* ---- policy summary (landscape) ---- */
+.sheet.psum { max-width: 1180px; padding: 28px 32px; font: 11.5px/1.4 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin-bottom: 18px; overflow-x: auto; }
+.psum .lh { margin-bottom: 12px; padding-bottom: 8px; }
+.psum h1 { font-size: 20px; margin: 0 0 8px; color: #1f3a5f; }
+.psum table { margin: 0; font: inherit; }
+.psum td, .psum th { vertical-align: middle; }
+.psum .ps-top { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr); gap: 16px; align-items: start; margin-bottom: 12px; }
+.psum .ov { margin-bottom: 8px; }
+.psum .ov th { background: #1f3a5f; color: #fff; border: 0; font-size: 10px; padding: 5px 8px; text-transform: uppercase; letter-spacing: .04em; }
+.psum .ov td { padding: 5px 8px; border-bottom: 1px solid #e3e3e3; height: 26px; }
+.psum .ov td.l { font-weight: 600; white-space: nowrap; border-left: 4px solid #999; }
+.psum .ov tr.prot td.l { border-left-color: #2f5d8f; } .psum .ov tr.ah td.l { border-left-color: #c9802a; } .psum .ov tr.inv td.l { border-left-color: #2f7a4d; }
+.psum .ov.cov td.n { width: 1%; padding-right: 16px; }
+.psum .ov td.br { color: #444; font-size: 11px; }
+.psum .pd { border: 1px solid #1f3a5f; }
+.psum .pd .h { background: #1f3a5f; color: #fff; font-weight: 700; padding: 5px 10px; letter-spacing: .04em; font-size: 10px; }
+.psum .pd td { padding: 5px 10px; border-bottom: 1px solid #eee; height: 26px; } .psum .pd td:first-child { color: #555; width: 45%; } .psum .pd td:last-child { font-weight: 600; }
+.psum .psec { margin-top: 12px; break-inside: auto; }
+.psum .psec th.bar { border: 0; text-transform: uppercase; color: #fff; font-weight: 700; text-align: center; padding: 5px; letter-spacing: .05em; font-size: 10.5px; }
+.psum .psec.prot th.bar { background: #2f5d8f; } .psum .psec.ah th.bar { background: #c9802a; } .psum .psec.inv th.bar { background: #2f7a4d; }
+.psum .psec table { border: 1px solid #c8ced8; table-layout: auto; }
+.psum .psec th { background: #eef2f7; color: #1f3a5f; font-size: 9.5px; padding: 5px; border: 1px solid #c8ced8; text-align: center; text-transform: none; letter-spacing: 0; }
+.psum .psec.ah th { background: #fbf1e3; } .psum .psec.inv th { background: #e8f3ec; }
+.psum .psec td { border: 1px solid #d6dbe3; padding: 5px 6px; text-align: center; }
+.psum .psec td.pol { text-align: left; width: 22%; min-width: 210px; }
+.psum .psec.inv td.pol { width: 30%; } .psum .psec td.pol b { display: block; } .psum .psec td.pol span { display: block; color: #555; font-size: 10px; }
+.psum .psec td.pol .st { color: #a33a2b; font-weight: 600; }
+.psum .psec td.rem { text-align: left; font-size: 10px; color: #333; min-width: 140px; }
+.psum .t { display: block; font-size: 9.5px; color: #555; white-space: nowrap; } .psum .t2 { display: block; font-size: 10px; } .psum .t1 { font-size: 9.5px; color: #555; }
+.psum .ob { display: block; white-space: nowrap; } .psum td.nw { white-space: nowrap; }
+.psum .tag { font-size: 8.5px; padding: 0 4px; border-radius: 3px; background: #e7edf6; color: #1f3a5f; font-weight: 700; }
+.psum .psec tr.tot td { font-weight: 700; background: #f6f7f9; border-top: 1.5px solid #8a96a8; }
+.psum .none { color: #aaa; }
+.psum .foot { margin-top: 12px; font-size: 9.5px; text-align: center; }
+@media print { .sheet.psum { padding: 0; max-width: none; overflow: visible; break-after: page; } .sheet.psum:last-child { break-after: auto; } .psum .psec tr { break-inside: avoid; } }
+@media (max-width: 760px) { .psum .ps-top { grid-template-columns: 1fr; } }
 .sheet .muted { color: #666; }
 /* ---- map ---- */
 body.mappage .wrap { max-width: none; padding: 0; }
@@ -494,9 +531,9 @@ const SHEETS = {
   'Notes': ['ID', 'Client ID', 'Added', 'Note'],
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
-               'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Status', 'End Date', 'Notes',
+               'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Paid By', 'Cash Portion', 'Status', 'End Date', 'Notes',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
-  'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Notes'],
+  'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Cover Term', 'Cover Term Value', 'Notes'],
   'Surrender Values': ['ID', 'Policy ID', 'As Of', 'Surrender Value', 'Recorded'],
   'Illustrations': ['ID', 'Client ID', 'Title', 'Plan', 'Product', 'Amount', 'Premium Frequency', 'Dividend Option', 'Lump-sum Product', 'Lump-sum Amount',
                     'Lump-sum Dividend Option', 'Start Date', 'Age at Start', 'Show Year', 'Withdrawals', 'Goal', 'Goal Details', 'Note ID', 'Created', 'Last Updated'],
@@ -509,7 +546,7 @@ const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras
               'Interactions': 'interactions', 'Policies': 'policies', 'Benefits': 'benefits', 'Surrender Values': 'surrender', 'Illustrations': 'illustrations', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
 const DATE_F = new Set(['Who To Meet', 'Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date', 'As Of']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added', 'Recorded']);
-const NUM_F = new Set(['Premium', 'Coverage', 'Coverage Amount', 'Surrender Value', 'Premium Term Value', 'Amount', 'Lump-sum Amount', 'Age at Start', 'Show Year', 'Latitude', 'Longitude']);
+const NUM_F = new Set(['Premium', 'Coverage', 'Coverage Amount', 'Cover Term Value', 'Cash Portion', 'Surrender Value', 'Premium Term Value', 'Amount', 'Lump-sum Amount', 'Age at Start', 'Show Year', 'Latitude', 'Longitude']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
 const SETTING_KEYS = ['My Name', 'My Title', 'My Company', 'My Phone', 'My Email', 'My Address', 'My Rep No', 'Letter Wording'];
 
@@ -528,6 +565,11 @@ const OLD_BENEFIT = { 'Total & permanent disability': 'Total Permanent Disabilit
   'Accident medical': 'Accidental Medical Reimbursement (Acc MR)', 'Accident Medical': 'Accidental Medical Reimbursement (Acc MR)', 'Disability income': 'Disability Income (DI)',
   'Long-term care': 'Long-Term Care (LTC)', 'Hospitalisation': 'Hospitalisation Expenses', 'Hospital cash': 'Hospital Cash', 'Savings / maturity': 'Savings / Maturity',
   'Waiver of premium': 'Waiver of Premium (WOP)' };
+const PAID_BY = ['Cash', 'CPF', 'MediSave', 'SRS', 'MediSave + cash'];
+const COVER_TERMS = [['Till age', 'Till age'], ['Years', 'Number of years'], ['Whole life', 'Whole life']];
+// Coverage summary groups: a policy with any of these is "protection"; else with any accident/hospital benefit it is "accident & hospital"; else "investment".
+const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)', 'Waiver of Premium (WOP)', 'Disability Income (DI)', 'Long-Term Care (LTC)']);
+const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash']);
 const NO_TOTALS = new Set(['Accident & health']);   // these don't show premiums paid
 const FREQUENCIES = ['Single premium', 'Annual', 'Semi-annual', 'Quarterly', 'Monthly'];
 const FREQ_MONTHS = { 'Annual': 12, 'Semi-annual': 6, 'Quarterly': 3, 'Monthly': 1 };
@@ -1947,6 +1989,8 @@ const POLICY_SECTIONS = [
     { label: 'Premium', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 250' },
     { label: 'Premium Frequency', show: 'Premium frequency', type: 'select', options: FREQUENCIES },
     { custom: 'term' },
+    { label: 'Paid By', show: 'Paid by', type: 'select', options: PAID_BY },
+    { label: 'Cash Portion', show: 'Of which paid in cash', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 1,089.60 — the rest is MediSave' },
   ]],
   ['Status', [
     { label: 'Status', type: 'select', options: POLICY_STATUS },
@@ -1968,7 +2012,7 @@ const POLICY_FIELDS = POLICY_SECTIONS.flatMap(([, fs]) => fs.filter(f => f.label
 
 function pagePolicyForm(cid, pid) {
   const c = getClient(cid); if (!c) return pageNotFound();
-  const editing = !!pid, p = editing ? db.policies.find(x => x.ID === pid && x['Client ID'] === cid) : { Status: 'In force', 'Insured ID': cid };
+  const editing = !!pid, p = editing ? db.policies.find(x => x.ID === pid && x['Client ID'] === cid) : { Status: 'In force', 'Insured ID': cid, 'Paid By': 'Cash' };
   if (!p) return pageNotFound();
   const sugg = suggestions(), fam = familyOf(cid);
   const custom = f => {
@@ -2013,7 +2057,9 @@ function benefitRow(b = {}) {
     <label><span>Benefit name</span><input name="b_name" value="${esc(b['Benefit Name'] || '')}" placeholder="e.g. Sum assured" list="benefit_names" autocapitalize="words"></label>
     <label><span>Benefit type</span><select name="b_type"><option value="">—</option>${opts.map(o => `<option${o === t ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>
     <label><span>Coverage amount</span><input name="b_amt" value="${esc(b['Coverage Amount'] == null ? '' : typeof b['Coverage Amount'] === 'number' ? b['Coverage Amount'].toLocaleString('en-US') : b['Coverage Amount'])}" placeholder="e.g. 500,000" inputmode="decimal"></label>
-    <label class="bn"><span>Notes <em>optional</em></span><input name="b_notes" value="${esc(b.Notes || '')}" placeholder="e.g. till age 70, multipay"></label>
+    <label><span>Covered till</span><div class="termbox"><select name="b_term" onchange="this.nextElementSibling.style.visibility = this.value === 'Till age' || this.value === 'Years' ? 'visible' : 'hidden'; this.nextElementSibling.placeholder = this.value === 'Years' ? 'years' : 'age'"><option value="">—</option>${COVER_TERMS.map(([v, t]) => `<option value="${v}"${b['Cover Term'] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
+      <input name="b_termv" inputmode="numeric" placeholder="${b['Cover Term'] === 'Years' ? 'years' : 'age'}" value="${esc(b['Cover Term Value'] ?? '')}" style="visibility:${b['Cover Term'] === 'Till age' || b['Cover Term'] === 'Years' ? 'visible' : 'hidden'}"></div></label>
+    <label class="bn"><span>Notes <em>optional</em></span><input name="b_notes" value="${esc(b.Notes || '')}" placeholder="e.g. multipay, per accident"></label>
     <button type="button" class="icon" title="Remove benefit" onclick="this.parentNode.remove()">✕</button></div>`;
 }
 function addBenefitRow() { const w = $('#benefits'); w.insertAdjacentHTML('beforeend', benefitRow()); w.lastElementChild.querySelector('input').focus(); }
@@ -2039,6 +2085,9 @@ function wirePolicyForm() {
     hint.textContent = h;
   };
   [freq, term, val, ins].forEach(el => el.addEventListener('input', update));
+  const pb = form.querySelector('[name=paid_by]'), cp = form.querySelector('[name=cash_portion]');
+  const pbUpd = () => { cp.closest('label').style.display = pb.value === 'MediSave + cash' ? '' : 'none'; };
+  pb.addEventListener('input', pbUpd); pbUpd();
   form.querySelector('[name=date_bought]').addEventListener('focusout', update);
   update();
   // Picking a known agent fills in their code and contact
@@ -2068,7 +2117,7 @@ async function savePolicy(e) {
       if (!iso) { const el = form.querySelector(`[name="${slug(label)}"]`); checkDate(el); el.focus(); toast(`${label}: type the date as DD/MM/YYYY.`, 'error'); return false; }
       v = iso;
     }
-    if ((label === 'Premium' || label === 'Coverage') && v) {
+    if ((label === 'Premium' || label === 'Coverage' || label === 'Cash Portion') && v) {
       const n = parseFloat(v.replace(/[,$\s]/g, ''));
       if (isNaN(n)) { form.querySelector(`[name="${slug(label)}"]`).focus(); toast(`${label}: enter a number, e.g. 250.`, 'error'); return false; }
       v = n;
@@ -2086,12 +2135,15 @@ async function savePolicy(e) {
   const bens = [];
   for (const row of form.querySelectorAll('.benefit-row')) {
     const v = k => row.querySelector(`[name=${k}]`).value.trim(), name = v('b_name'), type = v('b_type'), notes = v('b_notes'), raw = v('b_amt');
+    const term = v('b_term'), tv = parseInt(v('b_termv'), 10);
     if (!name && !type && !raw && !notes) continue;
+    if ((term === 'Till age' || term === 'Years') && !(tv > 0 && tv <= 120)) { row.querySelector('[name=b_termv]').focus(); toast(term === 'Years' ? 'Covered till: enter the number of years, e.g. 20.' : 'Covered till: enter the age, e.g. 75.', 'error'); return false; }
     let amt = null;
     if (raw) { const n = parseFloat(raw.replace(/[,$\s]/g, '')); amt = /^[$\d,.\s]+$/.test(raw) && !isNaN(n) ? n : raw; }
-    bens.push({ 'Benefit Name': name || type || 'Benefit', 'Benefit Type': type, 'Coverage Amount': amt, Notes: notes });
+    bens.push({ 'Benefit Name': name || type || 'Benefit', 'Benefit Type': type, 'Coverage Amount': amt, 'Cover Term': term, 'Cover Term Value': term === 'Till age' || term === 'Years' ? tv : null, Notes: notes });
   }
   out['Insured ID'] = g('insured_id') || cid;
+  if (out['Paid By'] !== 'MediSave + cash') out['Cash Portion'] = null;
   const single = out['Premium Frequency'] === 'Single premium';
   out['Premium Term'] = single ? '' : g('premium_term');
   const tv = g('premium_term_value');
@@ -2250,63 +2302,147 @@ async function logLetter(btn) {
 }
 
 // ---- coverage summary ----
+// ---- policy summary: protection / accident & hospital / investments, one page per insured person ----
+function polGroup(p) {
+  const ts = benefitsOf(p.ID).map(b => b['Benefit Type']);
+  if (ts.some(t => PROT_BEN.has(t))) return 'prot';
+  if (ts.some(t => AH_BEN.has(t))) return 'ah';
+  if (!ts.length && ['Whole life', 'Term', 'Universal life', 'Disability care'].includes(p['Policy Type'])) return 'prot';
+  if (p['Policy Type'] === 'Accident & health') return 'ah';
+  return 'inv';
+}
+function coverEnd(b, p) {   // { label, age } for how long a benefit lasts
+  const t = b['Cover Term'], v = +b['Cover Term Value'];
+  if (t === 'Whole life') return { label: 'whole life', age: 999 };
+  if (t === 'Till age' && v) return { label: `till age ${v}`, age: v };
+  if (t === 'Years' && v) {
+    const ins = insuredOf(p), dob = ins && parseISO(ins['Date of Birth']), bought = parseISO(p['Date Bought']);
+    if (dob && bought) { const a = ageOf(ins['Date of Birth'], bought) + v; return { label: `till age ${a}`, age: a }; }
+    return { label: `for ${v} years`, age: 500 + v };
+  }
+  return { label: '', age: 1000 };
+}
+const sumAmt = v => typeof v === 'number' ? v : null;
+function sumParts(items) {   // items: [{ amt, label, age, text }] -> { total, parts: [[amt,label]], texts }
+  const by = new Map(), texts = []; let total = 0;
+  for (const it of items) {
+    if (it.amt == null) { if (it.text) texts.push(it.text + (it.label ? ` (${it.label})` : '')); continue; }
+    total += it.amt; const k = it.label; const o = by.get(k) || { amt: 0, age: it.age }; o.amt += it.amt; by.set(k, o);
+  }
+  const parts = [...by.entries()].sort((a, b) => b[1].age - a[1].age).map(([l, o]) => [o.amt, l]);
+  return { total, parts, texts };
+}
+const kShort = n => n >= 1000 && n % 1000 === 0 ? '$' + (n / 1000).toLocaleString('en-US') + 'k' : money(Math.round(n * 100) / 100);
+function partsHtml(sp, compact) {
+  const lines = [];
+  if (sp.total) lines.push(`<b>${money(Math.round(sp.total))}</b>`);
+  if (sp.parts.length > 1) lines.push(...sp.parts.map(([a, l]) => `<span class="t">${compact ? kShort(a) : money(a)}${l ? ' ' + esc(l) : ''}</span>`));
+  else if (sp.parts.length === 1 && sp.parts[0][1]) lines.push(`<span class="t">${esc(sp.parts[0][1])}</span>`);
+  lines.push(...sp.texts.map(t => `<span class="t2">${esc(t)}</span>`));
+  return lines.join('') || '<span class="none">–</span>';
+}
+function premParts(p) {   // yearly premium split into cash / CPF / MediSave / SRS
+  const r = policyCalc(p), ann = r.annual || 0, by = p['Paid By'] || 'Cash', out = { Cash: 0, CPF: 0, MediSave: 0, SRS: 0 };
+  if (by === 'MediSave + cash') { const per = FREQ_MONTHS[p['Premium Frequency']] ? 12 / FREQ_MONTHS[p['Premium Frequency']] : 0, cash = Math.min(ann, (+p['Cash Portion'] || 0) * per); out.Cash += cash; out.MediSave += ann - cash; }
+  else out[by in out ? by : 'Cash'] += ann;
+  return out;
+}
 function pageSummary(cid, q) {
   const c = getClient(cid); if (!c) return pageNotFound();
   const ended = q.get('ended') === '1', me = myDetails();
   const live = p => ended || !p.Status || p.Status === 'In force';
   const all = db.policies.filter(p => (p['Client ID'] === cid || p['Insured ID'] === cid) && live(p));
-  const groups = new Map();
-  for (const p of all) { const ins = insuredOf(p); const k = ins ? ins.ID : cid; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
-  const order = [...groups.keys()].sort((a, b) => (a === cid ? -1 : b === cid ? 1 : byName(getClient(a), getClient(b))));
-  const num = v => typeof v === 'number' ? v : 0;
-  const annual = p => { const r = policyCalc(p); return p.Status && p.Status !== 'In force' ? 0 : (r.annual || 0); };
-  const paid = p => { const r = policyCalc(p); return r.noTotals ? null : r.paid; };
-  const benLines = p => benefitsOf(p.ID).map(b => esc(b['Benefit Name']) + (covText(b['Coverage Amount']) ? ' ' + esc(covText(b['Coverage Amount'])) : '')).join('<br>');
-  const totAnn = all.reduce((t, p) => t + annual(p), 0);
-  const totPaid = all.reduce((t, p) => t + (paid(p) || 0), 0), inForce = all.filter(p => !p.Status || p.Status === 'In force').length;
-  const m0 = v => v ? money(Math.round(v)) : '—';
-  const section = id => {
-    const ps = groups.get(id).sort((a, b) => String(a['Policy Type'] || '').localeCompare(String(b['Policy Type'] || '')) || String(a['Date Bought'] || '').localeCompare(String(b['Date Bought'] || '')));
-    const who = getClient(id), rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(' · ', ', ');
-    const types = {}; for (const p of ps) { const t = p['Policy Type'] || 'Other'; (types[t] ||= { n: 0, ann: 0 }); types[t].n++; types[t].ann += annual(p); }
-    const byBen = {}; for (const p of ps) if (!p.Status || p.Status === 'In force') for (const b of benefitsOf(p.ID)) {
-      const t = b['Benefit Type'] || 'Other', v = typeof b['Coverage Amount'] === 'number' ? b['Coverage Amount'] : null;
-      (byBen[t] ||= { sum: 0, other: [] }); if (v != null) byBen[t].sum += v; else if (b['Coverage Amount']) byBen[t].other.push(b['Coverage Amount']); }
-    const benOrder = Object.keys(byBen).sort((a, b) => (BENEFIT_TYPES.indexOf(a) + 1 || 99) - (BENEFIT_TYPES.indexOf(b) + 1 || 99));
-    return `<h2 class="sec">Insured: ${esc(who ? who.Name : '')}${esc(rel)}${who && ageOf(who['Date of Birth']) != null ? ` <span class="muted" style="font-weight:normal">· age ${ageOf(who['Date of Birth'])}</span>` : ''}</h2>
-      <table><thead><tr><th>Policy</th><th>Type</th><th>Insurer</th><th>Bought</th><th class="n">Premium</th><th>Coverage</th>${ended ? '<th>Status</th>' : ''}</tr></thead><tbody>
-      ${ps.map(p => `<tr><td>${esc(p['Policy Name'])}${p['Client ID'] !== cid ? `<br><span class="muted">Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}</td>
-        <td>${esc(p['Policy Type'] || '—')}</td><td>${esc(p.Insurer || '—')}</td><td>${esc(fmtDate(p['Date Bought'])) || '—'}</td>
-        <td class="n">${esc(premText(p).replace(' single premium', ' (single)')) || '—'}</td><td>${benLines(p) || '—'}</td>
-        ${ended ? `<td>${esc(p.Status || 'In force')}</td>` : ''}</tr>`).join('')}
-      </tbody></table>
-      ${benOrder.length ? `<table><thead><tr><th>Total coverage by benefit</th><th class="n">Amount</th></tr></thead><tbody>
-        ${benOrder.map(t => `<tr><td>${esc(t)}</td><td class="n">${[byBen[t].sum ? money(Math.round(byBen[t].sum)) : '', ...byBen[t].other.map(esc)].filter(Boolean).join(' + ') || '—'}</td></tr>`).join('')}</tbody></table>` : ''}
-      ${Object.keys(types).length > 1 ? `<table><thead><tr><th>By policy type</th><th class="n">Policies</th><th class="n">Yearly premiums</th></tr></thead><tbody>
-        ${Object.entries(types).map(([t, v]) => `<tr><td>${esc(t)}</td><td class="n">${v.n}</td><td class="n">${m0(v.ann)}</td></tr>`).join('')}
-        <tr class="tot"><td>Total</td><td class="n">${ps.length}</td><td class="n">${m0(Object.values(types).reduce((t, v) => t + v.ann, 0))}</td></tr></tbody></table>` : ''}`;
+  const people = new Map();
+  for (const p of all) { const ins = insuredOf(p), k = ins ? ins.ID : cid; if (!people.has(k)) people.set(k, []); people.get(k).push(p); }
+  const order = [...people.keys()].sort((a, b) => (a === cid ? -1 : b === cid ? 1 : byName(getClient(a), getClient(b))));
+  hooks.push(() => { const st = document.createElement('style'); st.id = 'land'; st.textContent = '@page { size: A4 landscape; margin: 9mm; }'; document.head.appendChild(st); });
+  cleanups.push(() => { const st = document.getElementById('land'); if (st) st.remove(); });
+  const m2 = v => v ? money(Math.round(v * 100) / 100) : '<span class="none">–</span>';
+  const page = id => {
+    const who = getClient(id), ps = people.get(id).sort((a, b) => String(a['Date Bought'] || '9').localeCompare(String(b['Date Bought'] || '9')));
+    const G = { prot: [], ah: [], inv: [] }; for (const p of ps) G[polGroup(p)].push(p);
+    const ben = (p, types) => benefitsOf(p.ID).filter(b => types.includes(b['Benefit Type'])).map(b => { const e = coverEnd(b, p); return { amt: sumAmt(b['Coverage Amount']), text: typeof b['Coverage Amount'] === 'number' ? '' : String(b['Coverage Amount'] || b['Benefit Name'] || ''), label: e.label, age: e.age }; });
+    const prem = { prot: {}, ah: {}, inv: {} }; for (const k of ['prot', 'ah', 'inv']) for (const p of G[k]) if (!p.Status || p.Status === 'In force') { const pp = premParts(p); for (const [m, v] of Object.entries(pp)) prem[k][m] = (prem[k][m] || 0) + v; }
+    const pr = (k, m) => (prem[k][m] || 0), tot = m => pr('prot', m) + pr('ah', m) + pr('inv', m);
+    const nonCash = k => pr(k, 'CPF') + pr(k, 'MediSave') + pr(k, 'SRS');
+    const prow = (label, f) => `<tr><td class="l">${label}</td><td class="n"><b>${m2(f('all'))}</b></td>${['prot', 'ah', 'inv'].map(k => `<td class="n">${m2(f(k))}</td>`).join('')}</tr>`;
+    const cash = k => k === 'all' ? tot('Cash') : pr(k, 'Cash'), nc = k => k === 'all' ? ['prot', 'ah', 'inv'].reduce((t, x) => t + nonCash(x), 0) : nonCash(k);
+    const ncLabel = ['CPF', 'MediSave', 'SRS'].filter(m => tot(m)).join(' / ') || 'CPF / MediSave / SRS';
+    // coverage overview
+    const OV = [['Death', ['Death'], 'prot'], ['Total Permanent Disability (TPD)', ['Total Permanent Disability (TPD)'], 'prot'], ['Terminal Illness (TI)', ['Terminal Illness (TI)'], 'prot'],
+      ['Critical Illness (CI)', ['Critical Illness (CI)'], 'prot'], ['Early Critical Illness (ECI)', ['Early Critical Illness (ECI)'], 'prot'],
+      ['Income protection (per month)', ['Disability Income (DI)'], 'prot'], ['Long-Term Care (LTC)', ['Long-Term Care (LTC)'], 'prot'],
+      ['Accidental Death', ['Accidental Death (Acc Death)'], 'ah'], ['Accidental Medical Reimbursement', ['Accidental Medical Reimbursement (Acc MR)'], 'ah'], ['Weekly Indemnity', ['Weekly Indemnity (WI)'], 'ah'],
+      ['Hospitalisation', ['Hospitalisation Expenses', 'Medical Reimbursement (MR)'], 'ah'], ['Hospital Cash', ['Hospital Cash'], 'ah']];
+    const livePs = ps.filter(p => !p.Status || p.Status === 'In force');
+    const ovRows = OV.map(([label, types, g]) => { const sp = sumParts(livePs.flatMap(p => ben(p, types))); return (sp.total || sp.texts.length) ? { label, g, sp } : null; }).filter(Boolean);
+    const wop = livePs.filter(p => benefitsOf(p.ID).some(b => b['Benefit Type'] === 'Waiver of Premium (WOP)'));
+    const svNow = p => svOf(p.ID)[0], invLive = G.inv.filter(p => !p.Status || p.Status === 'In force');
+    const invSV = invLive.reduce((t, p) => t + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0), invPaid = invLive.reduce((t, p) => t + (policyCalc(p).paid || 0), 0);
+    const ovBreak = sp => [...(sp.parts.length > 1 || (sp.parts[0] && sp.parts[0][1]) ? sp.parts.map(([a, l]) => sp.parts.length > 1 ? `${kShort(a)} ${l || '(term not set)'}` : l) : []), ...sp.texts].map(esc).join(' · ');
+    const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${esc(r.label)}</td><td class="n"><b>${r.sp.total ? money(Math.round(r.sp.total)) : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
+      + (wop.length ? `<tr class="prot"><td class="l">Waiver of Premium (WOP)</td><td class="n"><b>Yes</b></td><td class="br">${wop.map(p => esc(p['Policy Name'])).join(' · ')}</td></tr>` : '')
+      + (invLive.length ? `<tr class="inv"><td class="l">Investments — surrender value</td><td class="n"><b>${invSV ? money(Math.round(invSV)) : '–'}</b></td><td class="br">${invPaid ? money(Math.round(invPaid)) + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
+    // policy tables
+    const polCell = p => `<td class="pol"><b>${esc(p['Policy Name'] || 'Untitled policy')}</b><span>${[p.Insurer, p['Policy No']].filter(Boolean).map(esc).join(' · ')}</span>${p['Client ID'] !== id ? `<span>Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}${p.Status && p.Status !== 'In force' ? `<span class="st">${esc(p.Status)}</span>` : ''}</td>`;
+    const premCell = p => { const v = p.Premium; if (v == null || v === '') return '<td><span class="none">–</span></td>';
+      const r = policyCalc(p), by = p['Paid By'] || 'Cash', f = p['Premium Frequency'];
+      const main = typeof v === 'number' ? money(v) + (f === 'Single premium' ? ' single' : FREQ_UNIT[f] ? ' / ' + FREQ_UNIT[f] : '') : esc(v);
+      const sub = [f !== 'Annual' && r.annual ? money(Math.round(r.annual * 100) / 100) + ' / year' : '', by === 'MediSave + cash' ? `cash ${money(+p['Cash Portion'] || 0)} + MediSave` : by.toLowerCase() === 'cash' ? 'cash' : by].filter(Boolean).join(' · ');
+      return `<td>${main}${sub ? `<span class="t">${esc(sub)}</span>` : ''}</td>`; };
+    const termCell = p => { const r = policyCalc(p), v = +p['Premium Term Value'], t = p['Premium Term'];
+      const main = p['Premium Frequency'] === 'Single premium' ? 'Single payment' : t === 'Years' && v ? `${v} years` : t === 'Till age' && v ? `Till age ${v}` : t === 'Perpetual' ? 'Whole life' : '';
+      const sub = r.termEnd && t !== 'Perpetual' ? `till ${r.termEnd.getFullYear()}` : '';
+      return `<td class="nw">${main ? esc(main) + (sub ? `<span class="t">${sub}</span>` : '') : '<span class="none">–</span>'}</td>`; };
+    const dShort = iso => { const d = parseISO(iso); return d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : '–'; };
+    const svCell = p => { const v = svNow(p); return `<td>${v ? money(Math.round(+v['Surrender Value'])) + `<span class="t">as of ${esc(fmtDate(v['As Of']))}</span>` : '<span class="none">–</span>'}</td>`; };
+    const remarks = p => esc([p.Notes, ...benefitsOf(p.ID).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
+    const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
+    const otherCell = (p, skip) => { const os = benefitsOf(p.ID).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
+      return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'])) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
+    const totRow = (ps2, cols) => `<tr class="tot"><td colspan="3">Total</td>${cols.map(f => `<td>${f(ps2)}</td>`).join('')}</tr>`;
+    const yearly = ps2 => { const live2 = ps2.filter(p => !p.Status || p.Status === 'In force'), t = live2.reduce((a, p) => a + (policyCalc(p).annual || 0), 0); return t ? money(Math.round(t * 100) / 100) + ' / year' : ''; };
+    const sumCol = types => ps2 => partsHtml(sumParts(ps2.filter(p => !p.Status || p.Status === 'In force').flatMap(p => ben(p, types))), true);
+    const PT = { d: ['Death'], tpd: ['Total Permanent Disability (TPD)'], ci: ['Critical Illness (CI)'], eci: ['Early Critical Illness (ECI)'] };
+    const AT = { ad: ['Accidental Death (Acc Death)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
+    const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Death</th><th>TPD</th><th>Critical Illness</th><th>Early CI</th><th>Other benefits</th><th>Surrender value</th><th>Remarks</th></tr></thead>
+      ${G.prot.map((p, i) => `<tr><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem">${remarks(p)}</td></tr>`).join('')}
+      ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
+    const ahT = G.ah.length ? `<div class="psec ah"><table><thead><tr><th class="bar" colspan="10">ACCIDENT &amp; HOSPITALISATION</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Accidental Death</th><th>Accidental Medical</th><th>Hospitalisation</th><th>Other benefits</th><th>Remarks</th></tr></thead>
+      ${G.ah.map((p, i) => `<tr><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, AT.ad)}${cell(p, AT.amr)}${cell(p, AT.h)}${otherCell(p, [...AT.ad, ...AT.amr, ...AT.h])}<td class="rem">${remarks(p)}</td></tr>`).join('')}
+      ${totRow(G.ah, [yearly, () => '', sumCol(AT.ad), sumCol(AT.amr), () => '', () => '', () => ''])}</table></div>` : '';
+    const invT = G.inv.length ? `<div class="psec inv"><table><thead><tr><th class="bar" colspan="8">INVESTMENTS &amp; SAVINGS — NO DEATH COVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Paid in so far</th><th>Surrender value</th><th>Remarks</th></tr></thead>
+      ${G.inv.map((p, i) => `<tr><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${policyCalc(p).paid ? money(Math.round(policyCalc(p).paid)) : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem">${remarks(p)}</td></tr>`).join('')}
+      ${totRow(G.inv, [yearly, () => '', ps2 => { const t = ps2.reduce((a, p) => a + (policyCalc(p).paid || 0), 0); return t ? money(Math.round(t)) : ''; }, ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
+    const age = who ? ageOf(who['Date of Birth']) : null, rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(/^\s*·\s*/, '');
+    return `<div class="sheet psum">
+      ${letterhead(me)}
+      <div class="ps-top"><div>
+        <h1>Policy summary</h1>
+        <table class="ov"><tr><th>Premiums</th><th class="n">Total</th><th class="n">Protection</th><th class="n">Accident &amp; hospital</th><th class="n">Investments</th></tr>
+          ${prow('Annual premium — cash', cash)}${nc('all') ? prow('Annual premium — ' + esc(ncLabel), nc) : ''}${prow('Monthly equivalent (cash)', k => cash(k) / 12)}</table>
+        ${coverRows ? `<table class="ov cov"><tr><th>Coverage</th><th class="n">Total</th><th>Breakdown</th></tr>${coverRows}</table>` : ''}
+      </div>
+      <div class="pd"><div class="h">PERSONAL DETAILS</div><table>
+        <tr><td>Name</td><td>${esc(who ? who.Name : '')}</td></tr>${rel ? `<tr><td>Relationship</td><td>${esc(cap(rel))} of ${esc(c.Name)}</td></tr>` : ''}
+        ${who && who.Gender ? `<tr><td>Gender</td><td>${esc(who.Gender)}</td></tr>` : ''}
+        ${who && isISO(who['Date of Birth']) ? `<tr><td>Date of birth</td><td>${esc(fmtDate(who['Date of Birth']))}</td></tr><tr><td>Age next birthday</td><td>${age + 1}</td></tr>` : ''}
+        ${who && who.Occupation ? `<tr><td>Occupation</td><td>${esc(who.Occupation)}</td></tr>` : ''}
+        <tr><td>Policies ${ended ? 'listed' : 'in force'}</td><td>${ps.length}</td></tr><tr><td>Prepared on</td><td>${esc(fmtDate(todayISO()))}</td></tr></table></div></div>
+      ${protT}${ahT}${invT}
+      <div class="foot">This summary is prepared from records kept by your consultant and is for general information only. It is not a contract of insurance — please refer to your policy contracts for the exact terms, benefits and exclusions. Projected and surrender values are not guaranteed.</div>
+    </div>`;
   };
+  const missingTerm = all.some(p => benefitsOf(p.ID).some(b => sumAmt(b['Coverage Amount']) != null && !b['Cover Term']));
   return `<div class="print-bar no-print">
       <div><p class="crumb"><a href="#/c/${encodeURIComponent(cid)}#policies">‹ ${esc(c.Name)}</a></p>
-        <div class="opts"><label><input type="checkbox" ${ended ? 'checked' : ''} onchange="location.replace('#/c/${encodeURIComponent(cid)}/summary${ended ? '' : '?ended=1'}')"> Include ended policies</label></div></div>
+        <div class="opts"><label><input type="checkbox" ${ended ? 'checked' : ''} onchange="location.replace('#/c/${encodeURIComponent(cid)}/summary${ended ? '' : '?ended=1'}')"> Include ended policies</label>
+        ${order.length > 1 ? `<span>${order.length} people insured — one page each</span>` : ''}</div>
+        ${missingTerm ? '<p class="small" style="color:var(--warn);margin:6px 0 0">Some benefits don’t say how long they last yet — edit the policy and fill in “Covered till” to show “till age …” in the breakdown.</p>' : ''}</div>
       <button class="btn primary" onclick="printPage()">Print</button>
     </div>
-    <div class="sheet">
-      ${letterhead(me)}
-      <h1 style="font-size:22px;margin:0 0 2px">Insurance coverage summary</h1>
-      <p class="muted" style="margin:0 0 18px">Prepared for <b style="color:#111">${esc(c.Name)}</b> · ${esc(fmtDate(todayISO()))}</p>
-      ${all.length ? `<div class="kpis"><div><span>People insured</span><b>${groups.size}</b></div>
-        <div><span>Yearly premiums</span><b>${m0(totAnn)}</b></div>
-        <div><span>Policies in force</span><b>${inForce}</b></div></div>
-        ${order.map(section).join('')}
-        <p class="muted" style="font-family:-apple-system,Arial,sans-serif;font-size:13px">Total premiums paid to date (excluding accident &amp; health): <b style="color:#111">${m0(totPaid)}</b>.
-          Yearly premiums exclude single-premium policies.</p>`
-        : '<p>No policies on file.</p>'}
-      <div class="foot">This summary is prepared from records kept by your consultant and is for reference only. It is not a policy document —
-        please refer to your policy contracts for the exact terms, benefits and exclusions.</div>
-    </div>`;
+    ${all.length ? order.map(page).join('') : `<div class="sheet psum">${letterhead(me)}<h1>Policy summary</h1><p>No policies on file.</p></div>`}`;
 }
-
 
 /* =========================================================================
    Postal codes — built-in list of every Singapore postal code (data/postal.txt)
@@ -3563,7 +3699,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.15';
+const APP_VERSION = '2026.11.17';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
