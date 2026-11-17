@@ -201,6 +201,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid var(--accent-soft
 .benefit-row label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .benefit-row label span { font-size: 13px; }
 #benefits { margin-bottom: 12px; }
+table.ben .good { color: var(--ok); font-weight: 600; } table.ben .bad { color: var(--err); font-weight: 600; }
 table.ben { width: 100%; border-collapse: collapse; } table.ben .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .benefit-row { grid-template-columns: 1fr 1fr auto; } .benefit-row label:nth-child(3), .benefit-row .bn { grid-column: span 1; } .benefit-row .icon { grid-row: 1; grid-column: 3; } }
 .extra-row { display: grid; grid-template-columns: 220px 1fr auto; gap: 10px; margin-bottom: 10px; align-items: start; }
@@ -496,6 +497,7 @@ const SHEETS = {
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Status', 'End Date', 'Notes',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
   'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Notes'],
+  'Surrender Values': ['ID', 'Policy ID', 'As Of', 'Surrender Value', 'Recorded'],
   'Illustrations': ['ID', 'Client ID', 'Title', 'Plan', 'Product', 'Amount', 'Premium Frequency', 'Dividend Option', 'Lump-sum Product', 'Lump-sum Amount',
                     'Lump-sum Dividend Option', 'Start Date', 'Age at Start', 'Show Year', 'Withdrawals', 'Goal', 'Goal Details', 'Note ID', 'Created', 'Last Updated'],
   'Settings': ['Key', 'Value'],
@@ -504,10 +506,10 @@ const SHEETS = {
 // Columns that were renamed — older Excel files and saved data are upgraded automatically.
 const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
-              'Interactions': 'interactions', 'Policies': 'policies', 'Benefits': 'benefits', 'Illustrations': 'illustrations', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
-const DATE_F = new Set(['Who To Meet', 'Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date']);
-const STAMP_F = new Set(['Created', 'Last Updated', 'Added']);
-const NUM_F = new Set(['Premium', 'Coverage', 'Coverage Amount', 'Premium Term Value', 'Amount', 'Lump-sum Amount', 'Age at Start', 'Show Year', 'Latitude', 'Longitude']);
+              'Interactions': 'interactions', 'Policies': 'policies', 'Benefits': 'benefits', 'Surrender Values': 'surrender', 'Illustrations': 'illustrations', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
+const DATE_F = new Set(['Who To Meet', 'Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date', 'As Of']);
+const STAMP_F = new Set(['Created', 'Last Updated', 'Added', 'Recorded']);
+const NUM_F = new Set(['Premium', 'Coverage', 'Coverage Amount', 'Surrender Value', 'Premium Term Value', 'Amount', 'Lump-sum Amount', 'Age at Start', 'Show Year', 'Latitude', 'Longitude']);
 const LONG_F = new Set(['Address', 'Remarks', 'Notes', 'Note', 'Value']);
 const SETTING_KEYS = ['My Name', 'My Title', 'My Company', 'My Phone', 'My Email', 'My Address', 'My Rep No', 'Letter Wording'];
 
@@ -640,7 +642,7 @@ function nextId(rows, prefix) {
 /* =========================================================================
    Storage — kept on this device (IndexedDB, falls back to localStorage)
    ========================================================================= */
-function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], benefits: [], illustrations: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
+function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], benefits: [], surrender: [], illustrations: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
 let db = emptyDb();
 let _idb;
 function openIdb() {
@@ -1761,6 +1763,8 @@ function migratePolicies(d) {
     }
   }
 }
+// Surrender values are kept as a dated history; the latest one is the "current" value.
+const svOf = pid => db.surrender.filter(v => v['Policy ID'] === pid).sort((a, b) => String(b['As Of']).localeCompare(String(a['As Of'])) || String(b.Recorded).localeCompare(String(a.Recorded)));
 const benefitsOf = pid => db.benefits.filter(b => b['Policy ID'] === pid);
 function covText(v) { return v == null || v === '' ? '' : typeof v === 'number' ? money(v) : String(v); }
 function addMonthsD(d, n) {
@@ -1856,7 +1860,7 @@ function policyRow(p, viewer) {
 function pagePolicy(cid, pid) {
   const c = getClient(cid), p = db.policies.find(x => x.ID === pid && x['Client ID'] === cid);
   if (!c || !p) return pageNotFound();
-  const bens = benefitsOf(pid), r = policyCalc(p), ins = insuredOf(p), F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
+  const bens = benefitsOf(pid), svs = svOf(pid), r = policyCalc(p), ins = insuredOf(p), F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
   const tile = (label, big, small = '', cls = '') => `<div class="tile ${cls}"><span>${label}</span><b>${big}</b>${small ? `<small>${small}</small>` : ''}</div>`;
   const unitWord = FREQ_UNIT[p['Premium Frequency']] ? p['Premium Frequency'].toLowerCase() : '';
   let tiles = '';
@@ -1878,8 +1882,9 @@ function pagePolicy(cid, pid) {
     else if (r.needDob) projSmall = `Add ${esc(r.needDob)}’s date of birth to work this out`;
     else if (!r.missing && !r.why) projSmall = 'Add the premium duration to work this out';
     else projSmall = r.missing || r.why;
-    tiles += tile('Projected total for full term', projBig, projSmall, 'wide');
+    tiles += tile('Projected total for full term', projBig, projSmall);
   }
+  tiles += tile('Current surrender value', svs.length ? esc(money(svs[0]['Surrender Value'])) : '—', svs.length ? `as of ${esc(fmtDate(svs[0]['As Of']))} · ${esc(ago(svs[0]['As Of']))}` : `<a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">Add it</a>`);
   const agent = (title, pre) => {
     const n = p[pre], code = p[pre + ' Code'], ct = p[pre + ' Contact'];
     return `<section class="card"><h2>${title}</h2>${n || code || ct ? `<dl class="details">
@@ -1915,6 +1920,14 @@ function pagePolicy(cid, pid) {
       ${bens.map(b => `<tr><td><b>${esc(b['Benefit Name'])}</b></td><td>${esc(b['Benefit Type']) || '<span class="none">—</span>'}</td>
         <td class="n">${esc(covText(b['Coverage Amount'])) || '—'}</td><td>${esc(b.Notes)}</td></tr>`).join('')}</tbody></table>`
       : '<p class="none">No benefits added yet.</p>'}</section>
+  ${svs.length ? `<section class="card"><div class="row-between"><h2>Surrender value history <small>${svs.length}</small></h2>
+    <a class="btn small" href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">+ Update</a></div>
+    <table class="list ben"><thead><tr><th>As of</th><th class="n">Surrender value</th><th class="n">Change</th><th></th></tr></thead><tbody>
+    ${svs.map((v, i) => { const prev = svs[i + 1], d = prev ? v['Surrender Value'] - prev['Surrender Value'] : null;
+      return `<tr><td>${esc(fmtDate(v['As Of']))}${i === 0 ? ' <span class="tag">Current</span>' : ''}</td><td class="n">${esc(money(v['Surrender Value']))}</td>
+        <td class="n">${d == null ? '' : `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : '−'}${esc(money(Math.abs(d)))}</span>`}</td>
+        <td class="n"><button class="icon" title="Remove this entry" data-sid="${esc(v.ID)}" onclick="delSurrender(this)">✕</button></td></tr>`; }).join('')}
+    </tbody></table><p class="muted small" style="margin:8px 0 0">Each update is kept with its date for future reference.</p></section>` : ''}
   <div class="agents">${agent('Writing agent', 'Writing Agent')}${agent('Current servicing agent', 'Servicing Agent')}</div>
   <section class="card danger-zone" style="margin-top:16px"><button class="link danger small" data-cid="${esc(cid)}" data-pid="${esc(pid)}" onclick="delPolicy(this)">Delete this policy</button></section>`;
 }
@@ -1928,6 +1941,7 @@ const POLICY_SECTIONS = [
     { custom: 'insured' },
   ]],
   ['Coverage', []],
+  ['Surrender value', [{ custom: 'sv' }]],
   ['Premium', [
     { label: 'Date Bought', show: 'Date bought', type: 'date' },
     { label: 'Premium', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 250' },
@@ -1965,6 +1979,12 @@ function pagePolicyForm(cid, pid) {
       ${fam.map(m => `<option value="${esc(m.c.ID)}"${p['Insured ID'] === m.c.ID ? ' selected' : ''}>${esc(m.c.Name)} (${esc(m.label.toLowerCase())})</option>`).join('')}
       ${p['Insured ID'] && p['Insured ID'] !== cid && !fam.some(m => m.c.ID === p['Insured ID']) && getClient(p['Insured ID']) ? `<option value="${esc(p['Insured ID'])}" selected>${esc(getClient(p['Insured ID']).Name)}</option>` : ''}
       </select><small class="dhint">${fam.length ? 'Same as owner unless you pick a family member.' : 'Link family members on the client’s page to pick one here.'}</small></label>`;
+    if (f.custom === 'sv') {
+      const last = editing ? svOf(pid)[0] : null;
+      return fieldHtml({ label: 'SV Amount', show: 'Current surrender value', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 12,500' }, last ? Number(last['Surrender Value']).toLocaleString('en-US') : '', sugg)
+        + fieldHtml({ label: 'SV As Of', show: 'Value as of (blank = today)', type: 'date' }, '', sugg)
+        + `<p class="dhint" style="grid-column:1/-1;margin:0">${last ? `Last recorded: <b>${esc(money(last['Surrender Value']))}</b> as of ${esc(fmtDate(last['As Of']))}. A new amount or date is added to the history — older values are kept.` : 'Each value you enter is saved with its date, so you can look back at how it has grown.'}</p>`;
+    }
     if (f.custom === 'term') return `<label id="term-field"><span>Premium duration <em>optional</em></span><div class="termbox">
       <select name="premium_term"><option value="">—</option>${TERMS.map(([v, t]) => `<option value="${v}"${p['Premium Term'] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
       <input name="premium_term_value" inputmode="numeric" placeholder="e.g. 20" value="${esc(p['Premium Term Value'] ?? '')}" autocomplete="off"></div>
@@ -2056,6 +2076,13 @@ async function savePolicy(e) {
     out[label] = v === '' ? blank(label) : v;
   }
   if (!out['Policy Name']) { toast('Policy name is required.', 'error'); return false; }
+  const svRaw = g('sv_amount'), svDateRaw = g('sv_as_of');
+  let sv = null, svDate = todayISO();
+  if (svRaw) {
+    sv = parseFloat(svRaw.replace(/[,$\s]/g, ''));
+    if (isNaN(sv)) { form.querySelector('[name=sv_amount]').focus(); toast('Surrender value: enter a number, e.g. 12500.', 'error'); return false; }
+    if (svDateRaw) { svDate = parseTyped(svDateRaw); if (!svDate) { form.querySelector('[name=sv_as_of]').focus(); toast('Value as of: type the date as DD/MM/YYYY.', 'error'); return false; } }
+  }
   const bens = [];
   for (const row of form.querySelectorAll('.benefit-row')) {
     const v = k => row.querySelector(`[name=${k}]`).value.trim(), name = v('b_name'), type = v('b_type'), notes = v('b_notes'), raw = v('b_amt');
@@ -2079,14 +2106,26 @@ async function savePolicy(e) {
   const keep = benefitsOf(p.ID);
   db.benefits = db.benefits.filter(b => b['Policy ID'] !== p.ID);
   bens.forEach((b, i) => db.benefits.push({ ID: keep[i] ? keep[i].ID : nextId(db.benefits, 'B'), 'Policy ID': p.ID, ...b }));
+  if (sv != null) {
+    const last = svOf(p.ID)[0], same = db.surrender.find(v => v['Policy ID'] === p.ID && v['As Of'] === svDate);
+    if (!last || last['Surrender Value'] !== sv || (svDateRaw && last['As Of'] !== svDate)) {
+      if (same) Object.assign(same, { 'Surrender Value': sv, Recorded: nowStamp() });
+      else db.surrender.push({ ID: nextId(db.surrender, 'S'), 'Policy ID': p.ID, 'As Of': svDate, 'Surrender Value': sv, Recorded: nowStamp() });
+    }
+  }
   touch(getClient(cid));
   await commit(pid ? 'Policy updated.' : `Added ${p['Policy Name']}.`, `#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(p.ID)}`, null, true);
   return false;
 }
+async function delSurrender(btn) {
+  if (!confirm('Remove this surrender value entry?')) return;
+  db.surrender = db.surrender.filter(v => v.ID !== btn.dataset.sid);
+  await commit('Entry removed.', location.hash, null, true);
+}
 async function delPolicy(btn) {
   const p = db.policies.find(x => x.ID === btn.dataset.pid);
   if (!confirm(`Delete ${p && p['Policy Name'] ? p['Policy Name'] : 'this policy'}?`)) return;
-  db.policies = db.policies.filter(x => x.ID !== btn.dataset.pid); db.benefits = db.benefits.filter(b => b['Policy ID'] !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
+  db.policies = db.policies.filter(x => x.ID !== btn.dataset.pid); db.benefits = db.benefits.filter(b => b['Policy ID'] !== btn.dataset.pid); db.surrender = db.surrender.filter(v => v['Policy ID'] !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
   await commit('Policy deleted.', `#/c/${encodeURIComponent(btn.dataset.cid)}`, 'policies', true);
 }
 
@@ -3112,7 +3151,7 @@ async function delClient(btn) {
   db.clients = db.clients.filter(x => x.ID !== cid);
   db.family = db.family.filter(f => f['Client ID'] !== cid && f['Related ID'] !== cid);
   const gone = new Set(db.policies.filter(p => p['Client ID'] === cid).map(p => p.ID));
-  db.benefits = db.benefits.filter(b => !gone.has(b['Policy ID']));
+  db.benefits = db.benefits.filter(b => !gone.has(b['Policy ID'])); db.surrender = db.surrender.filter(v => !gone.has(v['Policy ID']));
   for (const k of ['extras', 'notes', 'interactions', 'policies', 'illustrations']) db[k] = db[k].filter(r => r['Client ID'] !== cid);
   await commit(`Deleted ${c.Name}.`, '#/', null, true);
 }
@@ -3335,6 +3374,7 @@ function bookToDb(book) {
   }
   nd.clients = nd.clients.filter(c => c.Name);
   for (const b of nd.benefits) if (!b.ID) b.ID = nextId(nd.benefits, 'B');
+  for (const v of nd.surrender) if (!v.ID) v.ID = nextId(nd.surrender, 'S');
   moveNicknames(nd); migratePolicies(nd);
   for (const c of nd.clients) if (!c.ID) c.ID = nextId(nd.clients, 'C');
   for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P'], ['illustrations', 'D']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
