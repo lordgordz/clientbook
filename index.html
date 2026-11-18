@@ -300,6 +300,7 @@ ul.pols li a:active { background: var(--accent-soft); }
 .tile.key { border-color: var(--accent-2); background: var(--accent-soft); }
 .tile.key b { color: var(--accent); }
 .tile .warn { color: var(--warn); }
+.ah-off { display: none !important; }
 .pa-opts { display: flex; flex-direction: column; gap: 8px; } .pa-opt { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pa-opt input[type=checkbox] { width: 20px; height: 20px; min-height: 0; -webkit-appearance: checkbox; appearance: checkbox; } .pa-opt select { width: auto; } .pa-opt span { font-weight: 600; }
 .pa-pagebox table.pat { margin-bottom: 14px; } .pa-pagebox table.pat td.cur, .pa-pagebox table.pat th.cur { background: var(--accent-soft); font-weight: 700; } .pa-pagebox table.pat.off { opacity: .55; } .pa-pagebox .gs { color: var(--warn); margin-left: 8px; text-transform: none; letter-spacing: 0; }
@@ -2262,6 +2263,14 @@ function nomRow(n = {}) { return `<div class="nom-row"><label><span>Name</span><
   <label><span>Share %</span><input name="nom_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="nomTotal()"></label>
   <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); nomTotal()">✕</button></div>`; }
 function addNomRow() { const w = $('#nominees'); w.insertAdjacentHTML('beforeend', nomRow()); w.lastElementChild.querySelector('input').focus(); nomTotal(); }
+function ahOnly(form) {
+  const ah = form.querySelector('[name=policy_type]').value === 'Accident & health',
+        hsg = form.querySelector('[name=hsg_plan]').value, pa = form.querySelector('[name=pa_product]').value;
+  // a plan already picked stays visible so it is never hidden by mistake
+  const show = el => (el.id === 'pa-plan-w' || el.id === 'pa-opts') ? ah || !!pa : (el.querySelector('[name=hsg_plan]') ? ah || !!hsg : ah || !!pa);
+  form.querySelectorAll('.ah-only').forEach(el => { const on = show(el); el.classList.toggle('ah-off', !on); });
+  const box = $('#hsg-prem'); if (box && !ah && !hsg) box.hidden = true;
+}
 function paForm(changed) {
   const form = document.querySelector('form[data-pid]'), sel = form.querySelector('[name=pa_product]'), P = PA_PRODUCTS[sel.value];
   const plan = form.querySelector('[name=pa_plan]'), wrap = $('#pa-plan-w'), box = $('#pa-opts');
@@ -2343,17 +2352,17 @@ function pagePolicyForm(cid, pid) {
     }
     if (f.custom === 'hsg') {
       const others = db.policies.filter(x => x['Client ID'] === cid && x.ID !== pid && !x['Rider Of']);
-      return `<label><span>HealthShield plan or rider <em>optional</em></span><select name="hsg_plan" onchange="hsgHint(true)"><option value="">— not a HealthShield plan or rider</option>
+      return `<label class="ah-only"><span>HealthShield plan or rider <em>optional</em></span><select name="hsg_plan" onchange="hsgHint(true)"><option value="">— not a HealthShield plan or rider</option>
         <optgroup label="HealthShield Gold plans">${Object.keys(HSG_PLANS).map(k => `<option${p['HSG Plan'] === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</optgroup>
         <optgroup label="Riders">${Object.keys(HSG_RIDERS).map(k => `<option${p['HSG Plan'] === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</optgroup></select><small class="dhint" id="hsg-hint"></small></label>
       <label><span>Rider of <em>optional</em></span><select name="rider_of"><option value="">— not a rider</option>
         ${others.map(x => `<option value="${esc(x.ID)}"${p['Rider Of'] === x.ID ? ' selected' : ''}>${esc(x['Policy Name'] || 'Untitled policy')}${x['HSG Plan'] ? '' : x['Policy No'] ? ' · ' + esc(x['Policy No']) : ''}</option>`).join('')}</select>
         <small class="dhint">For a rider bought as its own policy, e.g. a HealthShield rider — pick the plan it belongs to.</small></label>`;
     }
-    if (f.custom === 'pa') return `<label><span>Accident plan <em>optional</em></span><select name="pa_product" onchange="paForm(true)"><option value="">— not one of these accident plans</option>
+    if (f.custom === 'pa') return `<label class="ah-only"><span>Accident plan <em>optional</em></span><select name="pa_product" onchange="paForm(true)"><option value="">— not one of these accident plans</option>
         ${Object.keys(PA_PRODUCTS).map(k => `<option${p['PA Product'] === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select><small class="dhint">Pick the plan and options — the benefits fill in automatically.</small></label>
-      <label id="pa-plan-w"><span>Plan</span><select name="pa_plan" data-v="${esc(p['PA Plan'] || '')}"></select></label>
-      <div id="pa-opts" class="pa-opts" style="grid-column:1/-1" data-v="${esc(p['PA Options'] || '')}"></div>`;
+      <label id="pa-plan-w" class="ah-only"><span>Plan</span><select name="pa_plan" data-v="${esc(p['PA Plan'] || '')}"></select></label>
+      <div id="pa-opts" class="pa-opts ah-only" style="grid-column:1/-1" data-v="${esc(p['PA Options'] || '')}"></div>`;
     if (f.custom === 'hsgprem') return `<div id="hsg-prem" class="hsg-sug" style="grid-column:1/-1" hidden></div>`;
     if (f.custom === 'nom') {
       const noms = parseNominees(p.Nominees), fn = distinct([c.Name, ...fam.map(m => m.c.Name)]);
@@ -2425,6 +2434,11 @@ function wirePolicyForm() {
   update();
   // Picking a known agent fills in their code and contact
   nomTotal(); hsgHint(); paForm();
+  // HealthShield and accident-plan pickers only show for Accident & health policies
+  const ty = form.querySelector('[name=policy_type]'), ahUpd = () => ahOnly(form);
+  ty.addEventListener('input', ahUpd); ty.addEventListener('change', ahUpd);
+  form.querySelector('[name=hsg_plan]').addEventListener('change', ahUpd); form.querySelector('[name=pa_product]').addEventListener('change', ahUpd);
+  ahUpd();
   for (const n of ['insured_id', 'premium_frequency']) form.querySelector(`[name=${n}]`).addEventListener('input', () => hsgHint());
   form.querySelector('[name=date_bought]').addEventListener('focusout', () => hsgHint());
   for (const pre of ['writing_agent', 'servicing_agent', 'writing_agent_2', 'servicing_agent_2']) {
@@ -4101,7 +4115,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18l';
+const APP_VERSION = '2026.11.18m';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
