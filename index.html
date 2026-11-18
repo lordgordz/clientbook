@@ -380,7 +380,7 @@ table.hsgt td.cur { background: var(--accent-soft); font-weight: 700; }
 .psum .ob { display: block; white-space: nowrap; } .psum td.nw { white-space: nowrap; }
 .psum .tag { font-size: 8.5px; padding: 0 4px; border-radius: 3px; background: #e7edf6; color: #1f3a5f; font-weight: 700; }
 .psum .psec tr.has-note td { border-bottom: 0; }
-.psum .hsg-sum table + table { margin-top: -1px; } .psum .hsg-sum table.hsgt td.cur { background: #fbf1e3; font-weight: 700; }
+.psum .hsg-sum table + table { margin-top: -1px; } .psum .hsg-sum table.ded { margin-top: 6px; } .psum .hsg-sum table.ded td:first-child, .psum .hsg-sum table.ded th:first-child { text-align: left; } .psum .hsg-sum table.hsgt td.cur { background: #fbf1e3; font-weight: 700; }
 .psum .hsg-sum table.hsgt th { background: #fbf1e3; } .psum .hsg-sum .n { text-align: right; }
 .psum .psec tr.rider td { background: #fcfcfd; } .psum .psec tr.rider td.pol { padding-left: 18px; }
 .psum .psec td.pol .rof { color: #8a5a00; font-size: 9.5px; font-weight: 600; } .psum .t.wr { color: #1f3a5f; font-weight: 600; }
@@ -629,6 +629,16 @@ function hsgAnb(dobIso, boughtIso) {
   return { anb: ageOf(dobIso, anchor) + 1, from: anchor };
 }
 const hsgBandLabel = b => b[0] > 100 ? 'Above 100' : `${b[0]} – ${b[1]}`;
+// Deductible per policy year (S$, incl. GST) by ward — same for Max A, B, B Lite and the foreigner plans. Co-insurance 10%.
+const HSG_DEDUCTIBLE = [['Private hospital (except day surgery and short-stay ward)', 3500, 4500], ['A-class ward', 3500, 4500], ['B1-class ward', 2500, 3000],
+  ['B2-class ward (or B2+)', 2000, 2250], ['C-class ward', 1500, 1500], ['Day surgery or short-stay ward', 2000, 3000]];
+function hsgDeductibleTable(p, cls) {
+  const ins = insuredOf(p), a = ins && hsgAnb(ins['Date of Birth'], p['Date Bought']), col = a ? (a.anb <= 81 ? 1 : 2) : 0;
+  const c = i => col === i ? ' class="n cur"' : ' class="n"';
+  return `<table class="${cls}"><thead><tr><th>Deductible per policy year</th><th${c(1)}>Age 81 next birthday or younger${col === 1 ? ' · now' : ''}</th><th${c(2)}>Age 82 next birthday or older${col === 2 ? ' · now' : ''}</th></tr></thead><tbody>
+    ${HSG_DEDUCTIBLE.map(([w, y, o]) => `<tr><td>${esc(w)}</td><td${c(1)}>${money(y)}</td><td${c(2)}>${money(o)}</td></tr>`).join('')}
+    <tr><td><b>Co-insurance</b> (after the deductible)</td><td class="n" colspan="2"><b>10%</b> of the claim</td></tr></tbody></table>`;
+}
 const HSG_NOTE = 'A deductible based on the ward class and 10% co-insurance apply to each claim, unless covered by a rider.';
 const hsgOf = p => HSG_PLANS[p['HSG Plan']] || null;
 const productNotes = p => [...PRODUCT_NOTES.filter(r => r.match.test(String(p['Policy Name'] || ''))).map(r => r.note), ...(hsgOf(p) ? [HSG_NOTE] : [])];
@@ -2063,6 +2073,7 @@ function pagePolicy(cid, pid) {
         <td class="n">${esc(covText(b['Coverage Amount'])) || '—'}</td><td>${esc(b.Notes)}</td></tr>`).join('')}</tbody></table>`
       : hsgOf(p) ? '' : '<p class="none">No benefits added yet.</p>'}</section>
   ${hsgScheduleCard(p)}
+  ${hsgOf(p) ? `<section class="card"><h2>Deductible and co-insurance</h2><p class="muted small">The deductible is what the insured pays first each policy year before the plan pays; co-insurance is their share after that, unless a rider covers it.</p><div class="table-wrap">${hsgDeductibleTable(p, 'list ben hsgt')}</div></section>` : ''}
   ${svs.length ? `<section class="card"><div class="row-between"><h2>Surrender value history <small>${svs.length}</small></h2>
     <a class="btn small" href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">+ Update</a></div>
     <table class="list ben"><thead><tr><th>As of</th><th class="n">Surrender value</th><th class="n">Change</th><th></th></tr></thead><tbody>
@@ -2647,7 +2658,7 @@ function pageSummary(cid, q) {
         ${who && who.Occupation ? `<tr><td>Occupation</td><td>${esc(who.Occupation)}</td></tr>` : ''}
         <tr><td>Policies ${ended ? 'listed' : 'in force'}</td><td>${ps.length}</td></tr><tr><td>Prepared on</td><td>${esc(fmtDate(todayISO()))}</td></tr></table></div></div>
       ${protT}${ahT}${(() => { const plans = G.ah.filter(x => HSG_RATES.plans[x['HSG Plan']] && (!x.Status || x.Status === 'In force'));
-        return plans.map(x => { const sc = hsgSchedule(x, 6); return sc ? `<div class="psec ah hsg-sum"><table><thead><tr><th class="bar" colspan="${sc.items.length + 4}">HOSPITAL PLAN PREMIUMS BY AGE — ${esc(x['Policy Name'] || x['HSG Plan']).toUpperCase()}${sc.items.length > 1 ? ' + RIDERS' : ''} (YEARLY, RATES FROM ${HSG_RATES_FROM.toUpperCase()}, NOT GUARANTEED)</th></tr></thead></table>${hsgScheduleTable(sc, 'hsgt')}</div>` : ''; }).join(''); })()}${invT}
+        return plans.map(x => { const sc = hsgSchedule(x, 6); return sc ? `<div class="psec ah hsg-sum"><table><thead><tr><th class="bar" colspan="${sc.items.length + 4}">HOSPITAL PLAN PREMIUMS BY AGE — ${esc(x['Policy Name'] || x['HSG Plan']).toUpperCase()}${sc.items.length > 1 ? ' + RIDERS' : ''} (YEARLY, RATES FROM ${HSG_RATES_FROM.toUpperCase()}, NOT GUARANTEED)</th></tr></thead></table>${hsgScheduleTable(sc, 'hsgt')}${hsgDeductibleTable(x, 'hsgt ded')}</div>` : `<div class="psec ah hsg-sum">${hsgDeductibleTable(x, 'hsgt ded')}</div>`; }).join(''); })()}${invT}
       <div class="foot">This summary is prepared from records kept by your consultant and is for general information only. It is not a contract of insurance — please refer to your policy contracts for the exact terms, benefits and exclusions. Projected and surrender values are not guaranteed.</div>
     </div>`;
   };
@@ -3917,7 +3928,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18i';
+const APP_VERSION = '2026.11.18j';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
