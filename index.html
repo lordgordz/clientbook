@@ -585,7 +585,7 @@ const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal
 const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash']);
 // Side notes shown automatically on every policy whose name matches (policy page and policy summary).
 const PRODUCT_NOTES = [
-  { match: /platinum\s*wealth\s*elite/i, note: 'Coverage is guaranteed for the first 15 years. After the first 15 years, if the policy value is lower than the monthly mortality charges, the coverage will cease.' },
+  { match: /platinum\s*wealth\s*elite/i, note: 'Coverage is guaranteed for the first 15 years. After the first 15 years, if the policy value is lower than the monthly mortality charges, the coverage will cease. So long as the investment returns are sufficient, coverage will last for whole life.' },
 ];
 const productNotes = p => PRODUCT_NOTES.filter(r => r.match.test(String(p['Policy Name'] || ''))).map(r => r.note);
 const NO_TOTALS = new Set(['Accident & health']);   // these don't show premiums paid
@@ -3777,7 +3777,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18f';
+const APP_VERSION = '2026.11.18g';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
