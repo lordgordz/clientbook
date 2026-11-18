@@ -300,6 +300,10 @@ ul.pols li a:active { background: var(--accent-soft); }
 .tile.key { border-color: var(--accent-2); background: var(--accent-soft); }
 .tile.key b { color: var(--accent); }
 .tile .warn { color: var(--warn); }
+.nom-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, 1fr) auto; gap: 10px; align-items: end; max-width: 560px; margin-bottom: 8px; }
+.nom-row label { display: flex; flex-direction: column; gap: 6px; } .nom-row label span { font-size: 13px; }
+.agent2 { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); } .agent2 h4 { margin: 0 0 8px; font-size: 14px; display: flex; gap: 12px; align-items: center; }
+.agent2[hidden] { display: none; }
 .agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .agents .card { margin-bottom: 0; }
 .termbox { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; }
@@ -532,7 +536,9 @@ const SHEETS = {
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Paid By', 'Cash Portion', 'Status', 'End Date', 'Notes',
-               'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact'],
+               'Nominated', 'Nominees',
+               'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Writing Agent 2', 'Writing Agent 2 Code', 'Writing Agent 2 Contact',
+               'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact', 'Servicing Agent 2', 'Servicing Agent 2 Code', 'Servicing Agent 2 Contact'],
   'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Cover Term', 'Cover Term Value', 'Notes'],
   'Surrender Values': ['ID', 'Policy ID', 'As Of', 'Surrender Value', 'Recorded'],
   'Illustrations': ['ID', 'Client ID', 'Title', 'Plan', 'Product', 'Amount', 'Premium Frequency', 'Dividend Option', 'Lump-sum Product', 'Lump-sum Amount',
@@ -840,7 +846,7 @@ function suggestions() {
     'How We Met': distinct(db.clients.map(c => c['How We Met']), HOW_MET),
     'Field': distinct(db.extras.map(e => e.Field), EXTRA_SUGGESTIONS),
     'Policy Name': distinct(db.policies.map(p => p['Policy Name'])),
-    'Agent': distinct(db.policies.flatMap(p => [p['Writing Agent'], p['Servicing Agent']])),
+    'Agent': distinct(db.policies.flatMap(p => [p['Writing Agent'], p['Servicing Agent'], p['Writing Agent 2'], p['Servicing Agent 2']])),
     'Insurer': distinct(db.policies.map(p => p.Insurer)),
   };
 }
@@ -860,7 +866,7 @@ function searchDocs() {
   for (const n of db.notes) add(n['Client ID'], 'Note', n.Note);
   for (const i of db.interactions) add(i['Client ID'], 'Log ' + fmtDate(i.Date), [i.Type, i.Notes].filter(Boolean).join(': '));
   for (const p of db.policies) add(p['Client ID'], 'Policy', [p['Policy Name'], p['Policy Type'], p.Insurer, p['Policy No'], p.Status, p.Notes,
-    p['Writing Agent'], p['Writing Agent Code'], p['Servicing Agent'], p['Servicing Agent Code'],
+    p['Writing Agent'], p['Writing Agent Code'], p['Servicing Agent'], p['Servicing Agent Code'], p['Writing Agent 2'], p['Servicing Agent 2'], p.Nominees,
     ...benefitsOf(p.ID).flatMap(b => [b['Benefit Name'], b['Benefit Type'], b.Notes])].filter(Boolean).join(' · '));
   return (_docs = by);
 }
@@ -1931,9 +1937,10 @@ function pagePolicy(cid, pid) {
   }
   tiles += tile('Current surrender value', svs.length ? esc(money(svs[0]['Surrender Value'])) : '—', svs.length ? `as of ${esc(fmtDate(svs[0]['As Of']))} · ${esc(ago(svs[0]['As Of']))}` : `<a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">Add it</a>`);
   const agent = (title, pre) => {
-    const n = p[pre], code = p[pre + ' Code'], ct = p[pre + ' Contact'];
-    return `<section class="card"><h2>${title}</h2>${n || code || ct ? `<dl class="details">
-      ${F('Name', esc(n))}${F('Agent code', esc(code))}${F('Contact', ct ? (/^[\d+\s()-]+$/.test(ct) ? `<a href="tel:${esc(ct.replace(/[^\d+]/g, ''))}">${esc(ct)}</a>` : esc(ct)) : '')}</dl>`
+    const one = k => { const n = p[k], code = p[k + ' Code'], ct = p[k + ' Contact'];
+      return n || code || ct ? `<dl class="details">${F('Name', esc(n))}${F('Agent code', esc(code))}${F('Contact', ct ? (/^[\d+\s()-]+$/.test(ct) ? `<a href="tel:${esc(ct.replace(/[^\d+]/g, ''))}">${esc(ct)}</a>` : esc(ct)) : '')}</dl>` : ''; };
+    const a = one(pre), b = one(pre + ' 2');
+    return `<section class="card"><h2>${title}</h2>${a || b ? (a || '<p class="none">—</p>') + (b ? `<h3 style="margin:14px 0 6px">Second agent</h3>${b}` : '')
       : `<p class="none">Not added yet — <a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">add</a>.</p>`}</section>`;
   };
   return `
@@ -1973,6 +1980,10 @@ function pagePolicy(cid, pid) {
         <td class="n">${d == null ? '' : `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : '−'}${esc(money(Math.abs(d)))}</span>`}</td>
         <td class="n"><button class="icon" title="Remove this entry" data-sid="${esc(v.ID)}" onclick="delSurrender(this)">✕</button></td></tr>`; }).join('')}
     </tbody></table><p class="muted small" style="margin:8px 0 0">Each update is kept with its date for future reference.</p></section>` : ''}
+  <section class="card"><h2>Nomination</h2>${p.Nominated === 'Yes' ? (() => { const ns = parseNominees(p.Nominees), t = ns.reduce((a, n) => a + (n.pct || 0), 0);
+      return ns.length ? `<table class="list ben"><thead><tr><th>Nominee</th><th class="n">Share</th></tr></thead><tbody>${ns.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
+        ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Shares add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}` : '<p>Yes <span class="muted">— no names added yet.</span></p>'; })()
+    : p.Nominated === 'No' ? '<p>No nomination made.</p>' : `<p class="none">Not recorded — <a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">add</a>.</p>`}</section>
   <div class="agents">${agent('Writing agent', 'Writing Agent')}${agent('Current servicing agent', 'Servicing Agent')}</div>
   <section class="card danger-zone" style="margin-top:16px"><button class="link danger small" data-cid="${esc(cid)}" data-pid="${esc(pid)}" onclick="delPolicy(this)">Delete this policy</button></section>`;
 }
@@ -2000,19 +2011,48 @@ const POLICY_SECTIONS = [
     { label: 'End Date', show: 'End date', type: 'date' },
     { label: 'Notes', type: 'textarea', wide: true, rows: 3 },
   ]],
+  ['Nomination', [{ custom: 'nom' }]],
   ['Writing agent', [
     { label: 'Writing Agent', show: 'Name', type: 'text', autofill: true, sugg: 'Agent' },
     { label: 'Writing Agent Code', show: 'Agent code', type: 'text', caps: 'characters' },
     { label: 'Writing Agent Contact', show: 'Contact', type: 'tel' },
+    { label: 'Writing Agent 2', show: 'Name', type: 'text', autofill: true, sugg: 'Agent', second: true },
+    { label: 'Writing Agent 2 Code', show: 'Agent code', type: 'text', caps: 'characters', second: true },
+    { label: 'Writing Agent 2 Contact', show: 'Contact', type: 'tel', second: true },
   ]],
   ['Current servicing agent', [
     { label: 'Servicing Agent', show: 'Name', type: 'text', autofill: true, sugg: 'Agent' },
     { label: 'Servicing Agent Code', show: 'Agent code', type: 'text', caps: 'characters' },
     { label: 'Servicing Agent Contact', show: 'Contact', type: 'tel' },
+    { label: 'Servicing Agent 2', show: 'Name', type: 'text', autofill: true, sugg: 'Agent', second: true },
+    { label: 'Servicing Agent 2 Code', show: 'Agent code', type: 'text', caps: 'characters', second: true },
+    { label: 'Servicing Agent 2 Contact', show: 'Contact', type: 'tel', second: true },
   ]],
 ];
 const POLICY_FIELDS = POLICY_SECTIONS.flatMap(([, fs]) => fs.filter(f => f.label).map(f => f.label));
 
+// ---- nomination: "Name (50%); Name (50%)" ----
+function parseNominees(t) { return String(t || '').split(';').map(x => x.trim()).filter(Boolean).map(x => { const m = /^(.*?)\s*\((\d+(?:\.\d+)?)\s*%\)$/.exec(x); return m ? { name: m[1], pct: +m[2] } : { name: x, pct: null }; }); }
+const nomText = list => list.map(n => n.pct != null ? `${n.name} (${n.pct}%)` : n.name).join('; ');
+function nomRow(n = {}) { return `<div class="nom-row"><label><span>Name</span><input name="nom_name" list="nominee_names" value="${esc(n.name || '')}" autocapitalize="words" placeholder="Type or pick a family member"></label>
+  <label><span>Share %</span><input name="nom_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="nomTotal()"></label>
+  <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); nomTotal()">✕</button></div>`; }
+function addNomRow() { const w = $('#nominees'); w.insertAdjacentHTML('beforeend', nomRow()); w.lastElementChild.querySelector('input').focus(); nomTotal(); }
+function nomToggle() { const on = document.querySelector('[name=nominated]').value === 'Yes'; $('#nom-box').style.display = on ? '' : 'none'; nomTotal(); }
+function nomTotal() {
+  const el = $('#nom-total'); if (!el) return;
+  const t = [...document.querySelectorAll('[name=nom_pct]')].reduce((a, i) => a + (parseFloat(i.value) || 0), 0);
+  el.innerHTML = t ? (Math.abs(t - 100) < 0.01 ? '<span class="good">✓ Adds up to 100%</span>' : `<span class="bad">Adds up to ${+t.toFixed(2)}% — should be 100%</span>`) : '';
+}
+function secondAgentHtml(title, fields, p, sugg) {
+  if (!fields.length) return '';
+  const has = fields.some(f => String(p[f.label] ?? '').trim()), who = title === 'Writing agent' ? 'writing' : 'servicing';
+  return `<div class="agent2"${has ? '' : ' hidden'}><h4>Second ${who} agent <button type="button" class="link danger small" onclick="dropAgent2(this)">remove</button></h4>
+      <div class="grid">${fields.map(f => fieldHtml(f, p[f.label], sugg)).join('')}</div></div>
+    <p${has ? ' hidden' : ''}><button type="button" class="btn small" onclick="showAgent2(this)">+ Add a second ${who} agent</button></p>`;
+}
+function showAgent2(btn) { const box = btn.closest('fieldset').querySelector('.agent2'); box.hidden = false; btn.parentNode.hidden = true; box.querySelector('input').focus(); }
+function dropAgent2(btn) { const box = btn.closest('.agent2'); box.querySelectorAll('input').forEach(i => i.value = ''); box.hidden = true; box.nextElementSibling.hidden = false; }
 function pagePolicyForm(cid, pid) {
   const c = getClient(cid); if (!c) return pageNotFound();
   const editing = !!pid, p = editing ? db.policies.find(x => x.ID === pid && x['Client ID'] === cid) : { Status: 'In force', 'Insured ID': cid, 'Paid By': 'Cash' };
@@ -2032,6 +2072,13 @@ function pagePolicyForm(cid, pid) {
         + fieldHtml({ label: 'SV As Of', show: 'Value as of (blank = today)', type: 'date' }, '', sugg)
         + `<p class="dhint" style="grid-column:1/-1;margin:0">${last ? `Last recorded: <b>${esc(money(last['Surrender Value']))}</b> as of ${esc(fmtDate(last['As Of']))}. A new amount or date is added to the history — older values are kept.` : 'Each value you enter is saved with its date, so you can look back at how it has grown.'}</p>`;
     }
+    if (f.custom === 'nom') {
+      const noms = parseNominees(p.Nominees), fn = distinct([c.Name, ...fam.map(m => m.c.Name)]);
+      return `<label><span>Nominated?</span><select name="nominated" onchange="nomToggle()"><option value="">—</option>${['Yes', 'No'].map(v => `<option${p.Nominated === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+      <div id="nom-box" class="wide" style="grid-column:1/-1${p.Nominated === 'Yes' ? '' : ';display:none'}"><div id="nominees">${(noms.length ? noms : [{}]).map(nomRow).join('')}</div>
+        ${datalist('nominee_names', fn)}
+        <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 0"><button type="button" class="btn small" onclick="addNomRow()">+ Add another person</button><span class="dhint" id="nom-total"></span></p></div>`;
+    }
     if (f.custom === 'term') return `<label id="term-field"><span>Premium duration <em>optional</em></span><div class="termbox">
       <select name="premium_term"><option value="">—</option>${TERMS.map(([v, t]) => `<option value="${v}"${p['Premium Term'] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
       <input name="premium_term_value" inputmode="numeric" placeholder="e.g. 20" value="${esc(p['Premium Term Value'] ?? '')}" autocomplete="off"></div>
@@ -2049,7 +2096,7 @@ function pagePolicyForm(cid, pid) {
         <div id="benefits">${(editing ? benefitsOf(pid) : []).map(benefitRow).join('') || benefitRow()}</div>
         ${datalist('benefit_names', distinct(db.benefits.map(b => b['Benefit Name'])))}
         <button type="button" class="btn" onclick="addBenefitRow()">+ Add benefit</button>`
-        : `<div class="grid">${fields.map(f => f.custom ? custom(f) : fieldHtml(f, p[f.label], sugg)).join('')}</div>`}</fieldset>`).join('')}
+        : `<div class="grid">${fields.filter(f => !f.second).map(f => f.custom ? custom(f) : fieldHtml(f, p[f.label], sugg)).join('')}</div>${secondAgentHtml(title, fields.filter(f => f.second), p, sugg)}`}</fieldset>`).join('')}
       <div class="actions"><button class="btn primary" type="submit">Save policy</button>
         <a class="btn" href="${editing ? `#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}` : `#/c/${encodeURIComponent(cid)}#policies`}">Cancel</a></div>
     </form></section>`;
@@ -2094,11 +2141,12 @@ function wirePolicyForm() {
   form.querySelector('[name=date_bought]').addEventListener('focusout', update);
   update();
   // Picking a known agent fills in their code and contact
-  for (const pre of ['writing_agent', 'servicing_agent']) {
+  nomTotal();
+  for (const pre of ['writing_agent', 'servicing_agent', 'writing_agent_2', 'servicing_agent_2']) {
     const n = form.querySelector(`[name=${pre}]`);
     n.addEventListener('change', () => {
       const v = n.value.trim().toLowerCase(); if (!v) return;
-      const hit = [...db.policies].reverse().map(x => [['Writing Agent', x], ['Servicing Agent', x]]).flat()
+      const hit = [...db.policies].reverse().map(x => [['Writing Agent', x], ['Servicing Agent', x], ['Writing Agent 2', x], ['Servicing Agent 2', x]]).flat()
         .find(([k, x]) => String(x[k] || '').toLowerCase() === v);
       if (!hit) return; const [k, x] = hit;
       const code = form.querySelector(`[name=${pre}_code]`), ct = form.querySelector(`[name=${pre}_contact]`);
@@ -2107,7 +2155,9 @@ function wirePolicyForm() {
   }
 }
 function sameAgent() {
-  for (const s of ['', '_code', '_contact']) document.querySelector(`[name=servicing_agent${s}]`).value = document.querySelector(`[name=writing_agent${s}]`).value;
+  for (const s of ['', '_code', '_contact', '_2', '_2_code', '_2_contact']) document.querySelector(`[name=servicing_agent${s}]`).value = document.querySelector(`[name=writing_agent${s}]`).value;
+  const w2 = document.querySelector('[name=writing_agent_2]').closest('.agent2'), s2 = document.querySelector('[name=servicing_agent_2]').closest('.agent2');
+  if (!w2.hidden) { s2.hidden = false; s2.nextElementSibling.hidden = true; }
 }
 async function savePolicy(e) {
   e.preventDefault();
@@ -2146,6 +2196,16 @@ async function savePolicy(e) {
     bens.push({ 'Benefit Name': name || type || 'Benefit', 'Benefit Type': type, 'Coverage Amount': amt, 'Cover Term': term, 'Cover Term Value': term === 'Till age' || term === 'Years' ? tv : null, Notes: notes });
   }
   out['Insured ID'] = g('insured_id') || cid;
+  out.Nominated = g('nominated');
+  if (out.Nominated === 'Yes') {
+    const names = fd.getAll('nom_name').map(x => String(x).trim()), pcts = fd.getAll('nom_pct').map(x => String(x).trim()), list = [];
+    for (let i = 0; i < names.length; i++) { if (!names[i] && !pcts[i]) continue;
+      const n = pcts[i] === '' ? null : parseFloat(pcts[i].replace('%', ''));
+      if (!names[i]) { toast('Nomination: type the person’s name.', 'error'); return false; }
+      if (n != null && (isNaN(n) || n <= 0 || n > 100)) { toast(`Nomination: ${names[i]}’s share should be a % between 1 and 100.`, 'error'); return false; }
+      list.push({ name: names[i].replace(/[;()]/g, ' ').replace(/\s+/g, ' ').trim(), pct: n }); }
+    out.Nominees = nomText(list);
+  } else out.Nominees = '';
   if (out['Paid By'] !== 'CPF MA + Cash') out['Cash Portion'] = null;
   const single = out['Premium Frequency'] === 'Single premium';
   out['Premium Term'] = single ? '' : g('premium_term');
@@ -3702,7 +3762,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18';
+const APP_VERSION = '2026.11.18b';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
