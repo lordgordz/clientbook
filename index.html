@@ -2378,10 +2378,11 @@ function coverEnd(b, p) {   // { label, age } for how long a benefit lasts
   const t = b['Cover Term'], v = +b['Cover Term Value'];
   if (t === 'Whole life') return { label: 'whole life', age: 999 };
   if (t === 'Till age' && v) return { label: `till age ${v}`, age: v };
-  if (t === 'Years' && v) {
-    const ins = insuredOf(p), dob = ins && parseISO(ins['Date of Birth']), bought = parseISO(p['Date Bought']);
-    if (dob && bought) { const a = ageOf(ins['Date of Birth'], bought) + v; return { label: `till age ${a}`, age: a }; }
-    return { label: `for ${v} years`, age: 500 + v };
+  if (t === 'Years' && v) {   // counted from the date bought; shown as the end date
+    const bought = parseISO(p['Date Bought']);
+    if (!bought) return { label: `for ${v} years`, age: 500 + v };
+    const end = addMonthsD(bought, 12 * v), ins = insuredOf(p), dob = ins && parseISO(ins['Date of Birth']);
+    return { label: `till ${fmtDate(isoOf(end))}`, age: dob ? (end - dob) / (365.25 * 864e5) : 400 + end.getFullYear() / 1e4 };
   }
   return { label: '', age: 1000 };
 }
@@ -3765,7 +3766,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18c';
+const APP_VERSION = '2026.11.18d';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
