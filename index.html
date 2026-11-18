@@ -300,6 +300,7 @@ ul.pols li a:active { background: var(--accent-soft); }
 .tile.key { border-color: var(--accent-2); background: var(--accent-soft); }
 .tile.key b { color: var(--accent); }
 .tile .warn { color: var(--warn); }
+.prod-note { margin: 14px 0 0; padding: 10px 12px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; font-size: 14px; }
 .nom-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, 1fr) auto; gap: 10px; align-items: end; max-width: 560px; margin-bottom: 8px; }
 .nom-row label { display: flex; flex-direction: column; gap: 6px; } .nom-row label span { font-size: 13px; }
 .agent2 { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); } .agent2 h4 { margin: 0 0 8px; font-size: 14px; display: flex; gap: 12px; align-items: center; }
@@ -578,6 +579,11 @@ const COVER_TERMS = [['Till age', 'Till age'], ['Years', 'Number of years'], ['W
 // Coverage summary groups: a policy with any of these is "protection"; else with any accident/hospital benefit it is "accident & hospital"; else "investment".
 const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)', 'Disability Income (DI)', 'Long-Term Care (LTC)']);
 const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash']);
+// Side notes shown automatically on every policy whose name matches (policy page and policy summary).
+const PRODUCT_NOTES = [
+  { match: /platinum\s*wealth\s*elite/i, note: 'Coverage is guaranteed for the first 15 years. After the first 15 years, if the policy value is lower than the monthly mortality charges, the coverage will cease.' },
+];
+const productNotes = p => PRODUCT_NOTES.filter(r => r.match.test(String(p['Policy Name'] || ''))).map(r => r.note);
 const NO_TOTALS = new Set(['Accident & health']);   // these don't show premiums paid
 const FREQUENCIES = ['Single premium', 'Annual', 'Semi-annual', 'Quarterly', 'Monthly'];
 const FREQ_MONTHS = { 'Annual': 12, 'Semi-annual': 6, 'Quarterly': 3, 'Monthly': 1 };
@@ -1965,7 +1971,7 @@ function pagePolicy(cid, pid) {
     ${F('Status', esc(p.Status))}
     ${F('End date', esc(fmtDate(p['End Date'])))}
     ${p.Notes ? F('Notes', `<span class="pre">${esc(p.Notes)}</span>`, 'wide') : ''}
-  </dl></section>
+  </dl>${productNotes(p).map(n => `<p class="prod-note">ⓘ ${esc(n)}</p>`).join('')}</section>
   <section class="card"><div class="row-between"><h2>Coverage <small>${bens.length}</small></h2>
     <a class="btn small" href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">${bens.length ? 'Edit' : '+ Add benefit'}</a></div>
     ${bens.length ? `<table class="list ben"><thead><tr><th>Benefit</th><th>Type</th><th class="n">Coverage</th><th>Notes</th></tr></thead><tbody>
@@ -2463,7 +2469,7 @@ function pageSummary(cid, q) {
       return `<td class="nw">${main ? esc(main) + (sub ? `<span class="t">${sub}</span>` : '') : '<span class="none">–</span>'}</td>`; };
     const dShort = iso => { const d = parseISO(iso); return d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : '–'; };
     const svCell = p => { const v = svNow(p); return `<td>${v ? money(Math.round(+v['Surrender Value'])) + `<span class="t">as of ${esc(fmtDate(v['As Of']))}</span>` : '<span class="none">–</span>'}</td>`; };
-    const remarks = p => esc([p.Notes, ...benefitsOf(p.ID).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
+    const remarks = p => esc([...productNotes(p), p.Notes, ...benefitsOf(p.ID).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
     const otherCell = (p, skip) => { const os = benefitsOf(p.ID).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
       return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'])) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
@@ -3766,7 +3772,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18d';
+const APP_VERSION = '2026.11.18e';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
