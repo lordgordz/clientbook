@@ -300,6 +300,9 @@ ul.pols li a:active { background: var(--accent-soft); }
 .tile.key { border-color: var(--accent-2); background: var(--accent-soft); }
 .tile.key b { color: var(--accent); }
 .tile .warn { color: var(--warn); }
+.pa-opts { display: flex; flex-direction: column; gap: 8px; } .pa-opt { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pa-opt input[type=checkbox] { width: 20px; height: 20px; min-height: 0; -webkit-appearance: checkbox; appearance: checkbox; } .pa-opt select { width: auto; } .pa-opt span { font-weight: 600; }
+.pa-pagebox table.pat { margin-bottom: 14px; } .pa-pagebox table.pat td.cur, .pa-pagebox table.pat th.cur { background: var(--accent-soft); font-weight: 700; } .pa-pagebox table.pat.off { opacity: .55; } .pa-pagebox .gs { color: var(--warn); margin-left: 8px; text-transform: none; letter-spacing: 0; }
 .hsg-sug { background: #eef6ee; border: 1px solid #cfe5d3; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6; }
 .hsg-sug[hidden] { display: none; }
 table.hsgt td.cur { background: var(--accent-soft); font-weight: 700; }
@@ -382,6 +385,10 @@ table.hsgt td.cur { background: var(--accent-soft); font-weight: 700; }
 .psum .psec tr.has-note td { border-bottom: 0; }
 .psum .hsg-sum table + table { margin-top: -1px; } .psum .hsg-sum + .hsg-sum { margin-top: 14px; }
 .psum .hp-sub { margin: 0 0 6px; font-size: 12px; color: #333; }
+.psum .hsg-sum table.pat { margin-top: 6px; } .psum .hsg-sum table.pat td:first-child, .psum .hsg-sum table.pat th:first-child { text-align: left; }
+.psum .hsg-sum table.pat td.cur, .psum .hsg-sum table.pat th.cur { background: #fbf1e3; font-weight: 700; } .psum table.pat.off { opacity: .55; }
+.psum table.pat { table-layout: fixed; } .psum table.pat th:first-child, .psum table.pat td:first-child { width: 52%; }
+.psum table.pat .gs { font-weight: 600; color: #8a5a00; margin-left: 8px; }
 .psum.hsg-page .hsg-sum { break-inside: avoid; } .psum.hsg-page h1 { margin-bottom: 4px; }
 .psum.hsg-page .hsg-sum td, .psum.hsg-page .hsg-sum th { padding: 2px 8px; font-size: 10.5px; line-height: 1.3; }
 .psum.hsg-page .hsg-sum th.bar { padding: 4px; }
@@ -555,7 +562,7 @@ const SHEETS = {
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Paid By', 'Cash Portion', 'Status', 'End Date', 'Notes',
-               'HSG Plan', 'Rider Of', 'Nominated', 'Nominees',
+               'HSG Plan', 'Rider Of', 'PA Product', 'PA Plan', 'PA Options', 'Nominated', 'Nominees',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Writing Agent 2', 'Writing Agent 2 Code', 'Writing Agent 2 Contact',
                'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact', 'Servicing Agent 2', 'Servicing Agent 2 Code', 'Servicing Agent 2 Contact'],
   'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Cover Term', 'Cover Term Value', 'Notes'],
@@ -582,9 +589,12 @@ const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event',
 const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']);
 const POLICY_STATUS = ['In force', 'Lapsed', 'Surrendered', 'Matured', 'Claimed', 'Terminated'];
 const POLICY_TYPES = ['Whole life', 'Term', 'Investment-linked (ILP)', 'Endowment', 'Accident & health', 'Disability care', 'Universal life'];
+const ACCIDENT_BENEFITS = ['Accidental Death, Dismemberment and Burns (AD&D)', 'Accidental Dismemberment and Burns (Acc D&B)', 'Additional Accidental Dismemberment and Burns (Add Acc D&B)', 'Double Indemnity for Dismemberment and Burns (2x D&B)', 'Accidental Major Dismemberment (AMD)', 'Accidental Permanent Total Disability (APTD)', 'Additional Payout for Accidental Death (Add Acc Death)', 'Aviation Accident (Aviation)', 'Fractures (Frac)', 'Broken Bones (BB)', 'Loss of Activities of Daily Living (Loss of ADL)', 'Extra Accidental Medical Reimbursement – Fractures (Extra Acc MR)', 'TCM / Chiropractic Reimbursement (TCM/Chiro)', 'Complementary Medical Reimbursement (CMR)', 'Ambulance Services (Ambulance)', 'Daily Accidental Hospital Income (DAHI)', 'Daily Accidental ICU (DA ICU)', 'Daily Hospital Income – Accident & Disease (DHI)', 'Double Indemnity for Daily Hospital Income in ICU (2x DHI ICU)', 'Post-Hospitalisation Home Care (PHHC)', 'Recuperation – Dengue Fever and HFMD (Recup)', 'Mobility Aids Reimbursement (MAR)', 'Home Modification Reimbursement (HMR)', 'Mobility Aids and Home Modification (MAHM)', 'Rehabilitation Support (Rehab)', 'Compassionate Visit (CV)', 'Emergency Medical Evacuation and Repatriation (EMER)', 'Weekly Income (WIB)', 'Monthly Support (MS)', 'Monthly Disability Care (MDC)', 'Monthly Catastrophe Cash (MCC)', 'Family Support Fund (FSF)', 'Education Assurance Fund (EAF)', 'Reconstructive Surgery Reimbursement (RSR)', 'National Service Cover (NS Cover)', 'Dementia (Dementia)', 'Dementia Care Reimbursement (DCR)', 'Child Critical Illnesses (Child CI)', 'Payor Benefit (Payor)', 'Renewal Bonus (RB)'];
 const BENEFIT_TYPES = ['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)',
   'Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Disability Income (DI)',
-  'Long-Term Care (LTC)', 'Hospitalisation Expenses', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)', 'Other'];
+  'Long-Term Care (LTC)', 'Hospitalisation Expenses', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)',
+  // From the schedules of benefits of AIA Centurion PA, Solitaire PA (II), Platinum AccidentCare and Star Protector Plus
+  ...ACCIDENT_BENEFITS, 'Other'];
 const OLD_BENEFIT = { 'Total & permanent disability': 'Total Permanent Disability (TPD)', 'Terminal illness': 'Terminal Illness (TI)', 'Early critical illness': 'Early Critical Illness (ECI)',
   'Critical illness': 'Critical Illness (CI)', 'Accidental death': 'Accidental Death (Acc Death)', 'Accidental Death (AD)': 'Accidental Death (Acc Death)',
   'Accident medical': 'Accidental Medical Reimbursement (Acc MR)', 'Accident Medical': 'Accidental Medical Reimbursement (Acc MR)', 'Disability income': 'Disability Income (DI)',
@@ -596,7 +606,7 @@ const NONCASH = ['CPF OA', 'CPF SA', 'CPF MA', 'SRS'];
 const COVER_TERMS = [['Till age', 'Till age'], ['Years', 'Number of years'], ['Whole life', 'Whole life']];
 // Coverage summary groups: a policy with any of these is "protection"; else with any accident/hospital benefit it is "accident & hospital"; else "investment".
 const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)', 'Disability Income (DI)', 'Long-Term Care (LTC)']);
-const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash']);
+const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash', ...ACCIDENT_BENEFITS]);
 // Side notes shown automatically on every policy whose name matches (policy page and policy summary).
 const PRODUCT_NOTES = [
   { match: /platinum\s*wealth\s*elite/i, note: 'Coverage is guaranteed for the first 15 years. After the first 15 years, if the policy value is lower than the monthly mortality charges, the coverage will cease. So long as the investment returns are sufficient, coverage will last for whole life.' },
@@ -648,9 +658,110 @@ function hsgDeductibleTable(p, cls) {
 const HSG_NOTE = 'A deductible based on the ward class and 10% co-insurance apply to each claim, unless covered by a rider.';
 const hsgOf = p => HSG_PLANS[p['HSG Plan']] || null;
 const productNotes = p => [...PRODUCT_NOTES.filter(r => r.match.test(String(p['Policy Name'] || ''))).map(r => r.note), ...(hsgOf(p) ? [HSG_NOTE] : [])];
+// Accident plans: tables of benefits from each product summary (insured amounts in S$). Values per plan column.
+const PA_PRODUCTS = {
+  'AIA Centurion PA': { plans: ['Plan 1', 'Plan 2', 'Plan 3'],
+    note: 'Insured amounts for benefits 1 to 10 are halved from the renewal date on or after the insured’s 81st birthday. Covers till age 100; Dementia benefits till age 85.',
+    groups: [
+      { name: 'Basic Benefits', rows: [
+        ['Accidental Death Benefit', 'Accidental Death (Acc Death)', [30000, 60000, 100000]],
+        ['Accidental Dismemberment and Burns Benefit', 'Accidental Dismemberment and Burns (Acc D&B)', [30000, 60000, 100000]],
+        ['Additional Accidental Dismemberment and Burns Benefit', 'Additional Accidental Dismemberment and Burns (Add Acc D&B)', [30000, 60000, 100000]],
+        ['Fractures Benefit', 'Fractures (Frac)', [10000, 15000, 30000]],
+        ['Loss of Activities of Daily Living Benefit', 'Loss of Activities of Daily Living (Loss of ADL)', [20000, 30000, 60000]],
+        ['Accidental Medical Reimbursement Benefit', 'Accidental Medical Reimbursement (Acc MR)', [1000, 2000, 3000]],
+        ['Extra Accidental Medical Reimbursement Benefit (Fractures)', 'Extra Accidental Medical Reimbursement – Fractures (Extra Acc MR)', [1000, 2000, 3000]],
+        ['TCM / Chiropractic Medical Reimbursement Benefit', 'TCM / Chiropractic Reimbursement (TCM/Chiro)', [250, 500, 750]],
+        ['Ambulance Services Benefit', 'Ambulance Services (Ambulance)', [200, 200, 200]],
+        ['Daily Accidental Hospital Income Benefit', 'Daily Accidental Hospital Income (DAHI)', ['50 / day', '100 / day', '150 / day']],
+        ['Post-Hospitalisation Home Care Benefit', 'Post-Hospitalisation Home Care (PHHC)', [800, 1000, 1200]],
+        ['Mobility Aid Reimbursement Benefit', 'Mobility Aids Reimbursement (MAR)', [250, 500, 750]],
+        ['Home Modification Reimbursement Benefit', 'Home Modification Reimbursement (HMR)', [5000, 10000, 15000]] ] },
+      { name: 'Optional: Dementia Benefits Group', optional: true, sameOrLower: true, rows: [
+        ['Dementia Benefit', 'Dementia (Dementia)', [30000, 50000, 100000]],
+        ['Dementia Care Reimbursement Benefit', 'Dementia Care Reimbursement (DCR)', [6000, 10000, 20000]] ] } ] },
+  'AIA Solitaire PA (II)': { plans: ['Plan 1', 'Plan 2', 'Plan 3', 'Plan 4'],
+    note: 'Optional benefit groups must be the same plan or lower than the Basic Benefits. Renewal bonus: up to 30% increase in insured amount on items 1 to 5.',
+    groups: [
+      { name: 'Basic Benefits', rows: [
+        ['Accidental Death Benefit', 'Accidental Death (Acc Death)', [100000, 250000, 500000, 750000]],
+        ['Accidental Major Dismemberment Benefit', 'Accidental Major Dismemberment (AMD)', [300000, 750000, 1500000, 2250000]],
+        ['Accidental Permanent Total Disability Benefit', 'Accidental Permanent Total Disability (APTD)', [300000, 750000, 1500000, 2250000]],
+        ['Accidental Dismemberment and Burns Benefit', 'Accidental Dismemberment and Burns (Acc D&B)', [100000, 250000, 500000, 750000]],
+        ['Additional Payout for Accidental Death Benefit (Public/Private Transport/Pedestrian/PMD user/Building Fire)', 'Additional Payout for Accidental Death (Add Acc Death)', [100000, 250000, 500000, 750000]],
+        ['Accident Medical Reimbursement Benefit', 'Accidental Medical Reimbursement (Acc MR)', [2000, 3000, 4000, 5000]],
+        ['Traditional Chinese Medicine / Chiropractic Reimbursement Benefit', 'TCM / Chiropractic Reimbursement (TCM/Chiro)', [500, 750, 1000, 1250]],
+        ['Renewal Bonus', 'Renewal Bonus (RB)', ['Yes', 'Yes', 'Yes', 'Yes']] ] },
+      { name: 'Optional: Lifestyle Maintenance Benefits Group', optional: true, sameOrLower: true, rows: [
+        ['Weekly Income Benefit', 'Weekly Income (WIB)', ['100 / week', '200 / week', '300 / week', '400 / week']],
+        ['Mobility Aids Reimbursement Benefit', 'Mobility Aids Reimbursement (MAR)', [1000, 1000, 2000, 2000]],
+        ['Home Modification Reimbursement Benefit', 'Home Modification Reimbursement (HMR)', [5000, 10000, 15000, 20000]],
+        ['Family Support Fund Benefit', 'Family Support Fund (FSF)', [30000, 60000, 100000, 150000]] ] },
+      { name: 'Optional: Accidental Hospitalisation Benefits Group', optional: true, sameOrLower: true, rows: [
+        ['Daily Accidental Hospital Income Benefit', 'Daily Accidental Hospital Income (DAHI)', ['50 / day', '150 / day', '250 / day', '350 / day']],
+        ['Daily Accidental Intensive Care Unit (ICU) Benefit', 'Daily Accidental ICU (DA ICU)', ['50 / day', '150 / day', '250 / day', '350 / day']],
+        ['Ambulance Services Benefit', 'Ambulance Services (Ambulance)', [200, 200, 200, 200]],
+        ['Broken Bones Benefit', 'Broken Bones (BB)', [8000, 12000, 16000, 20000]],
+        ['Emergency Medical Evacuation and Repatriation Benefit', 'Emergency Medical Evacuation and Repatriation (EMER)', [10000, 25000, 50000, 75000]] ] },
+      { name: 'Optional: Monthly Disability Care Benefit', optional: true, sameOrLower: true, rows: [
+        ['Monthly Disability Care Benefit', 'Monthly Disability Care (MDC)', ['500 / month', '1,000 / month', '1,500 / month', '2,000 / month']] ] } ] },
+  'AIA Platinum AccidentCare': { plans: ['Silver', 'Gold', 'Diamond'],
+    note: 'Accidental Medical Reimbursement includes hiring a nurse and ambulance charges up to $1,000. Weekly Income pays for up to 52 weeks per accident; Monthly Support pays for 12 months.',
+    groups: [
+      { name: 'Basic Benefits', rows: [
+        ['Accidental Death, Accidental Dismemberment and Burns Benefit', 'Accidental Death, Dismemberment and Burns (AD&D)', [1000000, 3000000, 5000000]],
+        ['Aviation Accident Benefit', 'Aviation Accident (Aviation)', [1000000, 3000000, 5000000]],
+        ['Accidental Medical Reimbursement Benefit', 'Accidental Medical Reimbursement (Acc MR)', [15000, 20000, 25000]],
+        ['Complementary Medical Reimbursement Benefit', 'Complementary Medical Reimbursement (CMR)', [3000, 4000, 5000]],
+        ['Mobility Aids and Home Modification Benefit', 'Mobility Aids and Home Modification (MAHM)', [5000, 8000, 10000]],
+        ['Rehabilitation Support Benefit', 'Rehabilitation Support (Rehab)', [3000, 5000, 10000]],
+        ['Compassionate Visit Benefit', 'Compassionate Visit (CV)', [10000, 10000, 10000]],
+        ['Emergency Medical Evacuation and Repatriation Benefit', 'Emergency Medical Evacuation and Repatriation (EMER)', ['Unlimited', 'Unlimited', 'Unlimited']] ] },
+      { name: 'Optional Benefits', optional: true, plans: ['Option 1', 'Option 2'], rows: [
+        ['Weekly Income Benefit', 'Weekly Income (WIB)', ['1,000 / week', '1,500 / week']],
+        ['Monthly Support Benefit', 'Monthly Support (MS)', ['2,000 / month', '3,000 / month']] ] } ] },
+  'AIA Star Protector Plus': { plans: ['Plan 1', 'Plan 2', 'Plan 3'],
+    note: 'For juveniles aged 16 and below at application. Medical Reimbursement covers TCM / chiropractic up to 10% of its insured amount. Renewal bonus: 5% of the AD&D insured amount each renewal, up to 5 bonuses.',
+    groups: [
+      { name: 'Basic Benefits', rows: [
+        ['Accidental Death, Accidental Dismemberment and Burns Benefit', 'Accidental Death, Dismemberment and Burns (AD&D)', [20000, 35000, 100000]],
+        ['Double Indemnity for Dismemberment and Burns Benefit (School / Public or Private Conveyance / Pedestrian)', 'Double Indemnity for Dismemberment and Burns (2x D&B)', [20000, 35000, 100000]],
+        ['Monthly Catastrophe Cash Benefit', 'Monthly Catastrophe Cash (MCC)', ['750 / month', '1,000 / month', '1,500 / month']],
+        ['Medical Reimbursement Benefit (Accident & Disease)', 'Medical Reimbursement (MR)', [1500, 3000, 5000]],
+        ['Daily Hospital Income Benefit (Accident & Disease)', 'Daily Hospital Income – Accident & Disease (DHI)', ['30 / day', '50 / day', '100 / day']],
+        ['Double Indemnity for Daily Hospital Income Benefit in ICU', 'Double Indemnity for Daily Hospital Income in ICU (2x DHI ICU)', ['30 / day', '50 / day', '100 / day']],
+        ['Post-Hospitalisation Home Care Benefit (Accident & Disease)', 'Post-Hospitalisation Home Care (PHHC)', [100, 150, 200]],
+        ['Recuperation Benefit (Dengue Fever and Hand, Foot & Mouth Disease)', 'Recuperation – Dengue Fever and HFMD (Recup)', [50, 80, 100]],
+        ['Education Assurance Fund Benefit', 'Education Assurance Fund (EAF)', [10000, 17500, 50000]],
+        ['Reconstructive Surgery Reimbursement Benefit', 'Reconstructive Surgery Reimbursement (RSR)', ['Nil', 5000, 15000]],
+        ['Mobility Aids Reimbursement Benefit', 'Mobility Aids Reimbursement (MAR)', ['Nil', 300, 1000]],
+        ['National Service Cover Benefit', 'National Service Cover (NS Cover)', ['Nil', 10000, 20000]],
+        ['Emergency Medical Evacuation and Repatriation Benefit', 'Emergency Medical Evacuation and Repatriation (EMER)', ['Nil', 'Nil', '50,000 per policy year']],
+        ['Payor Benefit', 'Payor Benefit (Payor)', ['Yes', 'Yes', 'Yes']],
+        ['Renewal Bonus', 'Renewal Bonus (RB)', ['5% a year, up to 5', '5% a year, up to 5', '5% a year, up to 5']] ] },
+      { name: 'Optional: Child Critical Illnesses Benefit', optional: true, plans: ['Option 1', 'Option 2', 'Option 3'], rows: [
+        ['Child Critical Illnesses Benefit', 'Child Critical Illnesses (Child CI)', [30000, 50000, 100000]] ] } ] },
+};
+
+const paOf = p => PA_PRODUCTS[p['PA Product']] || null;
+function paOpts(p) {   // { group name: plan label } for optional groups taken
+  const o = {}; for (const part of String(p['PA Options'] || '').split(';')) { const i = part.lastIndexOf(':'); if (i > 0) o[part.slice(0, i).trim()] = part.slice(i + 1).trim(); } return o;
+}
+const paMoney = v => typeof v === 'number' ? money(v) : /^[\d,]+ (\/|per)/.test(v) ? '$' + v : v;
+function paBens(p) {
+  const P = paOf(p); if (!P) return [];
+  const bi = P.plans.indexOf(p['PA Plan']), opts = paOpts(p), out = [];
+  for (const g of P.groups) {
+    const plans = g.plans || P.plans, idx = g.optional ? plans.indexOf(opts[g.name]) : bi; if (idx < 0) continue;
+    for (const [label, type, vals] of g.rows) { const v = vals[idx]; if (v === 'Nil' || v == null) continue;
+      out.push({ 'Benefit Name': label, 'Benefit Type': type, 'Coverage Amount': typeof v === 'number' ? v : paMoney(v), 'Cover Term': '', Notes: g.optional ? g.name.replace(/^Optional:\s*/, '') + ' · ' + plans[idx] : '' }); }
+  }
+  return out;
+}
+const paTitle = p => paOf(p) ? `${p['PA Product']}${p['PA Plan'] ? ' – ' + p['PA Plan'] : ''}` : '';
 // Benefits for the summary: an HSG plan's standard hospital cover replaces any typed hospitalisation benefit.
 function allBens(p) {
-  const h = hsgOf(p), bs = benefitsOf(p.ID);
+  const h = hsgOf(p), bs = [...paBens(p), ...benefitsOf(p.ID)];
   return h ? [{ 'Benefit Name': p['HSG Plan'], 'Benefit Type': 'Hospitalisation Expenses', 'Coverage Amount': h.cover, 'Cover Term': '', Notes: '' }, ...bs.filter(b => b['Benefit Type'] !== 'Hospitalisation Expenses')] : bs;
 }
 const riderBase = p => p['Rider Of'] ? db.policies.find(x => x.ID === p['Rider Of']) || null : null;
@@ -2059,6 +2170,7 @@ function pagePolicy(cid, pid) {
     ${F('Policy type', esc(p['Policy Type']))}
     ${F('Insurer', esc(p.Insurer))}
     ${hsgOf(p) ? F('HealthShield Gold plan', `${esc(p['HSG Plan'])}<br><span class="muted small">${esc(hsgOf(p).ward)}</span>`) : ''}
+    ${paOf(p) ? F('Accident plan', `${esc(paTitle(p))}${Object.keys(paOpts(p)).length ? '<br><span class="muted small">+ ' + Object.entries(paOpts(p)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ') + '</span>' : ''}`) : ''}
     ${riderBase(p) ? F('Rider of', `<a href="#/c/${encodeURIComponent(riderBase(p)['Client ID'])}/p/${encodeURIComponent(riderBase(p).ID)}">${esc(riderBase(p)['Policy Name'] || 'policy')}</a>`) : ''}
     ${ridersOf(p).length ? F('Riders', ridersOf(p).map(x => `<a href="#/c/${encodeURIComponent(x['Client ID'])}/p/${encodeURIComponent(x.ID)}">${esc(x['Policy Name'] || 'rider')}</a>`).join('<br>')) : ''}
     ${F('Policy owner', esc(c.Name) + (ageOf(c['Date of Birth']) != null ? ` (age ${ageOf(c['Date of Birth'])})` : ''))}
@@ -2071,13 +2183,14 @@ function pagePolicy(cid, pid) {
     ${F('End date', esc(fmtDate(p['End Date'])))}
     ${p.Notes ? F('Notes', `<span class="pre">${esc(p.Notes)}</span>`, 'wide') : ''}
   </dl>${productNotes(p).map(n => `<p class="prod-note">ⓘ ${esc(n)}</p>`).join('')}</section>
-  <section class="card"><div class="row-between"><h2>Coverage <small>${bens.length + (hsgOf(p) ? 1 : 0)}</small></h2>
+  <section class="card"><div class="row-between"><h2>Coverage <small>${bens.length + (hsgOf(p) ? 1 : 0) + paBens(p).length}</small></h2>
     <a class="btn small" href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">${bens.length ? 'Edit' : '+ Add benefit'}</a></div>
     ${hsgOf(p) ? `<div class="hsg-box"><b>${esc(p['HSG Plan'])}</b> · ${esc(hsgOf(p).cover)} · ${esc(hsgOf(p).ward)}<br><span class="small">${esc(hsgOf(p).limits)}</span></div>` : ''}
     ${bens.length ? `<table class="list ben"><thead><tr><th>Benefit</th><th>Type</th><th class="n">Coverage</th><th>Notes</th></tr></thead><tbody>
       ${bens.map(b => `<tr><td><b>${esc(b['Benefit Name'])}</b></td><td>${esc(b['Benefit Type']) || '<span class="none">—</span>'}</td>
         <td class="n">${esc(covText(b['Coverage Amount'])) || '—'}</td><td>${esc(b.Notes)}</td></tr>`).join('')}</tbody></table>`
-      : hsgOf(p) ? '' : '<p class="none">No benefits added yet.</p>'}</section>
+      : hsgOf(p) || paOf(p) ? '' : '<p class="none">No benefits added yet.</p>'}
+    ${paOf(p) ? `<p class="muted small" style="margin:10px 0 6px">From the ${esc(p['PA Product'])} table of benefits — your plan is highlighted.</p><div class="table-wrap pa-pagebox">${paTables(p, 'list ben hsgt pat')}</div>` : ''}</section>
   ${hsgScheduleCard(p)}
   ${hsgOf(p) ? `<section class="card"><h2>Deductible and co-insurance</h2><p class="muted small">The deductible is what the insured pays first each policy year before the plan pays; co-insurance is their share after that, unless a rider covers it.</p><div class="table-wrap">${hsgDeductibleTable(p, 'list ben hsgt')}</div></section>` : ''}
   ${svs.length ? `<section class="card"><div class="row-between"><h2>Surrender value history <small>${svs.length}</small></h2>
@@ -2104,6 +2217,7 @@ const POLICY_SECTIONS = [
     { label: 'Insurer', type: 'text', autofill: true },
     { custom: 'insured' },
     { custom: 'hsg' },
+    { custom: 'pa' },
   ]],
   ['Coverage', []],
   ['Surrender value', [{ custom: 'sv' }]],
@@ -2148,6 +2262,21 @@ function nomRow(n = {}) { return `<div class="nom-row"><label><span>Name</span><
   <label><span>Share %</span><input name="nom_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="nomTotal()"></label>
   <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); nomTotal()">✕</button></div>`; }
 function addNomRow() { const w = $('#nominees'); w.insertAdjacentHTML('beforeend', nomRow()); w.lastElementChild.querySelector('input').focus(); nomTotal(); }
+function paForm(changed) {
+  const form = document.querySelector('form[data-pid]'), sel = form.querySelector('[name=pa_product]'), P = PA_PRODUCTS[sel.value];
+  const plan = form.querySelector('[name=pa_plan]'), wrap = $('#pa-plan-w'), box = $('#pa-opts');
+  wrap.style.display = P ? '' : 'none'; box.innerHTML = ''; if (!P) return;
+  const keep = plan.value || plan.dataset.v, saved = paOpts({ 'PA Options': box.dataset.v });
+  plan.innerHTML = P.plans.map(x => `<option${x === keep ? ' selected' : ''}>${esc(x)}</option>`).join('');
+  box.innerHTML = P.groups.filter(g => g.optional).map((g, i) => { const plans = g.plans || P.plans, on = !!saved[g.name];
+    return `<label class="pa-opt"><input type="checkbox" name="pa_opt" value="${esc(g.name)}"${on ? ' checked' : ''}> <span>${esc(g.name.replace(/^Optional:\s*/, ''))}</span>
+      <select name="pa_optplan" data-g="${esc(g.name)}">${plans.map(x => `<option${x === saved[g.name] ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>${g.sameOrLower ? '<small class="dhint">same plan or lower</small>' : ''}</label>`; }).join('');
+  if (changed) {
+    const nm = form.querySelector('[name=policy_name]'); if (!nm.value.trim()) nm.value = sel.value;
+    const ins = form.querySelector('[name=insurer]'); if (ins && !ins.value.trim()) ins.value = 'AIA';
+    const ty = form.querySelector('[name=policy_type]'); if (ty && !ty.value) ty.value = 'Accident & health';
+  }
+}
 let _hsgSug = null;
 function hsgHint(changed) {
   const form = document.querySelector('form[data-pid]'), v = form.querySelector('[name=hsg_plan]').value, h = HSG_PLANS[v], el = $('#hsg-hint'); if (!el) return;
@@ -2221,6 +2350,10 @@ function pagePolicyForm(cid, pid) {
         ${others.map(x => `<option value="${esc(x.ID)}"${p['Rider Of'] === x.ID ? ' selected' : ''}>${esc(x['Policy Name'] || 'Untitled policy')}${x['HSG Plan'] ? '' : x['Policy No'] ? ' · ' + esc(x['Policy No']) : ''}</option>`).join('')}</select>
         <small class="dhint">For a rider bought as its own policy, e.g. a HealthShield rider — pick the plan it belongs to.</small></label>`;
     }
+    if (f.custom === 'pa') return `<label><span>Accident plan <em>optional</em></span><select name="pa_product" onchange="paForm(true)"><option value="">— not one of these accident plans</option>
+        ${Object.keys(PA_PRODUCTS).map(k => `<option${p['PA Product'] === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select><small class="dhint">Pick the plan and options — the benefits fill in automatically.</small></label>
+      <label id="pa-plan-w"><span>Plan</span><select name="pa_plan" data-v="${esc(p['PA Plan'] || '')}"></select></label>
+      <div id="pa-opts" class="pa-opts" style="grid-column:1/-1" data-v="${esc(p['PA Options'] || '')}"></div>`;
     if (f.custom === 'hsgprem') return `<div id="hsg-prem" class="hsg-sug" style="grid-column:1/-1" hidden></div>`;
     if (f.custom === 'nom') {
       const noms = parseNominees(p.Nominees), fn = distinct([c.Name, ...fam.map(m => m.c.Name)]);
@@ -2291,7 +2424,7 @@ function wirePolicyForm() {
   form.querySelector('[name=date_bought]').addEventListener('focusout', update);
   update();
   // Picking a known agent fills in their code and contact
-  nomTotal(); hsgHint();
+  nomTotal(); hsgHint(); paForm();
   for (const n of ['insured_id', 'premium_frequency']) form.querySelector(`[name=${n}]`).addEventListener('input', () => hsgHint());
   form.querySelector('[name=date_bought]').addEventListener('focusout', () => hsgHint());
   for (const pre of ['writing_agent', 'servicing_agent', 'writing_agent_2', 'servicing_agent_2']) {
@@ -2349,6 +2482,15 @@ async function savePolicy(e) {
   }
   out['Insured ID'] = g('insured_id') || cid;
   out['HSG Plan'] = g('hsg_plan'); out['Rider Of'] = g('rider_of');
+  out['PA Product'] = g('pa_product'); out['PA Plan'] = out['PA Product'] ? g('pa_plan') : ''; out['PA Options'] = '';
+  if (out['PA Product']) {
+    const P = PA_PRODUCTS[out['PA Product']], bi = P.plans.indexOf(out['PA Plan']), on = new Set(fd.getAll('pa_opt')), parts = [];
+    for (const sel of form.querySelectorAll('[name=pa_optplan]')) { const gname = sel.dataset.g; if (!on.has(gname)) continue;
+      const G = P.groups.find(x => x.name === gname), plans = G.plans || P.plans;
+      if (G.sameOrLower && plans.indexOf(sel.value) > bi) { sel.focus(); toast(`${gname.replace(/^Optional:\s*/, '')} must be the same plan or lower than ${out['PA Plan']}.`, 'error'); return false; }
+      parts.push(`${gname}: ${sel.value}`); }
+    out['PA Options'] = parts.join('; ');
+  }
   out.Nominated = g('nominated');
   if (out.Nominated === 'Yes') {
     const names = fd.getAll('nom_name').map(x => String(x).trim()), pcts = fd.getAll('nom_pct').map(x => String(x).trim()), list = [];
@@ -2519,6 +2661,22 @@ async function logLetter(btn) {
 }
 
 // ---- coverage summary ----
+function paTables(p, cls) {
+  const P = paOf(p), bi = P.plans.indexOf(p['PA Plan']), opts = paOpts(p);
+  return P.groups.map(g => { const plans = g.plans || P.plans, taken = g.optional ? plans.indexOf(opts[g.name]) : bi;
+    const status = g.optional ? (taken >= 0 ? `✓ Taken — ${esc(plans[taken])}` : 'Not taken') : (bi >= 0 ? `✓ ${esc(plans[bi])}` : '');
+    return `<table class="${cls}${g.optional && taken < 0 ? ' off' : ''}"><thead><tr><th>${esc(g.name)} <span class="gs">${status}</span></th>${plans.map((pl, i) => `<th class="n${i === taken ? ' cur' : ''}">${esc(pl)}</th>`).join('')}</tr></thead><tbody>
+      ${g.rows.map(([label, , vals], r) => `<tr><td>${r + 1}. ${esc(label)}</td>${vals.map((v, i) => `<td class="n${i === taken ? ' cur' : ''}">${esc(typeof v === 'number' ? money(v) : paMoney(v))}</td>`).join('')}</tr>`).join('')}</tbody></table>`; }).join('');
+}
+function paPage(x, who, me) {
+  const P = paOf(x);
+  return `<div class="sheet psum hsg-page pa-page">${letterhead(me)}
+    <h1>Accident plan — table of benefits</h1>
+    <p class="hp-sub"><b>${esc(paTitle(x))}</b> · insured: <b>${esc(who ? who.Name : '')}</b>${Object.keys(paOpts(x)).length ? ' · optional: ' + Object.entries(paOpts(x)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ') : ''}</p>
+    <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">INSURED AMOUNTS (S$) FOR EVERY PLAN — ${esc(who ? who.Name : '').toUpperCase()}’S PLAN IS HIGHLIGHTED</th></tr></thead></table>${paTables(x, 'hsgt pat')}</div>
+    <div class="foot">${esc(P.note)} This table is a summary of the benefits; please refer to the policy contract for the full terms and exclusions.</div>
+  </div>`;
+}
 // ---- policy summary: protection / accident & hospital / investments, one page per insured person ----
 function polGroup(p, depth = 0) {
   const base = riderBase(p); if (base && depth < 3) return polGroup(base, depth + 1);
@@ -2596,7 +2754,7 @@ function pageSummary(cid, q) {
     const OV = [['Death', ['Death'], 'prot'], ['Total Permanent Disability (TPD)', ['Total Permanent Disability (TPD)'], 'prot'], ['Terminal Illness (TI)', ['Terminal Illness (TI)'], 'prot'],
       ['Critical Illness (CI)', ['Critical Illness (CI)'], 'prot'], ['Early Critical Illness (ECI)', ['Early Critical Illness (ECI)'], 'prot'],
       ['Income protection (per month)', ['Disability Income (DI)'], 'prot'], ['Long-Term Care (LTC)', ['Long-Term Care (LTC)'], 'prot'],
-      ['Accidental Death', ['Accidental Death (Acc Death)'], 'ah'], ['Accidental Medical Reimbursement', ['Accidental Medical Reimbursement (Acc MR)'], 'ah'], ['Weekly Indemnity', ['Weekly Indemnity (WI)'], 'ah'],
+      ['Accidental Death', ['Accidental Death (Acc Death)', 'Accidental Death, Dismemberment and Burns (AD&D)'], 'ah'], ['Accidental Medical Reimbursement', ['Accidental Medical Reimbursement (Acc MR)'], 'ah'], ['Weekly Indemnity', ['Weekly Indemnity (WI)'], 'ah'],
       ['Hospitalisation', ['Hospitalisation Expenses', 'Medical Reimbursement (MR)'], 'ah'], ['Hospital Cash', ['Hospital Cash'], 'ah']];
     const livePs = ps.filter(p => !p.Status || p.Status === 'In force');
     const ovRows = OV.map(([label, types, g]) => { const sp = sumParts(livePs.flatMap(p => ben(p, types))); return (sp.total || sp.texts.length) ? { label, g, sp } : null; }).filter(Boolean);
@@ -2611,7 +2769,7 @@ function pageSummary(cid, q) {
           <td class="br">${opai.map(({ p, b }) => { const e = coverEnd(b, p); return esc([p['Policy Name'], typeof b['Coverage Amount'] === 'number' && opai.length > 1 ? kShort(b['Coverage Amount']) : (typeof b['Coverage Amount'] === 'string' ? b['Coverage Amount'] : ''), e.label ? 'exercise ' + e.label.replace('till', 'before') : '', b.Notes].filter(Boolean).join(' · ')); }).join('; ')}</td></tr>` : '')
       + (invLive.length ? `<tr class="inv"><td class="l">Investments — surrender value</td><td class="n"><b>${invSV ? money(Math.round(invSV)) : '–'}</b></td><td class="br">${invPaid ? money(Math.round(invPaid)) + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
     // policy tables
-    const polCell = p => `<td class="pol">${riderBase(p) ? `<span class="rof">↳ Rider of ${esc(riderBase(p)['Policy Name'] || 'policy')}</span>` : ''}<b>${esc(p['Policy Name'] || 'Untitled policy')}</b><span>${[p.Insurer, p['Policy No']].filter(Boolean).map(esc).join(' · ')}</span>${p['Client ID'] !== id ? `<span>Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}${p.Status && p.Status !== 'In force' ? `<span class="st">${esc(p.Status)}</span>` : ''}</td>`;
+    const polCell = p => `<td class="pol">${riderBase(p) ? `<span class="rof">↳ Rider of ${esc(riderBase(p)['Policy Name'] || 'policy')}</span>` : ''}<b>${esc(paOf(p) ? paTitle(p) : p['Policy Name'] || 'Untitled policy')}</b>${paOf(p) && Object.keys(paOpts(p)).length ? `<span>+ ${Object.entries(paOpts(p)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ')}</span>` : ''}<span>${[p.Insurer, p['Policy No']].filter(Boolean).map(esc).join(' · ')}</span>${p['Client ID'] !== id ? `<span>Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}${p.Status && p.Status !== 'In force' ? `<span class="st">${esc(p.Status)}</span>` : ''}</td>`;
     const premCell = p => { const v = p.Premium; if (v == null || v === '') return '<td><span class="none">–</span></td>';
       const r = policyCalc(p), by = p['Paid By'] || 'Cash', f = p['Premium Frequency'];
       const main = typeof v === 'number' ? money(v) + (f === 'Single premium' ? ' single' : FREQ_UNIT[f] ? ' / ' + FREQ_UNIT[f] : '') : esc(v);
@@ -2632,13 +2790,14 @@ function pageSummary(cid, q) {
     const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
     const remarks = p => esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
-    const otherCell = (p, skip) => { const os = allBens(p).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
+    const otherCell = (p, skip) => { if (paOf(p)) { const n = allBens(p).filter(b => !skip.includes(b['Benefit Type'])).length; return `<td>${n ? `<span class="t2">${n} more benefits — see the table of benefits</span>` : '<span class="none">–</span>'}</td>`; }
+      const os = allBens(p).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
       return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'])) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
     const totRow = (ps2, cols) => `<tr class="tot"><td colspan="3">Total</td>${cols.map(f => `<td>${f(ps2)}</td>`).join('')}</tr>`;
     const yearly = ps2 => { const live2 = ps2.filter(p => !p.Status || p.Status === 'In force'), t = live2.reduce((a, p) => a + (policyCalc(p).annual || 0), 0); return t ? money(Math.round(t * 100) / 100) + ' / year' : ''; };
     const sumCol = types => ps2 => partsHtml(sumParts(ps2.filter(p => !p.Status || p.Status === 'In force').flatMap(p => ben(p, types))), true);
     const PT = { d: ['Death'], tpd: ['Total Permanent Disability (TPD)'], ci: ['Critical Illness (CI)'], eci: ['Early Critical Illness (ECI)'] };
-    const AT = { ad: ['Accidental Death (Acc Death)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
+    const AT = { ad: ['Accidental Death (Acc Death)', 'Accidental Death, Dismemberment and Burns (AD&D)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
     const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Death</th><th>TPD</th><th>Critical Illness</th><th>Early CI</th><th>Other benefits</th><th>Surrender value</th><th>Remarks</th></tr></thead>
       ${G.prot.map((p, i) => `<tr class="${notesAfter(p, G.prot).length || ridersOf(p).some(r => G.prot.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.prot)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 12, G.prot)}`).join('')}
       ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
@@ -2674,7 +2833,7 @@ function pageSummary(cid, q) {
             : `<p class="muted">Add ${esc(who ? who.Name : 'the insured')}’s date of birth to show the future premiums.</p>`}
           <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">DEDUCTIBLE AND CO-INSURANCE</th></tr></thead></table>${hsgDeductibleTable(x, 'hsgt ded')}</div>
           <div class="foot">Premiums are based on the insured’s age next birthday at each renewal and are not guaranteed — the insurer reviews them from time to time. Rider premiums are paid in cash. The deductible is paid first each policy year; co-insurance is the insured’s share after that, unless a rider covers it.</div>
-        </div>`; }).join(''); })()}`;
+        </div>`; }).join(''); })()}${G.ah.filter(x => paOf(x) && (!x.Status || x.Status === 'In force')).map(x => paPage(x, who, me)).join('')}`;
   };
   const missingTerm = all.some(p => allBens(p).some(b => sumAmt(b['Coverage Amount']) != null && !b['Cover Term']));
   return `<div class="print-bar no-print">
@@ -3942,7 +4101,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18k';
+const APP_VERSION = '2026.11.18l';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
