@@ -375,6 +375,10 @@ ul.pols li a:active { background: var(--accent-soft); }
 .psum .t { display: block; font-size: 9.5px; color: #555; white-space: nowrap; } .psum .t2 { display: block; font-size: 10px; } .psum .t1 { font-size: 9.5px; color: #555; }
 .psum .ob { display: block; white-space: nowrap; } .psum td.nw { white-space: nowrap; }
 .psum .tag { font-size: 8.5px; padding: 0 4px; border-radius: 3px; background: #e7edf6; color: #1f3a5f; font-weight: 700; }
+.psum .psec tr.has-note td { border-bottom: 0; }
+.psum .psec tr.note-row td { text-align: left; font-size: 10px; color: #7a5200; background: #fdf8ec; border-top: 1px dashed #e5d3a6; padding: 4px 8px; }
+.psum .psec tr.note-row td:first-child { background: #fff; }
+@media print { .psum .psec tr.has-note { break-after: avoid; } }
 .psum .psec tr.tot td { font-weight: 700; background: #f6f7f9; border-top: 1.5px solid #8a96a8; }
 .psum .none { color: #aaa; }
 .psum .foot { margin-top: 12px; font-size: 9.5px; text-align: center; }
@@ -2469,7 +2473,8 @@ function pageSummary(cid, q) {
       return `<td class="nw">${main ? esc(main) + (sub ? `<span class="t">${sub}</span>` : '') : '<span class="none">–</span>'}</td>`; };
     const dShort = iso => { const d = parseISO(iso); return d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : '–'; };
     const svCell = p => { const v = svNow(p); return `<td>${v ? money(Math.round(+v['Surrender Value'])) + `<span class="t">as of ${esc(fmtDate(v['As Of']))}</span>` : '<span class="none">–</span>'}</td>`; };
-    const remarks = p => esc([...productNotes(p), p.Notes, ...benefitsOf(p.ID).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
+    const noteRow = (p, n) => productNotes(p).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
+    const remarks = p => esc([p.Notes, ...benefitsOf(p.ID).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
     const otherCell = (p, skip) => { const os = benefitsOf(p.ID).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
       return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'])) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
@@ -2479,13 +2484,13 @@ function pageSummary(cid, q) {
     const PT = { d: ['Death'], tpd: ['Total Permanent Disability (TPD)'], ci: ['Critical Illness (CI)'], eci: ['Early Critical Illness (ECI)'] };
     const AT = { ad: ['Accidental Death (Acc Death)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
     const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Death</th><th>TPD</th><th>Critical Illness</th><th>Early CI</th><th>Other benefits</th><th>Surrender value</th><th>Remarks</th></tr></thead>
-      ${G.prot.map((p, i) => `<tr><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem">${remarks(p)}</td></tr>`).join('')}
+      ${G.prot.map((p, i) => `<tr${productNotes(p).length ? ' class="has-note"' : ''}><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 12)}`).join('')}
       ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
     const ahT = G.ah.length ? `<div class="psec ah"><table><thead><tr><th class="bar" colspan="10">ACCIDENT &amp; HOSPITALISATION</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Accidental Death</th><th>Accidental Medical</th><th>Hospitalisation</th><th>Other benefits</th><th>Remarks</th></tr></thead>
-      ${G.ah.map((p, i) => `<tr><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, AT.ad)}${cell(p, AT.amr)}${cell(p, AT.h)}${otherCell(p, [...AT.ad, ...AT.amr, ...AT.h])}<td class="rem">${remarks(p)}</td></tr>`).join('')}
+      ${G.ah.map((p, i) => `<tr${productNotes(p).length ? ' class="has-note"' : ''}><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, AT.ad)}${cell(p, AT.amr)}${cell(p, AT.h)}${otherCell(p, [...AT.ad, ...AT.amr, ...AT.h])}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 10)}`).join('')}
       ${totRow(G.ah, [yearly, () => '', sumCol(AT.ad), sumCol(AT.amr), () => '', () => '', () => ''])}</table></div>` : '';
     const invT = G.inv.length ? `<div class="psec inv"><table><thead><tr><th class="bar" colspan="8">INVESTMENTS &amp; SAVINGS — NO DEATH COVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Paid in so far</th><th>Surrender value</th><th>Remarks</th></tr></thead>
-      ${G.inv.map((p, i) => `<tr><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${policyCalc(p).paid ? money(Math.round(policyCalc(p).paid)) : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem">${remarks(p)}</td></tr>`).join('')}
+      ${G.inv.map((p, i) => `<tr${productNotes(p).length ? ' class="has-note"' : ''}><td>${i + 1}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${policyCalc(p).paid ? money(Math.round(policyCalc(p).paid)) : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 8)}`).join('')}
       ${totRow(G.inv, [yearly, () => '', ps2 => { const t = ps2.reduce((a, p) => a + (policyCalc(p).paid || 0), 0); return t ? money(Math.round(t)) : ''; }, ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
     const age = who ? ageOf(who['Date of Birth']) : null, rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(/^\s*·\s*/, '');
     return `<div class="sheet psum">
@@ -3772,7 +3777,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18e';
+const APP_VERSION = '2026.11.18f';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
