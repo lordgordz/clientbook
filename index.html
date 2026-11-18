@@ -565,7 +565,7 @@ const POLICY_STATUS = ['In force', 'Lapsed', 'Surrendered', 'Matured', 'Claimed'
 const POLICY_TYPES = ['Whole life', 'Term', 'Investment-linked (ILP)', 'Endowment', 'Accident & health', 'Disability care', 'Universal life'];
 const BENEFIT_TYPES = ['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)',
   'Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Disability Income (DI)',
-  'Long-Term Care (LTC)', 'Hospitalisation Expenses', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Other'];
+  'Long-Term Care (LTC)', 'Hospitalisation Expenses', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)', 'Other'];
 const OLD_BENEFIT = { 'Total & permanent disability': 'Total Permanent Disability (TPD)', 'Terminal illness': 'Terminal Illness (TI)', 'Early critical illness': 'Early Critical Illness (ECI)',
   'Critical illness': 'Critical Illness (CI)', 'Accidental death': 'Accidental Death (Acc Death)', 'Accidental Death (AD)': 'Accidental Death (Acc Death)',
   'Accident medical': 'Accidental Medical Reimbursement (Acc MR)', 'Accident Medical': 'Accidental Medical Reimbursement (Acc MR)', 'Disability income': 'Disability Income (DI)',
@@ -576,7 +576,7 @@ const OLD_PAID = { 'CPF': 'CPF OA', 'MediSave': 'CPF MA', 'MediSave + cash': 'CP
 const NONCASH = ['CPF OA', 'CPF SA', 'CPF MA', 'SRS'];
 const COVER_TERMS = [['Till age', 'Till age'], ['Years', 'Number of years'], ['Whole life', 'Whole life']];
 // Coverage summary groups: a policy with any of these is "protection"; else with any accident/hospital benefit it is "accident & hospital"; else "investment".
-const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)', 'Waiver of Premium (WOP)', 'Disability Income (DI)', 'Long-Term Care (LTC)']);
+const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)', 'Disability Income (DI)', 'Long-Term Care (LTC)']);
 const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash']);
 const NO_TOTALS = new Set(['Accident & health']);   // these don't show premiums paid
 const FREQUENCIES = ['Single premium', 'Annual', 'Semi-annual', 'Quarterly', 'Monthly'];
@@ -2440,11 +2440,14 @@ function pageSummary(cid, q) {
     const livePs = ps.filter(p => !p.Status || p.Status === 'In force');
     const ovRows = OV.map(([label, types, g]) => { const sp = sumParts(livePs.flatMap(p => ben(p, types))); return (sp.total || sp.texts.length) ? { label, g, sp } : null; }).filter(Boolean);
     const wop = livePs.filter(p => benefitsOf(p.ID).some(b => b['Benefit Type'] === 'Waiver of Premium (WOP)'));
+    const opai = livePs.flatMap(p => benefitsOf(p.ID).filter(b => b['Benefit Type'] === 'Option to Purchase Additional Insurance (OPAI)').map(b => ({ p, b })));
     const svNow = p => svOf(p.ID)[0], invLive = G.inv.filter(p => !p.Status || p.Status === 'In force');
     const invSV = invLive.reduce((t, p) => t + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0), invPaid = invLive.reduce((t, p) => t + (policyCalc(p).paid || 0), 0);
     const ovBreak = sp => [...(sp.parts.length > 1 || (sp.parts[0] && sp.parts[0][1]) ? sp.parts.map(([a, l]) => sp.parts.length > 1 ? `${kShort(a)} ${l || '(term not set)'}` : l) : []), ...sp.texts].map(esc).join(' · ');
     const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${esc(r.label)}</td><td class="n"><b>${r.sp.total ? money(Math.round(r.sp.total)) : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
       + (wop.length ? `<tr class="prot"><td class="l">Waiver of Premium (WOP)</td><td class="n"><b>Yes</b></td><td class="br">${wop.map(p => esc(p['Policy Name'])).join(' · ')}</td></tr>` : '')
+      + (opai.length ? `<tr class="prot"><td class="l">Option to Purchase Additional Insurance (OPAI)</td><td class="n"><b>${(() => { const t = opai.reduce((a, x) => a + (sumAmt(x.b['Coverage Amount']) || 0), 0); return t ? money(Math.round(t)) : 'Yes'; })()}</b></td>
+          <td class="br">${opai.map(({ p, b }) => { const e = coverEnd(b, p); return esc([p['Policy Name'], typeof b['Coverage Amount'] === 'number' && opai.length > 1 ? kShort(b['Coverage Amount']) : (typeof b['Coverage Amount'] === 'string' ? b['Coverage Amount'] : ''), e.label ? 'exercise ' + e.label.replace('till', 'before') : '', b.Notes].filter(Boolean).join(' · ')); }).join('; ')}</td></tr>` : '')
       + (invLive.length ? `<tr class="inv"><td class="l">Investments — surrender value</td><td class="n"><b>${invSV ? money(Math.round(invSV)) : '–'}</b></td><td class="br">${invPaid ? money(Math.round(invPaid)) + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
     // policy tables
     const polCell = p => `<td class="pol"><b>${esc(p['Policy Name'] || 'Untitled policy')}</b><span>${[p.Insurer, p['Policy No']].filter(Boolean).map(esc).join(' · ')}</span>${p['Client ID'] !== id ? `<span>Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}${p.Status && p.Status !== 'In force' ? `<span class="st">${esc(p.Status)}</span>` : ''}</td>`;
@@ -3762,7 +3765,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18b';
+const APP_VERSION = '2026.11.18c';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
