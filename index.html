@@ -563,7 +563,7 @@ const SHEETS = {
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Paid By', 'Cash Portion', 'Status', 'End Date', 'Notes',
-               'HSG Plan', 'Rider Of', 'PA Product', 'PA Plan', 'PA Options', 'Nominated', 'Nominees',
+               'HSG Plan', 'Rider Of', 'PA Product', 'PA Plan', 'PA Options', 'Nominated', 'Nominees', 'Fund Allocation',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Writing Agent 2', 'Writing Agent 2 Code', 'Writing Agent 2 Contact',
                'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact', 'Servicing Agent 2', 'Servicing Agent 2 Code', 'Servicing Agent 2 Contact'],
   'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Cover Term', 'Cover Term Value', 'Notes'],
@@ -2202,6 +2202,9 @@ function pagePolicy(cid, pid) {
         <td class="n">${d == null ? '' : `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : '−'}${esc(money(Math.abs(d)))}</span>`}</td>
         <td class="n"><button class="icon" title="Remove this entry" data-sid="${esc(v.ID)}" onclick="delSurrender(this)">✕</button></td></tr>`; }).join('')}
     </tbody></table><p class="muted small" style="margin:8px 0 0">Each update is kept with its date for future reference.</p></section>` : ''}
+  ${allocList(p).length ? (() => { const fs = allocList(p), t = fs.reduce((a, n) => a + (n.pct || 0), 0);
+    return `<section class="card"><h2>Investment allocation</h2><table class="list ben"><thead><tr><th>Fund</th><th class="n">Allocation</th></tr></thead><tbody>${fs.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
+      ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Allocations add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}</section>`; })() : ''}
   <section class="card"><h2>Nomination</h2>${p.Nominated === 'Yes' ? (() => { const ns = parseNominees(p.Nominees), t = ns.reduce((a, n) => a + (n.pct || 0), 0);
       return ns.length ? `<table class="list ben"><thead><tr><th>Nominee</th><th class="n">Share</th></tr></thead><tbody>${ns.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
         ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Shares add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}` : '<p>Yes <span class="muted">— no names added yet.</span></p>'; })()
@@ -2220,6 +2223,7 @@ const POLICY_SECTIONS = [
     { custom: 'hsg' },
     { custom: 'pa' },
   ]],
+  ['Investment allocation', [{ custom: 'alloc' }]],
   ['Coverage', []],
   ['Surrender value', [{ custom: 'sv' }]],
   ['Premium', [
@@ -2262,6 +2266,17 @@ const nomText = list => list.map(n => n.pct != null ? `${n.name} (${n.pct}%)` : 
 function nomRow(n = {}) { return `<div class="nom-row"><label><span>Name</span><input name="nom_name" list="nominee_names" value="${esc(n.name || '')}" autocapitalize="words" placeholder="Type or pick a family member"></label>
   <label><span>Share %</span><input name="nom_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="nomTotal()"></label>
   <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); nomTotal()">✕</button></div>`; }
+function fundRow(n = {}) { return `<div class="nom-row"><label><span>Fund</span><input name="fund_name" list="fund_names" value="${esc(n.name || '')}" autocapitalize="words" placeholder="e.g. AIA Global Technology Fund"></label>
+  <label><span>Allocation %</span><input name="fund_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="fundTotal()"></label>
+  <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); fundTotal()">✕</button></div>`; }
+function addFundRow() { const w = $('#funds'); w.insertAdjacentHTML('beforeend', fundRow()); w.lastElementChild.querySelector('input').focus(); fundTotal(); }
+function fundTotal() { const el = $('#fund-total'); if (!el) return; const ps = [...document.querySelectorAll('[name=fund_pct]')].map(x => parseFloat(x.value.replace('%', ''))).filter(x => !isNaN(x));
+  const t = ps.reduce((a, b) => a + b, 0); el.innerHTML = !ps.length ? '' : Math.abs(t - 100) < 0.01 ? '<span class="good">✓ Adds up to 100%</span>' : `<span style="color:var(--err)">Adds up to ${+t.toFixed(2)}% — should be 100%</span>`; }
+function allocUpd(form) { const box = $('#alloc-sec'); if (!box) return;
+  const ilp = form.querySelector('[name=policy_type]').value === 'Investment-linked (ILP)', has = [...form.querySelectorAll('[name=fund_name]')].some(x => x.value.trim());
+  box.style.display = ilp || has ? '' : 'none'; }
+const allocList = p => parseNominees(p['Fund Allocation']);
+const allocText = p => allocList(p).map(f => f.pct != null ? `${f.name} ${f.pct}%` : f.name).join(' · ');
 function addNomRow() { const w = $('#nominees'); w.insertAdjacentHTML('beforeend', nomRow()); w.lastElementChild.querySelector('input').focus(); nomTotal(); }
 function ahOnly(form) {
   const ah = form.querySelector('[name=policy_type]').value === 'Accident & health',
@@ -2363,6 +2378,11 @@ function pagePolicyForm(cid, pid) {
         ${Object.keys(PA_PRODUCTS).map(k => `<option${p['PA Product'] === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select><small class="dhint">Pick the plan and options — the benefits fill in automatically.</small></label>
       <label id="pa-plan-w" class="ah-only"><span>Plan</span><select name="pa_plan" data-v="${esc(p['PA Plan'] || '')}"></select></label>
       <div id="pa-opts" class="pa-opts ah-only" style="grid-column:1/-1" data-v="${esc(p['PA Options'] || '')}"></div>`;
+    if (f.custom === 'alloc') { const fs = parseNominees(p['Fund Allocation']);
+      return `<div style="grid-column:1/-1"><p class="muted small" style="margin:0 0 8px">Which funds the premiums go into, and what % to each.</p>
+        <div id="funds">${(fs.length ? fs : [{}]).map(fundRow).join('')}</div>
+        ${datalist('fund_names', distinct(db.policies.flatMap(x => parseNominees(x['Fund Allocation']).map(f => f.name))))}
+        <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 0"><button type="button" class="btn small" onclick="addFundRow()">+ Add another fund</button><span class="dhint" id="fund-total"></span></p></div>`; }
     if (f.custom === 'hsgprem') return `<div id="hsg-prem" class="hsg-sug" style="grid-column:1/-1" hidden></div>`;
     if (f.custom === 'nom') {
       const noms = parseNominees(p.Nominees), fn = distinct([c.Name, ...fam.map(m => m.c.Name)]);
@@ -2382,7 +2402,7 @@ function pagePolicyForm(cid, pid) {
     <h2>${editing ? 'Edit ' + esc(p['Policy Name'] || 'policy') : 'New policy for ' + esc(c.Name)}</h2>
     <p class="muted">Only <b>Policy name</b> is required. Fill in date bought, premium, frequency and duration to see the totals.</p>
     <form class="form" autocomplete="off" onsubmit="return savePolicy(event)" data-cid="${esc(cid)}" data-pid="${esc(pid || '')}">
-      ${POLICY_SECTIONS.map(([title, fields]) => `<fieldset><legend>${esc(title)}</legend>
+      ${POLICY_SECTIONS.map(([title, fields]) => `<fieldset${title === 'Investment allocation' ? ' id="alloc-sec"' : ''}><legend>${esc(title)}</legend>
         ${title === 'Current servicing agent' ? '<p><button type="button" class="btn small" onclick="sameAgent()">Same as writing agent</button></p>' : ''}
         ${title === 'Coverage' ? `<p class="muted small">Add each benefit this policy covers — a policy can have several.</p>
         <div id="benefits">${(editing ? benefitsOf(pid) : []).map(benefitRow).join('') || benefitRow()}</div>
@@ -2437,6 +2457,7 @@ function wirePolicyForm() {
   // HealthShield and accident-plan pickers only show for Accident & health policies
   const ty = form.querySelector('[name=policy_type]'), ahUpd = () => ahOnly(form);
   ty.addEventListener('input', ahUpd); ty.addEventListener('change', ahUpd);
+  ty.addEventListener('input', () => allocUpd(form)); ty.addEventListener('change', () => allocUpd(form)); allocUpd(form); fundTotal();
   form.querySelector('[name=hsg_plan]').addEventListener('change', ahUpd); form.querySelector('[name=pa_product]').addEventListener('change', ahUpd);
   ahUpd();
   for (const n of ['insured_id', 'premium_frequency']) form.querySelector(`[name=${n}]`).addEventListener('input', () => hsgHint());
@@ -2515,6 +2536,13 @@ async function savePolicy(e) {
       list.push({ name: names[i].replace(/[;()]/g, ' ').replace(/\s+/g, ' ').trim(), pct: n }); }
     out.Nominees = nomText(list);
   } else out.Nominees = '';
+  { const names = fd.getAll('fund_name').map(x => String(x).trim()), pcts = fd.getAll('fund_pct').map(x => String(x).trim()), list = [];
+    for (let i = 0; i < names.length; i++) { if (!names[i] && !pcts[i]) continue;
+      const n = pcts[i] === '' ? null : parseFloat(pcts[i].replace('%', ''));
+      if (!names[i]) { toast('Investment allocation: type the fund name.', 'error'); return false; }
+      if (n != null && (isNaN(n) || n <= 0 || n > 100)) { toast(`Investment allocation: ${names[i]}’s % should be between 1 and 100.`, 'error'); return false; }
+      list.push({ name: names[i].replace(/;/g, ',').replace(/\s+/g, ' ').trim(), pct: n }); }
+    out['Fund Allocation'] = nomText(list); }
   if (out['Paid By'] !== 'CPF MA + Cash') out['Cash Portion'] = null;
   const single = out['Premium Frequency'] === 'Single premium';
   out['Premium Term'] = single ? '' : g('premium_term');
@@ -2799,8 +2827,9 @@ function pageSummary(cid, q) {
     // a plan's notes go after its last rider, so the rider stays directly under the plan
     const notesAfter = (p, L) => { const rs = L.filter(r => r['Rider Of'] === p.ID); if (rs.length) return [];
       const b = riderBase(p), out = [];
-      if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b)); }
-      return [...productNotes(p), ...out]; };
+      if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b), ...fundNote(b)); }
+      return [...productNotes(p), ...fundNote(p), ...out]; };
+    const fundNote = p => allocText(p) ? ['Fund allocation: ' + allocText(p)] : [];
     const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
     const remarks = p => esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
@@ -4115,7 +4144,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.18m';
+const APP_VERSION = '2026.11.19a';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
