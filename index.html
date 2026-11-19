@@ -301,6 +301,13 @@ ul.pols li a:active { background: var(--accent-soft); }
 .tile.key b { color: var(--accent); }
 .tile .warn { color: var(--warn); }
 .ah-off { display: none !important; }
+.divpay { background: var(--soft, #f4f7fb); border: 1px solid var(--line, #dde3ea); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.topup { border: 1px solid var(--line, #dde3ea); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.topup-head { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) auto; gap: 10px; align-items: end; }
+.topup-head label { display: flex; flex-direction: column; gap: 6px; } .topup-head label span { font-size: 13px; }
+@media (max-width: 600px) { .topup-head { grid-template-columns: 1fr 1fr; } }
+.fund-block .nom-row { max-width: 760px; grid-template-columns: minmax(0, 3fr) minmax(90px, 1fr) auto; }
+.tu-h { font-size: 15px; margin: 14px 0 8px; }
 .pa-opts { display: flex; flex-direction: column; gap: 8px; } .pa-opt { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pa-opt input[type=checkbox] { width: 20px; height: 20px; min-height: 0; -webkit-appearance: checkbox; appearance: checkbox; } .pa-opt select { width: auto; } .pa-opt span { font-weight: 600; }
 .pa-pagebox table.pat { margin-bottom: 14px; } .pa-pagebox table.pat td.cur, .pa-pagebox table.pat th.cur { background: var(--accent-soft); font-weight: 700; } .pa-pagebox table.pat.off { opacity: .55; } .pa-pagebox .gs { color: var(--warn); margin-left: 8px; text-transform: none; letter-spacing: 0; }
@@ -380,6 +387,8 @@ table.hsgt td.cur { background: var(--accent-soft); font-weight: 700; }
 .psum .psec.inv td.pol { width: 30%; } .psum .psec td.pol b { display: block; } .psum .psec td.pol span { display: block; color: #555; font-size: 10px; }
 .psum .psec td.pol .st { color: #a33a2b; font-weight: 600; }
 .psum .psec td.rem { text-align: left; font-size: 10px; color: #333; min-width: 140px; }
+.psum .psec td.rem .rl { display: block; } .psum .psec td.rem .rl + .rl { margin-top: 2px; } .psum .psec td.rem.ilp { min-width: 230px; }
+.psum .psec.inv td.pol { width: 22% !important; } .psum .psec.inv td.rem { width: 38%; min-width: 260px; }
 .psum .t { display: block; font-size: 9.5px; color: #555; white-space: nowrap; } .psum .t2 { display: block; font-size: 10px; } .psum .t1 { font-size: 9.5px; color: #555; }
 .psum .ob { display: block; white-space: nowrap; } .psum td.nw { white-space: nowrap; }
 .psum .tag { font-size: 8.5px; padding: 0 4px; border-radius: 3px; background: #e7edf6; color: #1f3a5f; font-weight: 700; }
@@ -563,11 +572,12 @@ const SHEETS = {
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
   'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Paid By', 'Cash Portion', 'Status', 'End Date', 'Notes',
-               'HSG Plan', 'Rider Of', 'PA Product', 'PA Plan', 'PA Options', 'Nominated', 'Nominees', 'Fund Allocation',
+               'HSG Plan', 'Rider Of', 'PA Product', 'PA Plan', 'PA Options', 'Nominated', 'Nominees', 'Fund Allocation', 'Dividend Payout',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Writing Agent 2', 'Writing Agent 2 Code', 'Writing Agent 2 Contact',
                'Servicing Agent', 'Servicing Agent Code', 'Servicing Agent Contact', 'Servicing Agent 2', 'Servicing Agent 2 Code', 'Servicing Agent 2 Contact'],
   'Benefits': ['ID', 'Policy ID', 'Benefit Name', 'Benefit Type', 'Coverage Amount', 'Cover Term', 'Cover Term Value', 'Notes'],
   'Surrender Values': ['ID', 'Policy ID', 'As Of', 'Surrender Value', 'Recorded'],
+  'Top Ups': ['ID', 'Policy ID', 'Date', 'Amount', 'Fund Allocation', 'Notes'],
   'Illustrations': ['ID', 'Client ID', 'Title', 'Plan', 'Product', 'Amount', 'Premium Frequency', 'Dividend Option', 'Lump-sum Product', 'Lump-sum Amount',
                     'Lump-sum Dividend Option', 'Start Date', 'Age at Start', 'Show Year', 'Withdrawals', 'Goal', 'Goal Details', 'Note ID', 'Created', 'Last Updated'],
   'Settings': ['Key', 'Value'],
@@ -576,7 +586,7 @@ const SHEETS = {
 // Columns that were renamed — older Excel files and saved data are upgraded automatically.
 const RENAMED = { 'Clients': { 'Workplace': 'Company' }, 'Policies': { 'Product': 'Policy Name', 'Start Date': 'Date Bought', 'Frequency': 'Premium Frequency' } };
 const KEY = { 'Clients': 'clients', 'Family': 'family', 'Extra Details': 'extras', 'Notes': 'notes',
-              'Interactions': 'interactions', 'Policies': 'policies', 'Benefits': 'benefits', 'Surrender Values': 'surrender', 'Illustrations': 'illustrations', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
+              'Interactions': 'interactions', 'Policies': 'policies', 'Benefits': 'benefits', 'Surrender Values': 'surrender', 'Top Ups': 'topups', 'Illustrations': 'illustrations', 'Settings': 'settings', 'Added Postal Codes': 'addedPostal' };
 const DATE_F = new Set(['Who To Meet', 'Date of Birth', 'First Met', 'Last Met', 'Next Follow-up', 'Start Date', 'Date', 'Date Bought', 'End Date', 'As Of']);
 const STAMP_F = new Set(['Created', 'Last Updated', 'Added', 'Recorded']);
 const NUM_F = new Set(['Premium', 'Coverage', 'Coverage Amount', 'Cover Term Value', 'Cash Portion', 'Surrender Value', 'Premium Term Value', 'Amount', 'Lump-sum Amount', 'Age at Start', 'Show Year', 'Latitude', 'Longitude']);
@@ -881,7 +891,7 @@ function nextId(rows, prefix) {
 /* =========================================================================
    Storage — kept on this device (IndexedDB, falls back to localStorage)
    ========================================================================= */
-function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], benefits: [], surrender: [], illustrations: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
+function emptyDb() { return { clients: [], family: [], extras: [], notes: [], interactions: [], policies: [], benefits: [], surrender: [], topups: [], illustrations: [], settings: [], addedPostal: [], meta: { lastExport: null, lastChange: null } }; }
 let db = emptyDb();
 let _idb;
 function openIdb() {
@@ -2202,9 +2212,12 @@ function pagePolicy(cid, pid) {
         <td class="n">${d == null ? '' : `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : '−'}${esc(money(Math.abs(d)))}</span>`}</td>
         <td class="n"><button class="icon" title="Remove this entry" data-sid="${esc(v.ID)}" onclick="delSurrender(this)">✕</button></td></tr>`; }).join('')}
     </tbody></table><p class="muted small" style="margin:8px 0 0">Each update is kept with its date for future reference.</p></section>` : ''}
-  ${allocList(p).length ? (() => { const fs = allocList(p), t = fs.reduce((a, n) => a + (n.pct || 0), 0);
-    return `<section class="card"><h2>Investment allocation</h2><table class="list ben"><thead><tr><th>Fund</th><th class="n">Allocation</th></tr></thead><tbody>${fs.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
-      ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Allocations add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}</section>`; })() : ''}
+  ${allocList(p).length || topupsOf(pid).length ? (() => { const fs = allocList(p), t = fs.reduce((a, n) => a + (n.pct || 0), 0), tus = topupsOf(pid), dl = divLines(p);
+    return `<section class="card"><h2>Investment allocation</h2>${fs.length ? `<table class="list ben"><thead><tr><th>Fund</th><th class="n">Allocation</th></tr></thead><tbody>${fs.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
+      ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Allocations add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}` : ''}
+      ${dl.length ? `<div class="divpay" style="margin-top:10px">${dl.map(x => `<div>ⓘ ${esc(x)}</div>`).join('')}</div>` : ''}
+      ${tus.length ? `<h3 class="tu-h">Ad-hoc top-ups</h3><table class="list ben"><thead><tr><th>Date</th><th class="n">Amount</th><th>Funds</th><th>Notes</th></tr></thead><tbody>${tus.map(x => `<tr><td>${esc(x.Date ? fmtDate(x.Date) : '—')}</td><td class="n">${esc(money(+x.Amount || 0))}</td><td>${esc(parseNominees(x['Fund Allocation']).map(f => f.pct != null ? `${f.name} ${f.pct}%` : f.name).join(' · ') || '—')}</td><td>${esc(x.Notes || '')}</td></tr>`).join('')}</tbody></table>
+        <p class="muted small" style="margin:8px 0 0">Total topped up: <b>${esc(money(tus.reduce((a, x) => a + (+x.Amount || 0), 0)))}</b></p>` : ''}</section>`; })() : ''}
   <section class="card"><h2>Nomination</h2>${p.Nominated === 'Yes' ? (() => { const ns = parseNominees(p.Nominees), t = ns.reduce((a, n) => a + (n.pct || 0), 0);
       return ns.length ? `<table class="list ben"><thead><tr><th>Nominee</th><th class="n">Share</th></tr></thead><tbody>${ns.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
         ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Shares add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}` : '<p>Yes <span class="muted">— no names added yet.</span></p>'; })()
@@ -2266,17 +2279,63 @@ const nomText = list => list.map(n => n.pct != null ? `${n.name} (${n.pct}%)` : 
 function nomRow(n = {}) { return `<div class="nom-row"><label><span>Name</span><input name="nom_name" list="nominee_names" value="${esc(n.name || '')}" autocapitalize="words" placeholder="Type or pick a family member"></label>
   <label><span>Share %</span><input name="nom_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="nomTotal()"></label>
   <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); nomTotal()">✕</button></div>`; }
-function fundRow(n = {}) { return `<div class="nom-row"><label><span>Fund</span><input name="fund_name" list="fund_names" value="${esc(n.name || '')}" autocapitalize="words" placeholder="e.g. AIA Global Technology Fund"></label>
+function fundRow(n = {}) { return `<div class="nom-row"><label><span>Fund</span><input name="fund_name" list="fund_names" value="${esc(n.name || '')}" autocapitalize="words" placeholder="e.g. AIA Global Technology Fund" oninput="divPayUpd()" onchange="divPayUpd()"></label>
   <label><span>Allocation %</span><input name="fund_pct" inputmode="decimal" value="${n.pct ?? ''}" placeholder="e.g. 50" oninput="fundTotal()"></label>
   <button type="button" class="icon" title="Remove" onclick="this.parentNode.remove(); fundTotal()">✕</button></div>`; }
-function addFundRow() { const w = $('#funds'); w.insertAdjacentHTML('beforeend', fundRow()); w.lastElementChild.querySelector('input').focus(); fundTotal(); }
-function fundTotal() { const el = $('#fund-total'); if (!el) return; const ps = [...document.querySelectorAll('[name=fund_pct]')].map(x => parseFloat(x.value.replace('%', ''))).filter(x => !isNaN(x));
-  const t = ps.reduce((a, b) => a + b, 0); el.innerHTML = !ps.length ? '' : Math.abs(t - 100) < 0.01 ? '<span class="good">✓ Adds up to 100%</span>' : `<span style="color:var(--err)">Adds up to ${+t.toFixed(2)}% — should be 100%</span>`; }
+function addFundRow(btn) { const w = btn ? btn.closest('.fund-block').querySelector('.funds') : $('#funds'); w.insertAdjacentHTML('beforeend', fundRow()); w.lastElementChild.querySelector('input').focus(); fundTotal(); }
+const fundRowsIn = el => [...el.querySelectorAll('.nom-row')].map(r => ({ name: r.querySelector('[name=fund_name]').value.trim(), pct: r.querySelector('[name=fund_pct]').value.trim() }));
+function fundTotal() {
+  for (const b of document.querySelectorAll('.fund-block')) { const el = b.querySelector('.fund-total'); if (!el) continue;
+    const ps = fundRowsIn(b.querySelector('.funds')).map(x => parseFloat(x.pct.replace('%', ''))).filter(x => !isNaN(x)), t = ps.reduce((a, c) => a + c, 0);
+    el.innerHTML = !ps.length ? '' : Math.abs(t - 100) < 0.01 ? '<span class="good">✓ Adds up to 100%</span>' : `<span style="color:var(--err)">Adds up to ${+t.toFixed(2)}% — should be 100%</span>`; }
+  divPayUpd();
+}
+// a dividend fund (GAIF / GDIF) anywhere in the allocation or top-ups pops up its "reinvested or cashed out?" question
+function divPayUpd() { const box = $('#divpay'); if (!box) return;
+  const names = [...document.querySelectorAll('[name=fund_name]')].map(x => x.value), keep = {};
+  for (const sel of box.querySelectorAll('select')) keep[sel.dataset.f] = sel.value;
+  const saved = parsePayout(box.dataset.v), ds = DIV_FUNDS.filter(d => names.some(n => d.re.test(n)));
+  box.style.display = ds.length ? '' : 'none';
+  box.innerHTML = ds.length ? `<b>Dividends</b> <span class="muted small">— projected rates are for reference only and not guaranteed</span>` + ds.map(d => { const v = keep[d.abbr] ?? saved[d.abbr] ?? '';
+    return `<label class="pa-opt"><span><b>${d.abbr}</b> projected ${d.rate}% p.a., issued ${d.freq.toLowerCase()} (non-guaranteed)</span>
+      <select name="div_pay" data-f="${d.abbr}"><option value="">— reinvested or cashed out?</option>${['Reinvested', 'Cashed out'].map(o => `<option${v === o ? ' selected' : ''}>${o}</option>`).join('')}</select></label>`; }).join('') : ''; }
+function topupBlock(t = {}) { const fs = parseNominees(t['Fund Allocation']);
+  return `<div class="fund-block topup"><div class="topup-head">
+    <label><span>Top-up date</span><input name="tu_date" value="${esc(t.Date ? fmtDate(t.Date) : '')}" placeholder="DD/MM/YYYY" inputmode="numeric"></label>
+    <label><span>Amount</span><input name="tu_amt" inputmode="decimal" value="${t.Amount != null && t.Amount !== '' ? Number(t.Amount).toLocaleString('en-US') : ''}" placeholder="e.g. 10,000"></label>
+    <label><span>Notes <em>optional</em></span><input name="tu_notes" value="${esc(t.Notes || '')}" placeholder="e.g. paid by SRS"></label>
+    <button type="button" class="icon" title="Remove top-up" onclick="this.closest('.topup').remove(); fundTotal()">✕</button></div>
+    <p class="muted small" style="margin:6px 0">Funds for this top-up</p>
+    <div class="funds">${(fs.length ? fs : [{}]).map(fundRow).join('')}</div>
+    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 0 0"><button type="button" class="btn small" onclick="addFundRow(this)">+ Add another fund</button><span class="dhint fund-total"></span></p></div>`; }
+function addTopup() { const w = $('#topups'); w.insertAdjacentHTML('beforeend', topupBlock()); w.lastElementChild.querySelector('input').focus(); fundTotal(); }
 function allocUpd(form) { const box = $('#alloc-sec'); if (!box) return;
-  const ilp = form.querySelector('[name=policy_type]').value === 'Investment-linked (ILP)', has = [...form.querySelectorAll('[name=fund_name]')].some(x => x.value.trim());
+  const ilp = form.querySelector('[name=policy_type]').value === 'Investment-linked (ILP)', has = [...form.querySelectorAll('[name=fund_name]')].some(x => x.value.trim()) || !!form.querySelector('.topup');
   box.style.display = ilp || has ? '' : 'none'; }
+// Funds — ported from the dividends app's fund list (dividends/funds.js)
+const FUND_LIST = ['AIA Global Adventurous Income Fund (GAIF)', 'AIA Global Dynamic Income Fund (GDIF)', 'AIA Elite Adventurous Fund SGD', 'AIA Adventurous Index Fund SGD', 'AIA Regional Equity Fund SGD', 'AIA Elite Conservative Fund SGD', 'AIA Elite Balanced Fund SGD', 'AIA Global Equity Fund', 'AIA Shariah Global Diversified Fund', 'AIA Multi Select 30', 'AIA Multi Select 70', 'AIA Multi Select 50', 'AIA Sustainable Multi-Thematic Fund', 'AIA US Equity Fund', 'AIA Global Technology Fund', 'AIA European Equity Fund', 'AIA Emerging Markets Equity Fund', 'AIA Emerging Markets Balanced Fund', 'AIA Greater China Equity Fund', 'AIA International Health Care Fund', 'AIA Growth Fund', 'AIA S Money Market Fund', 'AIA Regional Fixed Income Fund', 'AIA Acorns of Asia Fund', 'AIA Portfolio 100', 'AIA Global Balanced Fund', 'AIA India Balanced Fund'];
+// Dividend-paying funds: projected rate is for reference only (non-guaranteed) — no amounts are ever shown
+const DIV_FUNDS = [
+  { abbr: 'GAIF', name: 'AIA Global Adventurous Income Fund', re: /global\s+adventurous\s+income|\bGAIF\b/i, rate: 7, freq: 'Quarterly' },
+  { abbr: 'GDIF', name: 'AIA Global Dynamic Income Fund', re: /global\s+dynamic\s+income|\bGDIF\b/i, rate: 5, freq: 'Quarterly' },
+];
+const divFundOf = name => DIV_FUNDS.find(d => d.re.test(name || '')) || null;
 const allocList = p => parseNominees(p['Fund Allocation']);
 const allocText = p => allocList(p).map(f => f.pct != null ? `${f.name} ${f.pct}%` : f.name).join(' · ');
+const topupsOf = pid => (db.topups || []).filter(t => t['Policy ID'] === pid).sort((a, b) => String(a.Date).localeCompare(String(b.Date)));
+const topupTotal = p => topupsOf(p.ID).reduce((a, t) => a + (+t.Amount || 0), 0);
+const parsePayout = t => Object.fromEntries(String(t || '').split(';').map(x => x.split(':').map(y => y.trim())).filter(x => x[0] && x[1]));
+// which dividend funds a policy holds, from its regular allocation and its top-ups
+const divFundsIn = p => DIV_FUNDS.filter(d => [...allocList(p), ...topupsOf(p.ID).flatMap(t => parseNominees(t['Fund Allocation']))].some(f => d.re.test(f.name)));
+const divLines = p => { const po = parsePayout(p['Dividend Payout']);
+  return divFundsIn(p).map(d => `${d.abbr} projected ${d.rate}% dividends per annum issued ${d.freq} (Non-guaranteed)${po[d.abbr] ? ' – ' + po[d.abbr] : ''}`); };
+const isILP = p => p['Policy Type'] === 'Investment-linked (ILP)';
+const ilpRemarks = p => { const out = [];
+  if (allocList(p).length) out.push('Funds: ' + allocText(p));
+  out.push(...divLines(p));
+  for (const t of topupsOf(p.ID)) { const fs = parseNominees(t['Fund Allocation']);
+    out.push(`Top-up ${money(+t.Amount || 0)}${t.Date ? ' on ' + fmtDate(t.Date) : ''}${fs.length ? ': ' + fs.map(f => f.pct != null ? `${divFundOf(f.name) ? divFundOf(f.name).abbr : f.name} ${f.pct}%` : f.name).join(', ') : ''}${t.Notes ? ' (' + t.Notes + ')' : ''}`); }
+  return out; };
 function addNomRow() { const w = $('#nominees'); w.insertAdjacentHTML('beforeend', nomRow()); w.lastElementChild.querySelector('input').focus(); nomTotal(); }
 function ahOnly(form) {
   const ah = form.querySelector('[name=policy_type]').value === 'Accident & health',
@@ -2379,10 +2438,14 @@ function pagePolicyForm(cid, pid) {
       <label id="pa-plan-w" class="ah-only"><span>Plan</span><select name="pa_plan" data-v="${esc(p['PA Plan'] || '')}"></select></label>
       <div id="pa-opts" class="pa-opts ah-only" style="grid-column:1/-1" data-v="${esc(p['PA Options'] || '')}"></div>`;
     if (f.custom === 'alloc') { const fs = parseNominees(p['Fund Allocation']);
-      return `<div style="grid-column:1/-1"><p class="muted small" style="margin:0 0 8px">Which funds the premiums go into, and what % to each.</p>
-        <div id="funds">${(fs.length ? fs : [{}]).map(fundRow).join('')}</div>
-        ${datalist('fund_names', distinct(db.policies.flatMap(x => parseNominees(x['Fund Allocation']).map(f => f.name))))}
-        <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 0"><button type="button" class="btn small" onclick="addFundRow()">+ Add another fund</button><span class="dhint" id="fund-total"></span></p></div>`; }
+      return `<div class="fund-block" style="grid-column:1/-1"><p class="muted small" style="margin:0 0 8px">Which funds the regular premiums go into, and what % to each. Pick from the list or type any fund.</p>
+        <div id="funds" class="funds">${(fs.length ? fs : [{}]).map(fundRow).join('')}</div>
+        ${datalist('fund_names', distinct([...FUND_LIST, ...db.policies.flatMap(x => parseNominees(x['Fund Allocation']).map(f => f.name)), ...(db.topups || []).flatMap(x => parseNominees(x['Fund Allocation']).map(f => f.name))]))}
+        <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 0"><button type="button" class="btn small" onclick="addFundRow()">+ Add another fund</button><span class="dhint fund-total" id="fund-total"></span></p></div>
+        <div id="divpay" class="divpay" style="grid-column:1/-1;display:none" data-v="${esc(p['Dividend Payout'] || '')}"></div>
+        <div style="grid-column:1/-1"><h3 class="tu-h">Ad-hoc top-ups <em class="muted small">optional</em></h3>
+        <div id="topups">${(editing ? topupsOf(pid) : []).map(topupBlock).join('')}</div>
+        <button type="button" class="btn small" onclick="addTopup()">+ Add a top-up</button></div>`; }
     if (f.custom === 'hsgprem') return `<div id="hsg-prem" class="hsg-sug" style="grid-column:1/-1" hidden></div>`;
     if (f.custom === 'nom') {
       const noms = parseNominees(p.Nominees), fn = distinct([c.Name, ...fam.map(m => m.c.Name)]);
@@ -2536,13 +2599,25 @@ async function savePolicy(e) {
       list.push({ name: names[i].replace(/[;()]/g, ' ').replace(/\s+/g, ' ').trim(), pct: n }); }
     out.Nominees = nomText(list);
   } else out.Nominees = '';
-  { const names = fd.getAll('fund_name').map(x => String(x).trim()), pcts = fd.getAll('fund_pct').map(x => String(x).trim()), list = [];
-    for (let i = 0; i < names.length; i++) { if (!names[i] && !pcts[i]) continue;
-      const n = pcts[i] === '' ? null : parseFloat(pcts[i].replace('%', ''));
-      if (!names[i]) { toast('Investment allocation: type the fund name.', 'error'); return false; }
-      if (n != null && (isNaN(n) || n <= 0 || n > 100)) { toast(`Investment allocation: ${names[i]}’s % should be between 1 and 100.`, 'error'); return false; }
-      list.push({ name: names[i].replace(/;/g, ',').replace(/\s+/g, ' ').trim(), pct: n }); }
-    out['Fund Allocation'] = nomText(list); }
+  const readFunds = (el, what) => { const list = [];
+    for (const r of fundRowsIn(el)) { if (!r.name && !r.pct) continue;
+      const n = r.pct === '' ? null : parseFloat(r.pct.replace('%', ''));
+      if (!r.name) { toast(`${what}: type the fund name.`, 'error'); return null; }
+      if (n != null && (isNaN(n) || n <= 0 || n > 100)) { toast(`${what}: ${r.name}’s % should be between 1 and 100.`, 'error'); return null; }
+      list.push({ name: r.name.replace(/;/g, ',').replace(/\s+/g, ' ').trim(), pct: n }); }
+    return nomText(list); };
+  const fa = readFunds($('#funds'), 'Investment allocation'); if (fa == null) return false; out['Fund Allocation'] = fa;
+  const tus = [];
+  for (const b of document.querySelectorAll('#topups .topup')) {
+    const dRaw = b.querySelector('[name=tu_date]').value.trim(), aRaw = b.querySelector('[name=tu_amt]').value.trim(), notes = b.querySelector('[name=tu_notes]').value.trim();
+    const funds = readFunds(b.querySelector('.funds'), 'Top-up'); if (funds == null) return false;
+    if (!dRaw && !aRaw && !notes && !funds) continue;
+    const d = dRaw ? parseTyped(dRaw) : ''; if (dRaw && !d) { b.querySelector('[name=tu_date]').focus(); toast('Top-up: type the date as DD/MM/YYYY.', 'error'); return false; }
+    const a = parseFloat(aRaw.replace(/[$,\s]/g, '')); if (!(a > 0)) { b.querySelector('[name=tu_amt]').focus(); toast('Top-up: enter the amount topped up.', 'error'); return false; }
+    tus.push({ Date: d || null, Amount: a, 'Fund Allocation': funds, Notes: notes }); }
+  const pay = [];
+  for (const sel of document.querySelectorAll('[name=div_pay]')) { if (!sel.value) { sel.focus(); toast(`${sel.dataset.f}: choose whether dividends are reinvested or cashed out.`, 'error'); return false; } pay.push(`${sel.dataset.f}: ${sel.value}`); }
+  out['Dividend Payout'] = pay.join('; ');
   if (out['Paid By'] !== 'CPF MA + Cash') out['Cash Portion'] = null;
   const single = out['Premium Frequency'] === 'Single premium';
   out['Premium Term'] = single ? '' : g('premium_term');
@@ -2555,6 +2630,8 @@ async function savePolicy(e) {
   let p;
   if (pid) { p = db.policies.find(x => x.ID === pid); Object.assign(p, out); }
   else { p = { ID: nextId(db.policies, 'P'), 'Client ID': cid, ...out }; db.policies.push(p); }
+  const keepT = topupsOf(p.ID); db.topups = (db.topups || []).filter(t => t['Policy ID'] !== p.ID);
+  tus.forEach((t, i) => db.topups.push({ ID: keepT[i] ? keepT[i].ID : nextId(db.topups, 'T'), 'Policy ID': p.ID, ...t }));
   const keep = benefitsOf(p.ID);
   db.benefits = db.benefits.filter(b => b['Policy ID'] !== p.ID);
   bens.forEach((b, i) => db.benefits.push({ ID: keep[i] ? keep[i].ID : nextId(db.benefits, 'B'), 'Policy ID': p.ID, ...b }));
@@ -2578,7 +2655,7 @@ async function delPolicy(btn) {
   const p = db.policies.find(x => x.ID === btn.dataset.pid);
   if (!confirm(`Delete ${p && p['Policy Name'] ? p['Policy Name'] : 'this policy'}?`)) return;
   for (const x of db.policies) if (x['Rider Of'] === btn.dataset.pid) x['Rider Of'] = '';
-  db.policies = db.policies.filter(x => x.ID !== btn.dataset.pid); db.benefits = db.benefits.filter(b => b['Policy ID'] !== btn.dataset.pid); db.surrender = db.surrender.filter(v => v['Policy ID'] !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
+  db.policies = db.policies.filter(x => x.ID !== btn.dataset.pid); db.benefits = db.benefits.filter(b => b['Policy ID'] !== btn.dataset.pid); db.surrender = db.surrender.filter(v => v['Policy ID'] !== btn.dataset.pid); db.topups = db.topups.filter(v => v['Policy ID'] !== btn.dataset.pid); touch(getClient(btn.dataset.cid));
   await commit('Policy deleted.', `#/c/${encodeURIComponent(btn.dataset.cid)}`, 'policies', true);
 }
 
@@ -2803,7 +2880,7 @@ function pageSummary(cid, q) {
     const wop = livePs.filter(p => allBens(p).some(b => b['Benefit Type'] === 'Waiver of Premium (WOP)'));
     const opai = livePs.flatMap(p => allBens(p).filter(b => b['Benefit Type'] === 'Option to Purchase Additional Insurance (OPAI)').map(b => ({ p, b })));
     const svNow = p => svOf(p.ID)[0], invLive = G.inv.filter(p => !p.Status || p.Status === 'In force');
-    const invSV = invLive.reduce((t, p) => t + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0), invPaid = invLive.reduce((t, p) => t + (policyCalc(p).paid || 0), 0);
+    const invSV = invLive.reduce((t, p) => t + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0), invPaid = invLive.reduce((t, p) => t + (policyCalc(p).paid || 0) + topupTotal(p), 0);
     const ovBreak = sp => [...(sp.parts.length > 1 || (sp.parts[0] && sp.parts[0][1]) ? sp.parts.map(([a, l]) => sp.parts.length > 1 ? `${kShort(a)} ${l || '(term not set)'}` : l) : []), ...sp.texts].map(esc).join(' · ');
     const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${esc(r.label)}</td><td class="n"><b>${r.sp.total ? money(Math.round(r.sp.total)) : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
       + (wop.length ? `<tr class="prot"><td class="l">Waiver of Premium (WOP)</td><td class="n"><b>Yes</b></td><td class="br">${wop.map(p => esc(p['Policy Name'])).join(' · ')}</td></tr>` : '')
@@ -2827,11 +2904,12 @@ function pageSummary(cid, q) {
     // a plan's notes go after its last rider, so the rider stays directly under the plan
     const notesAfter = (p, L) => { const rs = L.filter(r => r['Rider Of'] === p.ID); if (rs.length) return [];
       const b = riderBase(p), out = [];
-      if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b), ...fundNote(b)); }
-      return [...productNotes(p), ...fundNote(p), ...out]; };
-    const fundNote = p => allocText(p) ? ['Fund allocation: ' + allocText(p)] : [];
+      if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b)); }
+      return [...productNotes(p), ...out]; };
     const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
-    const remarks = p => esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
+    const remarks = p => { const base = esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
+      const il = ilpRemarks(p); return il.length ? il.map(x => `<span class="rl">${esc(x)}</span>`).join('') + (base ? `<span class="rl">${base}</span>` : '') : base; };
+    const paidIn = p => (policyCalc(p).paid || 0) + topupTotal(p);
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
     const otherCell = (p, skip) => { if (paOf(p)) { const n = allBens(p).filter(b => !skip.includes(b['Benefit Type'])).length; return `<td>${n ? `<span class="t2">${n} more benefits — see the table of benefits</span>` : '<span class="none">–</span>'}</td>`; }
       const os = allBens(p).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
@@ -2842,14 +2920,14 @@ function pageSummary(cid, q) {
     const PT = { d: ['Death'], tpd: ['Total Permanent Disability (TPD)'], ci: ['Critical Illness (CI)'], eci: ['Early Critical Illness (ECI)'] };
     const AT = { ad: ['Accidental Death (Acc Death)', 'Accidental Death, Dismemberment and Burns (AD&D)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
     const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Death</th><th>TPD</th><th>Critical Illness</th><th>Early CI</th><th>Other benefits</th><th>Surrender value</th><th>Remarks</th></tr></thead>
-      ${G.prot.map((p, i) => `<tr class="${notesAfter(p, G.prot).length || ridersOf(p).some(r => G.prot.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.prot)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 12, G.prot)}`).join('')}
+      ${G.prot.map((p, i) => `<tr class="${notesAfter(p, G.prot).length || ridersOf(p).some(r => G.prot.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.prot)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 12, G.prot)}`).join('')}
       ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
     const ahT = G.ah.length ? `<div class="psec ah"><table><thead><tr><th class="bar" colspan="10">ACCIDENT &amp; HOSPITALISATION</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Accidental Death</th><th>Accidental Medical</th><th>Hospitalisation</th><th>Other benefits</th><th>Remarks</th></tr></thead>
       ${G.ah.map((p, i) => `<tr class="${notesAfter(p, G.ah).length || ridersOf(p).some(r => G.ah.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.ah)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, AT.ad)}${cell(p, AT.amr)}${cell(p, AT.h)}${otherCell(p, [...AT.ad, ...AT.amr, ...AT.h])}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 10, G.ah)}`).join('')}
       ${totRow(G.ah, [yearly, () => '', sumCol(AT.ad), sumCol(AT.amr), () => '', () => '', () => ''])}</table></div>` : '';
     const invT = G.inv.length ? `<div class="psec inv"><table><thead><tr><th class="bar" colspan="8">INVESTMENTS &amp; SAVINGS — NO DEATH COVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Paid in so far</th><th>Surrender value</th><th>Remarks</th></tr></thead>
-      ${G.inv.map((p, i) => `<tr class="${notesAfter(p, G.inv).length || ridersOf(p).some(r => G.inv.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.inv)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${policyCalc(p).paid ? money(Math.round(policyCalc(p).paid)) : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 8, G.inv)}`).join('')}
-      ${totRow(G.inv, [yearly, () => '', ps2 => { const t = ps2.reduce((a, p) => a + (policyCalc(p).paid || 0), 0); return t ? money(Math.round(t)) : ''; }, ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
+      ${G.inv.map((p, i) => `<tr class="${notesAfter(p, G.inv).length || ridersOf(p).some(r => G.inv.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.inv)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${paidIn(p) ? money(Math.round(paidIn(p))) + (topupTotal(p) ? `<span class="t">incl. ${money(Math.round(topupTotal(p)))} top-ups</span>` : '') : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 8, G.inv)}`).join('')}
+      ${totRow(G.inv, [yearly, () => '', ps2 => { const t = ps2.reduce((a, p) => a + paidIn(p), 0); return t ? money(Math.round(t)) : ''; }, ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
     const age = who ? ageOf(who['Date of Birth']) : null, rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(/^\s*·\s*/, '');
     return `<div class="sheet psum">
       ${letterhead(me)}
@@ -3732,7 +3810,7 @@ async function delClient(btn) {
   db.clients = db.clients.filter(x => x.ID !== cid);
   db.family = db.family.filter(f => f['Client ID'] !== cid && f['Related ID'] !== cid);
   const gone = new Set(db.policies.filter(p => p['Client ID'] === cid).map(p => p.ID));
-  db.benefits = db.benefits.filter(b => !gone.has(b['Policy ID'])); db.surrender = db.surrender.filter(v => !gone.has(v['Policy ID']));
+  db.benefits = db.benefits.filter(b => !gone.has(b['Policy ID'])); db.surrender = db.surrender.filter(v => !gone.has(v['Policy ID'])); db.topups = db.topups.filter(v => !gone.has(v['Policy ID']));
   for (const k of ['extras', 'notes', 'interactions', 'policies', 'illustrations']) db[k] = db[k].filter(r => r['Client ID'] !== cid);
   await commit(`Deleted ${c.Name}.`, '#/', null, true);
 }
@@ -3956,6 +4034,7 @@ function bookToDb(book) {
   nd.clients = nd.clients.filter(c => c.Name);
   for (const b of nd.benefits) if (!b.ID) b.ID = nextId(nd.benefits, 'B');
   for (const v of nd.surrender) if (!v.ID) v.ID = nextId(nd.surrender, 'S');
+  for (const v of nd.topups) if (!v.ID) v.ID = nextId(nd.topups, 'T');
   moveNicknames(nd); migratePolicies(nd);
   for (const c of nd.clients) if (!c.ID) c.ID = nextId(nd.clients, 'C');
   for (const [k, p] of [['notes', 'N'], ['interactions', 'I'], ['policies', 'P'], ['illustrations', 'D']]) for (const r of nd[k]) if (!r.ID) r.ID = nextId(nd[k], p);
@@ -4144,7 +4223,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.19a';
+const APP_VERSION = '2026.11.20a';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
