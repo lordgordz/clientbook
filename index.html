@@ -2818,7 +2818,7 @@ function paPage(x, who, me) {
     <h1>${tzi('Accident plan — table of benefits')}</h1>
     <p class="hp-sub"><b>${esc(paTitle(x))}</b> · insured: <b>${esc(who ? who.Name : '')}</b>${Object.keys(paOpts(x)).length ? ' · optional: ' + Object.entries(paOpts(x)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ') : ''}</p>
     <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi(`INSURED AMOUNTS (S$) FOR EVERY PLAN — ${esc(who ? who.Name : '').toUpperCase()}’S PLAN IS HIGHLIGHTED`, `各计划保额（新元）— 已标示${esc(who ? who.Name : '')}的计划`)}</th></tr></thead></table>${paTables(x, 'hsgt pat')}</div>
-    <div class="foot">${esc(P.note)} This table is a summary of the benefits; please refer to the policy contract for the full terms and exclusions.${SUM_ZH ? '<span class="zh">本表为保障摘要；完整条款及不保事项，请参阅保单合约。</span>' : ''}</div>
+    <div class="foot">${esc(P.note)} This table is a summary of the benefits; please refer to the policy contract for the full terms and exclusions.</div>
   </div>`;
 }
 // ---- policy summary: protection / accident & hospital / investments, one page per insured person ----
@@ -2970,7 +2970,7 @@ function pageSummary(cid, q) {
         ${who && who.Occupation ? `<tr><td>${tz('Occupation')}</td><td>${esc(who.Occupation)}</td></tr>` : ''}
         <tr><td>${tz(ended ? 'Policies listed' : 'Policies in force')}</td><td>${ps.length}</td></tr><tr><td>${tz('Prepared on')}</td><td>${esc(fmtDate(todayISO()))}</td></tr></table></div></div>
       ${protT}${ahT}${invT}
-      <div class="foot">This summary is prepared from records kept by your consultant and is for general information only. It is not a contract of insurance — please refer to your policy contracts for the exact terms, benefits and exclusions. Projected and surrender values are not guaranteed.${SUM_ZH ? '<span class="zh">本摘要根据您的顾问所保存的记录编制，仅供一般参考，并非保险合约。具体条款、保障及不保事项，请以保单合约为准。预测价值及退保价值均不保证。</span>' : ''}</div>
+      <div class="foot">This summary is prepared from records kept by your consultant and is for general information only. It is not a contract of insurance — please refer to your policy contracts for the exact terms, benefits and exclusions. Projected and surrender values are not guaranteed.</div>
     </div>${(() => { const plans = G.ah.filter(x => HSG_RATES.plans[x['HSG Plan']] && (!x.Status || x.Status === 'In force'));
       return plans.map(x => { const sc = hsgSchedule(x), title = esc(x['Policy Name'] || x['HSG Plan']), h = hsgOf(x);
         return `<div class="sheet psum hsg-page">${letterhead(me)}
@@ -2979,7 +2979,7 @@ function pageSummary(cid, q) {
           ${sc ? `<div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi(`FUTURE PREMIUMS BY AGE (YEARLY, RATES FROM ${HSG_RATES_FROM.toUpperCase()}, NOT GUARANTEED)`, '按年龄划分的未来保费（每年，费率自2026年10月1日起，不保证）')}</th></tr></thead></table>${hsgScheduleTable(sc, 'hsgt')}</div>`
             : `<p class="muted">Add ${esc(who ? who.Name : 'the insured')}’s date of birth to show the future premiums.</p>`}
           <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi('DEDUCTIBLE AND CO-INSURANCE')}</th></tr></thead></table>${hsgDeductibleTable(x, 'hsgt ded')}</div>
-          <div class="foot">Premiums are based on the insured’s age next birthday at each renewal and are not guaranteed — the insurer reviews them from time to time. Rider premiums are paid in cash. The deductible is paid first each policy year; co-insurance is the insured’s share after that, unless a rider covers it.${SUM_ZH ? '<span class="zh">保费按受保人每次续保时的下次生日年龄计算，并不保证 — 保险公司会不时检讨保费。附加保单的保费以现金支付。每个保单年度须先支付自付额；之后，受保人须承担共同保险部分，除非附加保单已涵盖。</span>' : ''}</div>
+          <div class="foot">Premiums are based on the insured’s age next birthday at each renewal and are not guaranteed — the insurer reviews them from time to time. Rider premiums are paid in cash. The deductible is paid first each policy year; co-insurance is the insured’s share after that, unless a rider covers it.</div>
         </div>`; }).join(''); })()}${G.ah.filter(x => paOf(x) && (!x.Status || x.Status === 'In force')).map(x => paPage(x, who, me)).join('')}`;
   };
   const missingTerm = all.some(p => allBens(p).some(b => sumAmt(b['Coverage Amount']) != null && !b['Cover Term']));
@@ -4250,7 +4250,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.21b';
+const APP_VERSION = '2026.11.21c';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
