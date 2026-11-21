@@ -387,6 +387,8 @@ table.hsgt td.cur { background: var(--accent-soft); font-weight: 700; }
 .psum .psec.inv td.pol { width: 30%; } .psum .psec td.pol b { display: block; } .psum .psec td.pol span { display: block; color: #555; font-size: 10px; }
 .psum .psec td.pol .st { color: #a33a2b; font-weight: 600; }
 .psum .psec td.rem { text-align: left; font-size: 10px; color: #333; min-width: 140px; }
+.psum .zh { display: block; font-size: .9em; font-weight: 500; opacity: .85; font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+.psum .foot .zh { margin-top: 3px; } .psum .ov th .zh, .psum .psec th .zh { font-weight: 600; }
 .psum .psec td.rem .rl { display: block; } .psum .psec td.rem .rl + .rl { margin-top: 2px; } .psum .psec td.rem.ilp { min-width: 230px; }
 .psum .psec.inv td.pol { width: 22% !important; } .psum .psec.inv td.rem { width: 38%; min-width: 260px; }
 .psum .t { display: block; font-size: 9.5px; color: #555; white-space: nowrap; } .psum .t2 { display: block; font-size: 10px; } .psum .t1 { font-size: 9.5px; color: #555; }
@@ -620,7 +622,8 @@ const PROT_BEN = new Set(['Death', 'Total Permanent Disability (TPD)', 'Terminal
 const AH_BEN = new Set(['Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Hospitalisation Expenses', 'Hospital Cash', ...ACCIDENT_BENEFITS]);
 // Side notes shown automatically on every policy whose name matches (policy page and policy summary).
 const PRODUCT_NOTES = [
-  { match: /platinum\s*wealth\s*elite/i, note: 'Coverage is guaranteed for the first 15 years. After the first 15 years, if the policy value is lower than the monthly mortality charges, the coverage will cease. So long as the investment returns are sufficient, coverage will last for whole life.' },
+  { match: /platinum\s*wealth\s*elite/i, note: 'Coverage is guaranteed for the first 15 years. After the first 15 years, if the policy value is lower than the monthly mortality charges, the coverage will cease. So long as the investment returns are sufficient, coverage will last for whole life.',
+    zh: '首15年的保障是保证的。15年后，若保单价值低于每月的死亡率费用，保障将会终止。只要投资回报足够，保障可维持终身。' },
 ];
 // HealthShield Gold plans: picking the plan on a policy fills in its coverage, ward and limits.
 // Premium tables (S$, incl. GST), annual premium by age next birthday. Rates effective 1 Oct 2026.
@@ -668,6 +671,28 @@ function hsgDeductibleTable(p, cls) {
 }
 const HSG_NOTE = 'A deductible based on the ward class and 10% co-insurance apply to each claim, unless covered by a rider.';
 const hsgOf = p => HSG_PLANS[p['HSG Plan']] || null;
+// ---- English + 中文 policy summary ----
+let SUM_ZH = false;
+const ZH = {
+  'Policy summary': '保单摘要', 'Premiums': '保费', 'Total': '总计', 'Protection': '保障', 'Accident &amp; hospital': '意外与住院', 'Investments': '投资',
+  'Annual premium — cash': '年缴保费 — 现金', 'Monthly equivalent (cash)': '折合每月（现金）', 'Coverage': '保额', 'Breakdown': '明细',
+  'Death': '死亡', 'Total Permanent Disability (TPD)': '残缺', 'Terminal Illness (TI)': '末期疾病', 'Critical Illness (CI)': '晚期疾病', 'Early Critical Illness (ECI)': '早期疾病',
+  'Income protection (per month)': '收入保障（每月）', 'Long-Term Care (LTC)': '长期护理', 'Accidental Death': '意外死亡', 'Accidental Medical Reimbursement': '意外医疗费用报销',
+  'Weekly Indemnity': '每周伤残赔偿', 'Hospitalisation': '住院费用', 'Hospital Cash': '住院现金津贴', 'Waiver of Premium (WOP)': '保费豁免',
+  'Option to Purchase Additional Insurance (OPAI)': '增购保障选择权', 'Investments — surrender value': '投资 — 退保价值',
+  'PERSONAL DETAILS': '个人资料', 'Name': '姓名', 'Relationship': '关系', 'Gender': '性别', 'Date of birth': '出生日期', 'Age next birthday': '下次生日年龄', 'Occupation': '职业',
+  'Policies in force': '有效保单', 'Policies listed': '所列保单', 'Prepared on': '制作日期',
+  'Policy': '保单', 'Bought': '投保日期', 'Premium': '保费', 'Premium term': '缴费期', 'TPD': '残缺', 'Critical Illness': '晚期疾病', 'Early CI': '早期疾病',
+  'Other benefits': '其他保障', 'Surrender value': '退保价值', 'Remarks': '备注', 'Accidental Medical': '意外医疗', 'Paid in so far': '至今已缴',
+  'PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER': '保障 — 死亡、残缺、晚期疾病及保费豁免', 'ACCIDENT &amp; HOSPITALISATION': '意外与住院',
+  'INVESTMENTS &amp; SAVINGS — NO DEATH COVER': '投资与储蓄 — 无死亡保障', 'Hospital plan — premiums and deductible': '住院保险计划 — 保费与自付额',
+  'DEDUCTIBLE AND CO-INSURANCE': '自付额与共同保险', 'Accident plan — table of benefits': '意外保险计划 — 保障一览表',
+  'Male': '男', 'Female': '女', 'Yes': '是',
+};
+const NOTE_ZH = { 'A deductible based on the ward class and 10% co-insurance apply to each claim, unless covered by a rider.': '每次索赔须承担按病房等级而定的自付额及10%共同保险，除非附加保单已涵盖。' };
+const tz = (en, zh) => { const z = zh ?? ZH[en]; return SUM_ZH && z ? `${en}<span class="zh">${z}</span>` : en; };   // English with Chinese underneath
+const tzi = (en, zh) => { const z = zh ?? ZH[en]; return SUM_ZH && z ? `${en}　${z}` : en; };                          // English and Chinese side by side
+const noteZh = t => (PRODUCT_NOTES.find(r => r.note === t) || {}).zh || NOTE_ZH[t] || '';
 const productNotes = p => [...PRODUCT_NOTES.filter(r => r.match.test(String(p['Policy Name'] || ''))).map(r => r.note), ...(hsgOf(p) ? [HSG_NOTE] : [])];
 // Accident plans: tables of benefits from each product summary (insured amounts in S$). Values per plan column.
 const PA_PRODUCTS = {
@@ -2333,6 +2358,7 @@ const isILP = p => p['Policy Type'] === 'Investment-linked (ILP)';
 const ilpRemarks = p => { const out = [];
   if (allocList(p).length) out.push('Funds: ' + allocText(p));
   out.push(...divLines(p));
+  if (SUM_ZH) { const po = parsePayout(p['Dividend Payout']); out.push(...divFundsIn(p).map(d => `${d.abbr}（${d.rate}% 分红）${po[d.abbr] ? ' – ' + (po[d.abbr] === 'Reinvested' ? '再投资' : '领取现金') : ''}`)); }
   for (const t of topupsOf(p.ID)) { const fs = parseNominees(t['Fund Allocation']);
     out.push(`Top-up ${money(+t.Amount || 0)}${t.Date ? ' on ' + fmtDate(t.Date) : ''}${fs.length ? ': ' + fs.map(f => f.pct != null ? `${divFundOf(f.name) ? divFundOf(f.name).abbr : f.name} ${f.pct}%` : f.name).join(', ') : ''}${t.Notes ? ' (' + t.Notes + ')' : ''}`); }
   return out; };
@@ -2790,10 +2816,10 @@ function paTables(p, cls) {
 function paPage(x, who, me) {
   const P = paOf(x);
   return `<div class="sheet psum hsg-page pa-page">${letterhead(me)}
-    <h1>Accident plan — table of benefits</h1>
+    <h1>${tzi('Accident plan — table of benefits')}</h1>
     <p class="hp-sub"><b>${esc(paTitle(x))}</b> · insured: <b>${esc(who ? who.Name : '')}</b>${Object.keys(paOpts(x)).length ? ' · optional: ' + Object.entries(paOpts(x)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ') : ''}</p>
-    <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">INSURED AMOUNTS (S$) FOR EVERY PLAN — ${esc(who ? who.Name : '').toUpperCase()}’S PLAN IS HIGHLIGHTED</th></tr></thead></table>${paTables(x, 'hsgt pat')}</div>
-    <div class="foot">${esc(P.note)} This table is a summary of the benefits; please refer to the policy contract for the full terms and exclusions.</div>
+    <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi(`INSURED AMOUNTS (S$) FOR EVERY PLAN — ${esc(who ? who.Name : '').toUpperCase()}’S PLAN IS HIGHLIGHTED`, `各计划保额（新元）— 已标示${esc(who ? who.Name : '')}的计划`)}</th></tr></thead></table>${paTables(x, 'hsgt pat')}</div>
+    <div class="foot">${esc(P.note)} This table is a summary of the benefits; please refer to the policy contract for the full terms and exclusions.${SUM_ZH ? '<span class="zh">本表为保障摘要；完整条款及不保事项，请参阅保单合约。</span>' : ''}</div>
   </div>`;
 }
 // ---- policy summary: protection / accident & hospital / investments, one page per insured person ----
@@ -2843,9 +2869,10 @@ function premParts(p) {   // yearly premium split into cash / CPF OA / CPF SA / 
   else out[by in out ? by : 'Cash'] += ann;
   return out;
 }
+const sumLink = (cid, ended, zh) => { const u = new URLSearchParams(); if (ended) u.set('ended', '1'); if (zh) u.set('zh', '1'); const s2 = u.toString(); return `#/c/${encodeURIComponent(cid)}/summary${s2 ? '?' + s2 : ''}`; };
 function pageSummary(cid, q) {
   const c = getClient(cid); if (!c) return pageNotFound();
-  const ended = q.get('ended') === '1', me = myDetails();
+  const ended = q.get('ended') === '1', me = myDetails(); SUM_ZH = q.get('zh') === '1';
   const live = p => ended || !p.Status || p.Status === 'In force';
   const all = db.policies.filter(p => (p['Client ID'] === cid || p['Insured ID'] === cid) && live(p));
   const people = new Map();
@@ -2866,7 +2893,7 @@ function pageSummary(cid, q) {
     const prem = { prot: {}, ah: {}, inv: {} }; for (const k of ['prot', 'ah', 'inv']) for (const p of G[k]) if (!p.Status || p.Status === 'In force') { const pp = premParts(p); for (const [m, v] of Object.entries(pp)) prem[k][m] = (prem[k][m] || 0) + v; }
     const pr = (k, m) => (prem[k][m] || 0), tot = m => pr('prot', m) + pr('ah', m) + pr('inv', m);
     const nonCash = k => NONCASH.reduce((t, m) => t + pr(k, m), 0);
-    const prow = (label, f) => `<tr><td class="l">${label}</td><td class="n"><b>${m2(f('all'))}</b></td>${['prot', 'ah', 'inv'].map(k => `<td class="n">${m2(f(k))}</td>`).join('')}</tr>`;
+    const prow = (label, f, zh) => `<tr><td class="l">${tz(label, zh)}</td><td class="n"><b>${m2(f('all'))}</b></td>${['prot', 'ah', 'inv'].map(k => `<td class="n">${m2(f(k))}</td>`).join('')}</tr>`;
     const cash = k => k === 'all' ? tot('Cash') : pr(k, 'Cash'), nc = k => k === 'all' ? ['prot', 'ah', 'inv'].reduce((t, x) => t + nonCash(x), 0) : nonCash(k);
     const ncLabel = NONCASH.filter(m => tot(m)).join(' / ') || 'CPF / SRS';
     // coverage overview
@@ -2882,11 +2909,11 @@ function pageSummary(cid, q) {
     const svNow = p => svOf(p.ID)[0], invLive = G.inv.filter(p => !p.Status || p.Status === 'In force');
     const invSV = invLive.reduce((t, p) => t + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0), invPaid = invLive.reduce((t, p) => t + (policyCalc(p).paid || 0) + topupTotal(p), 0);
     const ovBreak = sp => [...(sp.parts.length > 1 || (sp.parts[0] && sp.parts[0][1]) ? sp.parts.map(([a, l]) => sp.parts.length > 1 ? `${kShort(a)} ${l || '(term not set)'}` : l) : []), ...sp.texts].map(esc).join(' · ');
-    const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${esc(r.label)}</td><td class="n"><b>${r.sp.total ? money(Math.round(r.sp.total)) : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
-      + (wop.length ? `<tr class="prot"><td class="l">Waiver of Premium (WOP)</td><td class="n"><b>Yes</b></td><td class="br">${wop.map(p => esc(p['Policy Name'])).join(' · ')}</td></tr>` : '')
-      + (opai.length ? `<tr class="prot"><td class="l">Option to Purchase Additional Insurance (OPAI)</td><td class="n"><b>${(() => { const t = opai.reduce((a, x) => a + (sumAmt(x.b['Coverage Amount']) || 0), 0); return t ? money(Math.round(t)) : 'Yes'; })()}</b></td>
+    const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${tz(esc(r.label))}</td><td class="n"><b>${r.sp.total ? money(Math.round(r.sp.total)) : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
+      + (wop.length ? `<tr class="prot"><td class="l">${tz('Waiver of Premium (WOP)')}</td><td class="n"><b>${tz('Yes')}</b></td><td class="br">${wop.map(p => esc(p['Policy Name'])).join(' · ')}</td></tr>` : '')
+      + (opai.length ? `<tr class="prot"><td class="l">${tz('Option to Purchase Additional Insurance (OPAI)')}</td><td class="n"><b>${(() => { const t = opai.reduce((a, x) => a + (sumAmt(x.b['Coverage Amount']) || 0), 0); return t ? money(Math.round(t)) : 'Yes'; })()}</b></td>
           <td class="br">${opai.map(({ p, b }) => { const e = coverEnd(b, p); return esc([p['Policy Name'], typeof b['Coverage Amount'] === 'number' && opai.length > 1 ? kShort(b['Coverage Amount']) : (typeof b['Coverage Amount'] === 'string' ? b['Coverage Amount'] : ''), e.label ? 'exercise ' + e.label.replace('till', 'before') : '', b.Notes].filter(Boolean).join(' · ')); }).join('; ')}</td></tr>` : '')
-      + (invLive.length ? `<tr class="inv"><td class="l">Investments — surrender value</td><td class="n"><b>${invSV ? money(Math.round(invSV)) : '–'}</b></td><td class="br">${invPaid ? money(Math.round(invPaid)) + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
+      + (invLive.length ? `<tr class="inv"><td class="l">${tz('Investments — surrender value')}</td><td class="n"><b>${invSV ? money(Math.round(invSV)) : '–'}</b></td><td class="br">${invPaid ? money(Math.round(invPaid)) + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
     // policy tables
     const polCell = p => `<td class="pol">${riderBase(p) ? `<span class="rof">↳ Rider of ${esc(riderBase(p)['Policy Name'] || 'policy')}</span>` : ''}<b>${esc(paOf(p) ? paTitle(p) : p['Policy Name'] || 'Untitled policy')}</b>${paOf(p) && Object.keys(paOpts(p)).length ? `<span>+ ${Object.entries(paOpts(p)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ')}</span>` : ''}<span>${[p.Insurer, p['Policy No']].filter(Boolean).map(esc).join(' · ')}</span>${p['Client ID'] !== id ? `<span>Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}${p.Status && p.Status !== 'In force' ? `<span class="st">${esc(p.Status)}</span>` : ''}</td>`;
     const premCell = p => { const v = p.Premium; if (v == null || v === '') return '<td><span class="none">–</span></td>';
@@ -2906,7 +2933,7 @@ function pageSummary(cid, q) {
       const b = riderBase(p), out = [];
       if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b)); }
       return [...productNotes(p), ...out]; };
-    const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
+    const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}${SUM_ZH && noteZh(t) ? `<span class="zh">${esc(noteZh(t))}</span>` : ''}</td></tr>`).join('');
     const remarks = p => { const base = esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
       const il = ilpRemarks(p); return il.length ? il.map(x => `<span class="rl">${esc(x)}</span>`).join('') + (base ? `<span class="rl">${base}</span>` : '') : base; };
     const paidIn = p => (policyCalc(p).paid || 0) + topupTotal(p);
@@ -2914,52 +2941,53 @@ function pageSummary(cid, q) {
     const otherCell = (p, skip) => { if (paOf(p)) { const n = allBens(p).filter(b => !skip.includes(b['Benefit Type'])).length; return `<td>${n ? `<span class="t2">${n} more benefits — see the table of benefits</span>` : '<span class="none">–</span>'}</td>`; }
       const os = allBens(p).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
       return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'])) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
-    const totRow = (ps2, cols) => `<tr class="tot"><td colspan="3">Total</td>${cols.map(f => `<td>${f(ps2)}</td>`).join('')}</tr>`;
+    const totRow = (ps2, cols) => `<tr class="tot"><td colspan="3">${tz('Total')}</td>${cols.map(f => `<td>${f(ps2)}</td>`).join('')}</tr>`;
     const yearly = ps2 => { const live2 = ps2.filter(p => !p.Status || p.Status === 'In force'), t = live2.reduce((a, p) => a + (policyCalc(p).annual || 0), 0); return t ? money(Math.round(t * 100) / 100) + ' / year' : ''; };
     const sumCol = types => ps2 => partsHtml(sumParts(ps2.filter(p => !p.Status || p.Status === 'In force').flatMap(p => ben(p, types))), true);
     const PT = { d: ['Death'], tpd: ['Total Permanent Disability (TPD)'], ci: ['Critical Illness (CI)'], eci: ['Early Critical Illness (ECI)'] };
     const AT = { ad: ['Accidental Death (Acc Death)', 'Accidental Death, Dismemberment and Burns (AD&D)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
-    const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Death</th><th>TPD</th><th>Critical Illness</th><th>Early CI</th><th>Other benefits</th><th>Surrender value</th><th>Remarks</th></tr></thead>
+    const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">${tzi('PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER')}</th></tr><tr><th>${tz('No')}</th><th>${tz('Policy')}</th><th>${tz('Bought')}</th><th>${tz('Premium')}</th><th>${tz('Premium term')}</th><th>${tz('Death')}</th><th>${tz('TPD')}</th><th>${tz('Critical Illness')}</th><th>${tz('Early CI')}</th><th>${tz('Other benefits')}</th><th>${tz('Surrender value')}</th><th>${tz('Remarks')}</th></tr></thead>
       ${G.prot.map((p, i) => `<tr class="${notesAfter(p, G.prot).length || ridersOf(p).some(r => G.prot.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.prot)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 12, G.prot)}`).join('')}
       ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
-    const ahT = G.ah.length ? `<div class="psec ah"><table><thead><tr><th class="bar" colspan="10">ACCIDENT &amp; HOSPITALISATION</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Accidental Death</th><th>Accidental Medical</th><th>Hospitalisation</th><th>Other benefits</th><th>Remarks</th></tr></thead>
+    const ahT = G.ah.length ? `<div class="psec ah"><table><thead><tr><th class="bar" colspan="10">${tzi('ACCIDENT &amp; HOSPITALISATION')}</th></tr><tr><th>${tz('No')}</th><th>${tz('Policy')}</th><th>${tz('Bought')}</th><th>${tz('Premium')}</th><th>${tz('Premium term')}</th><th>${tz('Accidental Death')}</th><th>${tz('Accidental Medical')}</th><th>${tz('Hospitalisation')}</th><th>${tz('Other benefits')}</th><th>${tz('Remarks')}</th></tr></thead>
       ${G.ah.map((p, i) => `<tr class="${notesAfter(p, G.ah).length || ridersOf(p).some(r => G.ah.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.ah)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, AT.ad)}${cell(p, AT.amr)}${cell(p, AT.h)}${otherCell(p, [...AT.ad, ...AT.amr, ...AT.h])}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 10, G.ah)}`).join('')}
       ${totRow(G.ah, [yearly, () => '', sumCol(AT.ad), sumCol(AT.amr), () => '', () => '', () => ''])}</table></div>` : '';
-    const invT = G.inv.length ? `<div class="psec inv"><table><thead><tr><th class="bar" colspan="8">INVESTMENTS &amp; SAVINGS — NO DEATH COVER</th></tr><tr><th>No</th><th>Policy</th><th>Bought</th><th>Premium</th><th>Premium term</th><th>Paid in so far</th><th>Surrender value</th><th>Remarks</th></tr></thead>
+    const invT = G.inv.length ? `<div class="psec inv"><table><thead><tr><th class="bar" colspan="8">${tzi('INVESTMENTS &amp; SAVINGS — NO DEATH COVER')}</th></tr><tr><th>${tz('No')}</th><th>${tz('Policy')}</th><th>${tz('Bought')}</th><th>${tz('Premium')}</th><th>${tz('Premium term')}</th><th>${tz('Paid in so far')}</th><th>${tz('Surrender value')}</th><th>${tz('Remarks')}</th></tr></thead>
       ${G.inv.map((p, i) => `<tr class="${notesAfter(p, G.inv).length || ridersOf(p).some(r => G.inv.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.inv)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${paidIn(p) ? money(Math.round(paidIn(p))) + (topupTotal(p) ? `<span class="t">incl. ${money(Math.round(topupTotal(p)))} top-ups</span>` : '') : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 8, G.inv)}`).join('')}
       ${totRow(G.inv, [yearly, () => '', ps2 => { const t = ps2.reduce((a, p) => a + paidIn(p), 0); return t ? money(Math.round(t)) : ''; }, ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
     const age = who ? ageOf(who['Date of Birth']) : null, rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(/^\s*·\s*/, '');
     return `<div class="sheet psum">
       ${letterhead(me)}
       <div class="ps-top"><div>
-        <h1>Policy summary</h1>
-        <table class="ov"><tr><th>Premiums</th><th class="n">Total</th><th class="n">Protection</th><th class="n">Accident &amp; hospital</th><th class="n">Investments</th></tr>
-          ${prow('Annual premium — cash', cash)}${nc('all') ? prow('Annual premium — ' + esc(ncLabel), nc) : ''}${prow('Monthly equivalent (cash)', k => cash(k) / 12)}</table>
-        ${coverRows ? `<table class="ov cov"><tr><th>Coverage</th><th class="n">Total</th><th>Breakdown</th></tr>${coverRows}</table>` : ''}
+        <h1>${tzi('Policy summary')}</h1>
+        <table class="ov"><tr><th>${tz('Premiums')}</th><th class="n">${tz('Total')}</th><th class="n">${tz('Protection')}</th><th class="n">${tz('Accident &amp; hospital')}</th><th class="n">${tz('Investments')}</th></tr>
+          ${prow('Annual premium — cash', cash)}${nc('all') ? prow('Annual premium — ' + esc(ncLabel), nc, '年缴保费 — ' + esc(ncLabel)) : ''}${prow('Monthly equivalent (cash)', k => cash(k) / 12)}</table>
+        ${coverRows ? `<table class="ov cov"><tr><th>${tz('Coverage')}</th><th class="n">${tz('Total')}</th><th>${tz('Breakdown')}</th></tr>${coverRows}</table>` : ''}
       </div>
-      <div class="pd"><div class="h">PERSONAL DETAILS</div><table>
-        <tr><td>Name</td><td>${esc(who ? who.Name : '')}</td></tr>${rel ? `<tr><td>Relationship</td><td>${esc(cap(rel))} of ${esc(c.Name)}</td></tr>` : ''}
-        ${who && who.Gender ? `<tr><td>Gender</td><td>${esc(who.Gender)}</td></tr>` : ''}
-        ${who && isISO(who['Date of Birth']) ? `<tr><td>Date of birth</td><td>${esc(fmtDate(who['Date of Birth']))}</td></tr><tr><td>Age next birthday</td><td>${age + 1}</td></tr>` : ''}
-        ${who && who.Occupation ? `<tr><td>Occupation</td><td>${esc(who.Occupation)}</td></tr>` : ''}
-        <tr><td>Policies ${ended ? 'listed' : 'in force'}</td><td>${ps.length}</td></tr><tr><td>Prepared on</td><td>${esc(fmtDate(todayISO()))}</td></tr></table></div></div>
+      <div class="pd"><div class="h">${tzi('PERSONAL DETAILS')}</div><table>
+        <tr><td>${tz('Name')}</td><td>${esc(who ? who.Name : '')}</td></tr>${rel ? `<tr><td>${tz('Relationship')}</td><td>${esc(cap(rel))} of ${esc(c.Name)}</td></tr>` : ''}
+        ${who && who.Gender ? `<tr><td>${tz('Gender')}</td><td>${tz(esc(who.Gender))}</td></tr>` : ''}
+        ${who && isISO(who['Date of Birth']) ? `<tr><td>${tz('Date of birth')}</td><td>${esc(fmtDate(who['Date of Birth']))}</td></tr><tr><td>${tz('Age next birthday')}</td><td>${age + 1}</td></tr>` : ''}
+        ${who && who.Occupation ? `<tr><td>${tz('Occupation')}</td><td>${esc(who.Occupation)}</td></tr>` : ''}
+        <tr><td>${tz(ended ? 'Policies listed' : 'Policies in force')}</td><td>${ps.length}</td></tr><tr><td>${tz('Prepared on')}</td><td>${esc(fmtDate(todayISO()))}</td></tr></table></div></div>
       ${protT}${ahT}${invT}
-      <div class="foot">This summary is prepared from records kept by your consultant and is for general information only. It is not a contract of insurance — please refer to your policy contracts for the exact terms, benefits and exclusions. Projected and surrender values are not guaranteed.</div>
+      <div class="foot">This summary is prepared from records kept by your consultant and is for general information only. It is not a contract of insurance — please refer to your policy contracts for the exact terms, benefits and exclusions. Projected and surrender values are not guaranteed.${SUM_ZH ? '<span class="zh">本摘要根据您的顾问所保存的记录编制，仅供一般参考，并非保险合约。具体条款、保障及不保事项，请以保单合约为准。预测价值及退保价值均不保证。</span>' : ''}</div>
     </div>${(() => { const plans = G.ah.filter(x => HSG_RATES.plans[x['HSG Plan']] && (!x.Status || x.Status === 'In force'));
       return plans.map(x => { const sc = hsgSchedule(x), title = esc(x['Policy Name'] || x['HSG Plan']), h = hsgOf(x);
         return `<div class="sheet psum hsg-page">${letterhead(me)}
-          <h1>Hospital plan — premiums and deductible</h1>
+          <h1>${tzi('Hospital plan — premiums and deductible')}</h1>
           <p class="hp-sub"><b>${title}</b>${sc && sc.items.length > 1 ? ' with ' + sc.items.slice(1).map(r => esc(r['Policy Name'] || r['HSG Plan'])).join(', ') : ''} · insured: <b>${esc(who ? who.Name : '')}</b>${h ? ` · ${esc(h.cover)} · ${esc(h.ward)}` : ''}</p>
-          ${sc ? `<div class="psec ah hsg-sum"><table><thead><tr><th class="bar">FUTURE PREMIUMS BY AGE (YEARLY, RATES FROM ${HSG_RATES_FROM.toUpperCase()}, NOT GUARANTEED)</th></tr></thead></table>${hsgScheduleTable(sc, 'hsgt')}</div>`
+          ${sc ? `<div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi(`FUTURE PREMIUMS BY AGE (YEARLY, RATES FROM ${HSG_RATES_FROM.toUpperCase()}, NOT GUARANTEED)`, '按年龄划分的未来保费（每年，费率自2026年10月1日起，不保证）')}</th></tr></thead></table>${hsgScheduleTable(sc, 'hsgt')}</div>`
             : `<p class="muted">Add ${esc(who ? who.Name : 'the insured')}’s date of birth to show the future premiums.</p>`}
-          <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">DEDUCTIBLE AND CO-INSURANCE</th></tr></thead></table>${hsgDeductibleTable(x, 'hsgt ded')}</div>
-          <div class="foot">Premiums are based on the insured’s age next birthday at each renewal and are not guaranteed — the insurer reviews them from time to time. Rider premiums are paid in cash. The deductible is paid first each policy year; co-insurance is the insured’s share after that, unless a rider covers it.</div>
+          <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi('DEDUCTIBLE AND CO-INSURANCE')}</th></tr></thead></table>${hsgDeductibleTable(x, 'hsgt ded')}</div>
+          <div class="foot">Premiums are based on the insured’s age next birthday at each renewal and are not guaranteed — the insurer reviews them from time to time. Rider premiums are paid in cash. The deductible is paid first each policy year; co-insurance is the insured’s share after that, unless a rider covers it.${SUM_ZH ? '<span class="zh">保费按受保人每次续保时的下次生日年龄计算，并不保证 — 保险公司会不时检讨保费。附加保单的保费以现金支付。每个保单年度须先支付自付额；之后，受保人须承担共同保险部分，除非附加保单已涵盖。</span>' : ''}</div>
         </div>`; }).join(''); })()}${G.ah.filter(x => paOf(x) && (!x.Status || x.Status === 'In force')).map(x => paPage(x, who, me)).join('')}`;
   };
   const missingTerm = all.some(p => allBens(p).some(b => sumAmt(b['Coverage Amount']) != null && !b['Cover Term']));
   return `<div class="print-bar no-print">
       <div><p class="crumb"><a href="#/c/${encodeURIComponent(cid)}#policies">‹ ${esc(c.Name)}</a></p>
-        <div class="opts"><label><input type="checkbox" ${ended ? 'checked' : ''} onchange="location.replace('#/c/${encodeURIComponent(cid)}/summary${ended ? '' : '?ended=1'}')"> Include ended policies</label>
+        <div class="opts"><label><input type="checkbox" ${ended ? 'checked' : ''} onchange="location.replace('${sumLink(cid, !ended, SUM_ZH)}')"> Include ended policies</label>
+        <label><input type="checkbox" ${SUM_ZH ? 'checked' : ''} onchange="location.replace('${sumLink(cid, ended, !SUM_ZH)}')"> English + 中文</label>
         ${order.length > 1 ? `<span>${order.length} people insured — one page each</span>` : ''}</div>
         ${missingTerm ? '<p class="small" style="color:var(--warn);margin:6px 0 0">Some benefits don’t say how long they last yet — edit the policy and fill in “Covered till” to show “till age …” in the breakdown.</p>' : ''}</div>
       <button class="btn primary" onclick="printPage()">Print</button>
@@ -4223,7 +4251,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.20a';
+const APP_VERSION = '2026.11.21a';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
