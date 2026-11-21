@@ -684,7 +684,7 @@ const ZH = {
   'Policy': '保单', 'Bought': '投保日期', 'Premium': '保费', 'Premium term': '缴费期', 'TPD': '残缺', 'Critical Illness': '晚期疾病', 'Early CI': '早期疾病',
   'Other benefits': '其他保障', 'Surrender value': '退保价值', 'Remarks': '备注', 'Accidental Medical': '意外医疗', 'Paid in so far': '至今已缴',
   'PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER': '保障 — 死亡、残缺、晚期疾病及保费豁免', 'ACCIDENT &amp; HOSPITALISATION': '意外与住院',
-  'INVESTMENTS &amp; SAVINGS — NO DEATH COVER': '投资与储蓄 — 无死亡保障', 'Hospital plan — premiums and deductible': '住院保险计划 — 保费与自付额',
+  'INVESTMENTS &amp; SAVINGS — NO DEATH COVER': '投资与储蓄 — 无死亡保障', 'Hospital Plan — Premiums and Deductible': '住院保险 — 保费与自付额',
   'DEDUCTIBLE AND CO-INSURANCE': '自付额与共同保险', 'Accident plan — table of benefits': '意外保险计划 — 保障一览表',
   'Male': '男', 'Female': '女',
 };
@@ -2974,7 +2974,7 @@ function pageSummary(cid, q) {
     </div>${(() => { const plans = G.ah.filter(x => HSG_RATES.plans[x['HSG Plan']] && (!x.Status || x.Status === 'In force'));
       return plans.map(x => { const sc = hsgSchedule(x), title = esc(x['Policy Name'] || x['HSG Plan']), h = hsgOf(x);
         return `<div class="sheet psum hsg-page">${letterhead(me)}
-          <h1>${tzi('Hospital plan — premiums and deductible')}</h1>
+          <h1>${tzi('Hospital Plan — Premiums and Deductible')}</h1>
           <p class="hp-sub"><b>${title}</b>${sc && sc.items.length > 1 ? ' with ' + sc.items.slice(1).map(r => esc(r['Policy Name'] || r['HSG Plan'])).join(', ') : ''} · insured: <b>${esc(who ? who.Name : '')}</b>${h ? ` · ${esc(h.cover)} · ${esc(h.ward)}` : ''}</p>
           ${sc ? `<div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi(`FUTURE PREMIUMS BY AGE (YEARLY, RATES FROM ${HSG_RATES_FROM.toUpperCase()}, NOT GUARANTEED)`, '按年龄划分的未来保费（每年，费率自2026年10月1日起，不保证）')}</th></tr></thead></table>${hsgScheduleTable(sc, 'hsgt')}</div>`
             : `<p class="muted">Add ${esc(who ? who.Name : 'the insured')}’s date of birth to show the future premiums.</p>`}
@@ -4250,7 +4250,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.21c';
+const APP_VERSION = '2026.11.21d';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
