@@ -676,10 +676,9 @@ let SUM_ZH = false;
 const ZH = {
   'Policy summary': '保单摘要', 'Premiums': '保费', 'Total': '总计', 'Protection': '保障', 'Accident &amp; hospital': '意外与住院', 'Investments': '投资',
   'Annual premium — cash': '年缴保费 — 现金', 'Monthly equivalent (cash)': '折合每月（现金）', 'Coverage': '保额', 'Breakdown': '明细',
-  'Death': '死亡', 'Total Permanent Disability (TPD)': '残缺', 'Terminal Illness (TI)': '末期疾病', 'Critical Illness (CI)': '晚期疾病', 'Early Critical Illness (ECI)': '早期疾病',
-  'Income protection (per month)': '收入保障（每月）', 'Long-Term Care (LTC)': '长期护理', 'Accidental Death': '意外死亡', 'Accidental Medical Reimbursement': '意外医疗费用报销',
-  'Weekly Indemnity': '每周伤残赔偿', 'Hospitalisation': '住院费用', 'Hospital Cash': '住院现金津贴', 'Waiver of Premium (WOP)': '保费豁免',
-  'Option to Purchase Additional Insurance (OPAI)': '增购保障选择权', 'Investments — surrender value': '投资 — 退保价值',
+  'Death': '死亡', 'Total Permanent Disability (TPD)': '残缺', 'Critical Illness (CI)': '晚期疾病', 'Early Critical Illness (ECI)': '早期疾病',
+  'Accidental Death': '意外死亡', 'Accidental Medical Reimbursement': '意外医疗费用报销',
+  'Hospitalisation': '住院费用', 'Investments — surrender value': '投资 — 退保价值',
   'PERSONAL DETAILS': '个人资料', 'Name': '姓名', 'Relationship': '关系', 'Gender': '性别', 'Date of birth': '出生日期', 'Age next birthday': '下次生日年龄', 'Occupation': '职业',
   'Policies in force': '有效保单', 'Policies listed': '所列保单', 'Prepared on': '制作日期',
   'Policy': '保单', 'Bought': '投保日期', 'Premium': '保费', 'Premium term': '缴费期', 'TPD': '残缺', 'Critical Illness': '晚期疾病', 'Early CI': '早期疾病',
@@ -687,7 +686,7 @@ const ZH = {
   'PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER': '保障 — 死亡、残缺、晚期疾病及保费豁免', 'ACCIDENT &amp; HOSPITALISATION': '意外与住院',
   'INVESTMENTS &amp; SAVINGS — NO DEATH COVER': '投资与储蓄 — 无死亡保障', 'Hospital plan — premiums and deductible': '住院保险计划 — 保费与自付额',
   'DEDUCTIBLE AND CO-INSURANCE': '自付额与共同保险', 'Accident plan — table of benefits': '意外保险计划 — 保障一览表',
-  'Male': '男', 'Female': '女', 'Yes': '是',
+  'Male': '男', 'Female': '女',
 };
 const NOTE_ZH = { 'A deductible based on the ward class and 10% co-insurance apply to each claim, unless covered by a rider.': '每次索赔须承担按病房等级而定的自付额及10%共同保险，除非附加保单已涵盖。' };
 const tz = (en, zh) => { const z = zh ?? ZH[en]; return SUM_ZH && z ? `${en}<span class="zh">${z}</span>` : en; };   // English with Chinese underneath
@@ -2933,7 +2932,7 @@ function pageSummary(cid, q) {
       const b = riderBase(p), out = [];
       if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b)); }
       return [...productNotes(p), ...out]; };
-    const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}${SUM_ZH && noteZh(t) ? `<span class="zh">${esc(noteZh(t))}</span>` : ''}</td></tr>`).join('');
+    const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
     const remarks = p => { const base = esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
       const il = ilpRemarks(p); return il.length ? il.map(x => `<span class="rl">${esc(x)}</span>`).join('') + (base ? `<span class="rl">${base}</span>` : '') : base; };
     const paidIn = p => (policyCalc(p).paid || 0) + topupTotal(p);
@@ -4251,7 +4250,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.21a';
+const APP_VERSION = '2026.11.21b';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
