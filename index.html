@@ -2933,7 +2933,10 @@ function pageSummary(cid, q) {
       if (b && L.includes(b)) { const sib = L.filter(r => r['Rider Of'] === b.ID); if (sib[sib.length - 1] === p) out.push(...productNotes(b)); }
       return [...productNotes(p), ...out]; };
     const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
-    const remarks = p => { const base = esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', p.Notes, ...allBens(p).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
+    // accident plans: just name the optional benefits taken, not every benefit inside them
+    const paRem = p => { const P = paOf(p); if (!P) return []; return Object.entries(paOpts(p)).map(([gn, v]) => { const g = P.groups.find(x => x.name === gn) || {};
+      const nm = gn.replace(/^Optional:\s*/, '').replace(/Benefits Group$/, 'Benefit'); return g.sameOrLower || /Group$/.test(gn) ? nm : `${nm} (${v})`; }); };
+    const remarks = p => { const base = esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', ...paRem(p), p.Notes, ...(paOf(p) ? benefitsOf(p.ID) : allBens(p)).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
       const il = ilpRemarks(p); return il.length ? il.map(x => `<span class="rl">${esc(x)}</span>`).join('') + (base ? `<span class="rl">${base}</span>` : '') : base; };
     const paidIn = p => (policyCalc(p).paid || 0) + topupTotal(p);
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
@@ -4250,7 +4253,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.23a';
+const APP_VERSION = '2026.11.23b';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
