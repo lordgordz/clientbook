@@ -197,9 +197,10 @@ textarea { resize: vertical; }
 input:disabled, select:disabled { background: #f1efe9; color: var(--muted); -webkit-text-fill-color: var(--muted); opacity: 1; }
 input:focus, select:focus, textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent-2); }
 .actions { display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); margin-top: 10px; }
-.benefit-row { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr 1.1fr 1.1fr auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.benefit-row { display: grid; grid-template-columns: 1.1fr 1.7fr 1fr 1.1fr 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px dashed var(--line); }
 .benefit-row label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .benefit-row label span { font-size: 13px; }
+.benefit-row .bt-hint:empty { display: none; } .benefit-row > .icon { margin-top: 30px; }
 #benefits { margin-bottom: 12px; }
 table.ben .good { color: var(--ok); font-weight: 600; } table.ben .bad { color: var(--err); font-weight: 600; }
 table.ben { width: 100%; border-collapse: collapse; } table.ben .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -2539,18 +2540,28 @@ function pagePolicyForm(cid, pid) {
         ${title === 'Current servicing agent' ? '<p><button type="button" class="btn small" onclick="sameAgent()">Same as writing agent</button></p>' : ''}
         ${title === 'Coverage' ? `<p class="muted small">Add each benefit this policy covers — a policy can have several.</p>
         <div id="benefits">${(editing ? benefitsOf(pid) : []).map(benefitRow).join('') || benefitRow()}</div>
-        ${datalist('benefit_names', distinct(db.benefits.map(b => b['Benefit Name'])))}
+        ${datalist('benefit_names', distinct(db.benefits.map(b => b['Benefit Name'])))}${datalist('benefit_types', BENEFIT_TYPES)}
         <button type="button" class="btn" onclick="addBenefitRow()">+ Add benefit</button>`
         : `<div class="grid">${fields.filter(f => !f.second).map(f => f.custom ? custom(f) : fieldHtml(f, p[f.label], sugg)).join('')}</div>${secondAgentHtml(title, fields.filter(f => f.second), p, sugg)}`}</fieldset>`).join('')}
       <div class="actions"><button class="btn primary" type="submit">Save policy</button>
         <a class="btn" href="${editing ? `#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}` : `#/c/${encodeURIComponent(cid)}#policies`}">Cancel</a></div>
     </form></section>`;
 }
+// Benefit type is typed, not scrolled: full name, its short form (e.g. "WOP") or the name without the short form all match
+function normBenType(v) {
+  v = String(v || '').trim(); if (!v) return ''; const lv = v.toLowerCase().replace(/^\(|\)$/g, '');
+  return BENEFIT_TYPES.find(t => t.toLowerCase() === v.toLowerCase())
+    || BENEFIT_TYPES.find(t => { const m = t.match(/\(([^)]+)\)$/); return m && m[1].toLowerCase() === lv; })
+    || BENEFIT_TYPES.find(t => t.replace(/\s*\([^)]+\)$/, '').toLowerCase() === lv) || v;
+}
+function benTypeHint(el) { const h = el.parentNode.querySelector('.bt-hint'), v = el.value.trim(), n = normBenType(v);
+  h.innerHTML = !v ? '' : BENEFIT_TYPES.includes(n) ? `<span class="good">✓ ${n !== v ? esc(n) : 'Standard type'}</span>` : 'Not a standard type — shows under Other benefits'; }
+function benTypeFix(el) { const n = normBenType(el.value); if (n !== el.value.trim()) el.value = n; benTypeHint(el); }
 function benefitRow(b = {}) {
-  const t = b['Benefit Type'] || '', opts = BENEFIT_TYPES.includes(t) || !t ? BENEFIT_TYPES : BENEFIT_TYPES.concat(t);
+  const t = b['Benefit Type'] || '';
   return `<div class="benefit-row">
     <label><span>Benefit name</span><input name="b_name" value="${esc(b['Benefit Name'] || '')}" placeholder="e.g. Sum assured" list="benefit_names" autocapitalize="words"></label>
-    <label><span>Benefit type</span><select name="b_type"><option value="">—</option>${opts.map(o => `<option${o === t ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>
+    <label><span>Benefit type</span><input name="b_type" list="benefit_types" value="${esc(t)}" placeholder="Type e.g. Death, TPD, WOP" autocomplete="off" autocapitalize="words" oninput="benTypeHint(this)" onchange="benTypeFix(this)"><small class="dhint bt-hint">${t && !BENEFIT_TYPES.includes(t) ? 'Not a standard type — shows under Other benefits' : ''}</small></label>
     <label><span>Coverage amount</span><input name="b_amt" value="${esc(b['Coverage Amount'] == null ? '' : typeof b['Coverage Amount'] === 'number' ? b['Coverage Amount'].toLocaleString('en-US') : b['Coverage Amount'])}" placeholder="e.g. 500,000" inputmode="decimal"></label>
     <label><span>Covered till</span><div class="termbox"><select name="b_term" onchange="this.nextElementSibling.style.visibility = this.value === 'Till age' || this.value === 'Years' ? 'visible' : 'hidden'; this.nextElementSibling.placeholder = this.value === 'Years' ? 'years' : 'age'"><option value="">—</option>${COVER_TERMS.map(([v, t]) => `<option value="${v}"${b['Cover Term'] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
       <input name="b_termv" inputmode="numeric" placeholder="${b['Cover Term'] === 'Years' ? 'years' : 'age'}" value="${esc(b['Cover Term Value'] ?? '')}" style="visibility:${b['Cover Term'] === 'Till age' || b['Cover Term'] === 'Years' ? 'visible' : 'hidden'}"></div></label>
@@ -2642,7 +2653,7 @@ async function savePolicy(e) {
   }
   const bens = [];
   for (const row of form.querySelectorAll('.benefit-row')) {
-    const v = k => row.querySelector(`[name=${k}]`).value.trim(), name = v('b_name'), type = v('b_type'), notes = v('b_notes'), raw = v('b_amt');
+    const v = k => row.querySelector(`[name=${k}]`).value.trim(), name = v('b_name'), type = normBenType(v('b_type')), notes = v('b_notes'), raw = v('b_amt');
     const term = v('b_term'), tv = parseInt(v('b_termv'), 10);
     if (!name && !type && !raw && !notes) continue;
     if ((term === 'Till age' || term === 'Years') && !(tv > 0 && tv <= 120)) { row.querySelector('[name=b_termv]').focus(); toast(term === 'Years' ? 'Covered till: enter the number of years, e.g. 20.' : 'Covered till: enter the age, e.g. 75.', 'error'); return false; }
@@ -4305,7 +4316,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.23e';
+const APP_VERSION = '2026.11.23f';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
