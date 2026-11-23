@@ -397,6 +397,7 @@ table.hsgt td.cur { background: var(--accent-soft); font-weight: 700; }
 .psum .tag { font-size: 8.5px; padding: 0 4px; border-radius: 3px; background: #e7edf6; color: #1f3a5f; font-weight: 700; }
 .psum .psec tr.has-note td { border-bottom: 0; }
 .psum .hsg-sum table + table { margin-top: -1px; } .psum .hsg-sum + .hsg-sum { margin-top: 14px; }
+.psum .hsg-key { font-size: 9.5px; color: #555; margin: 4px 0 0; }
 .psum .hp-sub { margin: 0 0 6px; font-size: 12px; color: #333; }
 .psum .hsg-sum table.pat { margin-top: 6px; } .psum .hsg-sum table.pat td:first-child, .psum .hsg-sum table.pat th:first-child { text-align: left; }
 .psum .hsg-sum table.pat td.cur, .psum .hsg-sum table.pat th.cur { background: #fbf1e3; font-weight: 700; } .psum table.pat.off { opacity: .55; }
@@ -2187,10 +2188,16 @@ function hsgSchedule(p, maxRows) {
   return { a, items, rows, isPlan };
 }
 function hsgScheduleTable(sc, cls) {
-  const names = sc.items.map(x => x['HSG Plan'].replace('HealthShield Gold ', 'HSG ').replace('AIA Max ', ''));
-  return `<table class="${cls}"><thead><tr><th>Age next birthday</th>${names.map((n, i) => `<th class="n">${esc(n)}${i === 0 && sc.isPlan ? ' <span class="muted">(incl. MediShield Life)</span>' : ''}</th>`).join('')}<th class="n">From CPF MA</th><th class="n">Cash</th><th class="n">Total</th></tr></thead><tbody>
-    ${sc.rows.map(r => `<tr><td class="${r.cur ? 'cur' : ''}">${hsgBandLabel(r.b)}${r.cur ? ' · now' : ''}</td>${r.qs.map(q => `<td class="n${r.cur ? ' cur' : ''}">${q ? money(q.annual) : '<span class="none">not in table</span>'}</td>`).join('')}
-      <td class="n${r.cur ? ' cur' : ''}">${r.ms ? money(r.ms) : '–'}</td><td class="n${r.cur ? ' cur' : ''}">${money(r.cash)}</td><td class="n${r.cur ? ' cur' : ''}"><b>${money(r.ms + r.cash)}</b></td></tr>`).join('')}</tbody></table>`;
+  // Same breakdown as the HSG calculator: MediShield Life + AIA additional cover, the AWL, then what MediSave pays and the cash outlay
+  const nm = x => x['HSG Plan'].replace('HealthShield Gold ', 'HSG ').replace('AIA Max ', '');
+  const sc0 = sc.isPlan && sc.rows.some(r => r.qs[0] && r.qs[0].mshl != null), fdp = sc.isPlan && !sc0 && sc.rows.some(r => r.qs[0] && r.qs[0].mwl != null);
+  const riders = sc.isPlan ? sc.items.slice(1) : sc.items, c = r => ` class="n${r.cur ? ' cur' : ''}"`, m = v => v ? money(v) : '–';
+  const head = `<tr><th>Age next birthday</th>${sc0 ? '<th class="n">MediShield Life</th><th class="n">' + esc(nm(sc.items[0])) + ' (additional)</th><th class="n">AWL</th>' : fdp ? '<th class="n">' + esc(nm(sc.items[0])) + '</th><th class="n">MediSave limit</th>' : ''}${riders.map(x => `<th class="n">${esc(nm(x))}</th>`).join('')}<th class="n">Total premium</th><th class="n">From CPF MA</th><th class="n">Cash outlay</th></tr>`;
+  return `<table class="${cls}"><thead>${head}</thead><tbody>
+    ${sc.rows.map(r => { const q0 = r.qs[0], rq = sc.isPlan ? r.qs.slice(1) : r.qs;
+      return `<tr><td class="${r.cur ? 'cur' : ''}">${hsgBandLabel(r.b)}${r.cur ? ' · now' : ''}</td>${sc0 ? `<td${c(r)}>${q0 ? m(q0.mshl) : '–'}</td><td${c(r)}>${q0 ? m(q0.add) : '–'}</td><td${c(r)}>${q0 ? m(q0.awl) : '–'}</td>` : fdp ? `<td${c(r)}>${q0 ? m(q0.annual) : '–'}</td><td${c(r)}>${q0 ? m(q0.mwl) : '–'}</td>` : ''}${rq.map(q => `<td${c(r)}>${q ? money(q.annual) : '<span class="none">not in table</span>'}</td>`).join('')}
+      <td${c(r)}>${money(r.ms + r.cash)}</td><td${c(r)}>${m(r.ms)}</td><td${c(r)}><b>${money(r.cash)}</b></td></tr>`; }).join('')}</tbody></table>
+  ${sc0 ? '<p class="small muted hsg-key">MediSave (CPF MA) pays the MediShield Life premium in full, plus the additional cover up to the Additional Withdrawal Limit (AWL). Riders and anything above the AWL are paid in cash — the cash outlay.</p>' : fdp ? '<p class="small muted hsg-key">MediSave pays up to the withdrawal limit; riders and the rest are paid in cash.</p>' : ''}`;
 }
 function hsgScheduleCard(p) {
   if (riderBase(p) && HSG_RATES.plans[riderBase(p)['HSG Plan']]) return '';   // shown on the plan instead
@@ -4316,7 +4323,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.23f';
+const APP_VERSION = '2026.11.23g';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
