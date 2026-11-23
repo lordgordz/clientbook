@@ -572,7 +572,7 @@ const SHEETS = {
   'Extra Details': ['Client ID', 'Field', 'Value'],
   'Notes': ['ID', 'Client ID', 'Added', 'Note'],
   'Interactions': ['ID', 'Client ID', 'Date', 'Type', 'Notes'],
-  'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Insurer', 'Date Bought', 'Premium',
+  'Policies': ['ID', 'Client ID', 'Insured ID', 'Policy Name', 'Policy No', 'Policy Type', 'Currency', 'Insurer', 'Date Bought', 'Premium',
                'Premium Frequency', 'Premium Term', 'Premium Term Value', 'Paid By', 'Cash Portion', 'Status', 'End Date', 'Notes',
                'HSG Plan', 'Rider Of', 'PA Product', 'PA Plan', 'PA Options', 'Nominated', 'Nominees', 'Fund Allocation', 'Dividend Payout',
                'Writing Agent', 'Writing Agent Code', 'Writing Agent Contact', 'Writing Agent 2', 'Writing Agent 2 Code', 'Writing Agent 2 Contact',
@@ -905,6 +905,13 @@ function nextBirthday(dob, t) {
   let nb = make(t.getFullYear()); if (nb < t) nb = make(t.getFullYear() + 1); return nb;
 }
 function maskNric(v) { v = v || ''; return v.length < 5 ? v : v[0] + '•'.repeat(v.length - 5) + v.slice(-4); }
+// SGD by default; Whole life / ILP / Endowment / Universal life policies can be in USD
+const CURRENCY_TYPES = ['Whole life', 'Investment-linked (ILP)', 'Endowment', 'Universal life'];
+const curOf = p => p && p.Currency === 'USD' ? 'USD' : 'SGD';
+const moneyC = (v, c) => { const m = money(v); return c === 'USD' && typeof v === 'number' ? 'US' + m : m; };
+// [[amount, currency], ...] -> "$1,000 + US$500" (each currency totalled separately, never mixed)
+function curSum(items, round = true) { const t = {}; for (const [a, c] of items) if (a) t[c] = (t[c] || 0) + a;
+  return ['SGD', 'USD'].filter(c => t[c]).map(c => moneyC(round ? Math.round(t[c]) : Math.round(t[c] * 100) / 100, c)).join(' + '); }
 function money(v) { return typeof v === 'number' ? '$' + v.toLocaleString('en-SG', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }) : (v || ''); }
 function nextId(rows, prefix) {
   let n = 0; const re = new RegExp('^' + prefix + '(\\d+)$');
@@ -2040,7 +2047,7 @@ function migratePolicies(d) {
 // Surrender values are kept as a dated history; the latest one is the "current" value.
 const svOf = pid => db.surrender.filter(v => v['Policy ID'] === pid).sort((a, b) => String(b['As Of']).localeCompare(String(a['As Of'])) || String(b.Recorded).localeCompare(String(a.Recorded)));
 const benefitsOf = pid => db.benefits.filter(b => b['Policy ID'] === pid);
-function covText(v) { return v == null || v === '' ? '' : typeof v === 'number' ? money(v) : String(v); }
+function covText(v, c) { return v == null || v === '' ? '' : typeof v === 'number' ? moneyC(v, c) : String(v); }
 function addMonthsD(d, n) {
   const t = new Date(d.getFullYear(), d.getMonth() + n, 1), last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
   t.setDate(Math.min(d.getDate(), last)); return t;
@@ -2058,7 +2065,7 @@ function insuredOf(p) { return getClient(p['Insured ID']) || getClient(p['Client
 function premText(p) {
   const v = p.Premium, f = p['Premium Frequency'];
   if (v == null || v === '') return '';
-  const m = typeof v === 'number' ? money(v) : v;
+  const m = typeof v === 'number' ? moneyC(v, curOf(p)) : v;
   if (f === 'Single premium') return `${m} single premium`;
   return FREQ_UNIT[f] ? `${m} / ${FREQ_UNIT[f]}` : m;
 }
@@ -2159,6 +2166,7 @@ function hsgScheduleCard(p) {
 function pagePolicy(cid, pid) {
   const c = getClient(cid), p = db.policies.find(x => x.ID === pid && x['Client ID'] === cid);
   if (!c || !p) return pageNotFound();
+  const mC = v => moneyC(v, curOf(p));
   const bens = benefitsOf(pid), svs = svOf(pid), r = policyCalc(p), ins = insuredOf(p), F = (label, html, cls = '') => `<div class="f ${cls}"><dt>${esc(label)}</dt><dd>${html || '<span class="none">—</span>'}</dd></div>`;
   const tile = (label, big, small = '', cls = '') => `<div class="tile ${cls}"><span>${label}</span><b>${big}</b>${small ? `<small>${small}</small>` : ''}</div>`;
   const unitWord = FREQ_UNIT[p['Premium Frequency']] ? p['Premium Frequency'].toLowerCase() : '';
@@ -2172,18 +2180,18 @@ function pagePolicy(cid, pid) {
   else {
     const paidSmall = r.missing || r.why || (r.paidCount != null ? `${r.paidCount} ${r.single ? 'single premium' : unitWord + ' payment' + (r.paidCount === 1 ? '' : 's')}` : '')
       + (r.needsEnd ? ' · <span class="warn">add the end date to stop the count</span>' : '');
-    tiles += tile('Total premiums paid so far', r.paid != null ? money(r.paid) : '—', paidSmall, 'key');
+    tiles += tile('Total premiums paid so far', r.paid != null ? mC(r.paid) : '—', paidSmall, 'key');
     let projBig = '—', projSmall = '';
     if (r.projected != null) {
-      projBig = money(r.projected);
+      projBig = mC(r.projected);
       projSmall = r.single ? 'One-time payment' : `${r.totalCount} payments` + (r.ended ? ' · policy ended' : r.done ? ' · fully paid' : r.leftMonths ? ` · ${ymText(r.leftMonths)} left` : '');
-    } else if (r.perpetual) { projBig = 'For life'; projSmall = r.annual != null ? `${money(r.annual)} a year, no end date` : 'No end date'; }
+    } else if (r.perpetual) { projBig = 'For life'; projSmall = r.annual != null ? `${mC(r.annual)} a year, no end date` : 'No end date'; }
     else if (r.needDob) projSmall = `Add ${esc(r.needDob)}’s date of birth to work this out`;
     else if (!r.missing && !r.why) projSmall = 'Add the premium duration to work this out';
     else projSmall = r.missing || r.why;
     tiles += tile('Projected total for full term', projBig, projSmall);
   }
-  tiles += tile('Current surrender value', svs.length ? esc(money(svs[0]['Surrender Value'])) : '—', svs.length ? `as of ${esc(fmtDate(svs[0]['As Of']))} · ${esc(ago(svs[0]['As Of']))}` : `<a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">Add it</a>`);
+  tiles += tile('Current surrender value', svs.length ? esc(mC(svs[0]['Surrender Value'])) : '—', svs.length ? `as of ${esc(fmtDate(svs[0]['As Of']))} · ${esc(ago(svs[0]['As Of']))}` : `<a href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">Add it</a>`);
   const agent = (title, pre) => {
     const one = k => { const n = p[k], code = p[k + ' Code'], ct = p[k + ' Contact'];
       return n || code || ct ? `<dl class="details">${F('Name', esc(n))}${F('Agent code', esc(code))}${F('Contact', ct ? (/^[\d+\s()-]+$/.test(ct) ? `<a href="tel:${esc(ct.replace(/[^\d+]/g, ''))}">${esc(ct)}</a>` : esc(ct)) : '')}</dl>` : ''; };
@@ -2223,7 +2231,7 @@ function pagePolicy(cid, pid) {
     ${hsgOf(p) ? `<div class="hsg-box"><b>${esc(p['HSG Plan'])}</b> · ${esc(hsgOf(p).cover)} · ${esc(hsgOf(p).ward)}<br><span class="small">${esc(hsgOf(p).limits)}</span></div>` : ''}
     ${bens.length ? `<table class="list ben"><thead><tr><th>Benefit</th><th>Type</th><th class="n">Coverage</th><th>Notes</th></tr></thead><tbody>
       ${bens.map(b => `<tr><td><b>${esc(b['Benefit Name'])}</b></td><td>${esc(b['Benefit Type']) || '<span class="none">—</span>'}</td>
-        <td class="n">${esc(covText(b['Coverage Amount'])) || '—'}</td><td>${esc(b.Notes)}</td></tr>`).join('')}</tbody></table>`
+        <td class="n">${esc(covText(b['Coverage Amount'], curOf(p))) || '—'}</td><td>${esc(b.Notes)}</td></tr>`).join('')}</tbody></table>`
       : hsgOf(p) || paOf(p) ? '' : '<p class="none">No benefits added yet.</p>'}
     ${paOf(p) ? `<p class="muted small" style="margin:10px 0 6px">From the ${esc(p['PA Product'])} table of benefits — your plan is highlighted.</p><div class="table-wrap pa-pagebox">${paTables(p, 'list ben hsgt pat')}</div>` : ''}</section>
   ${hsgScheduleCard(p)}
@@ -2232,16 +2240,16 @@ function pagePolicy(cid, pid) {
     <a class="btn small" href="#/c/${encodeURIComponent(cid)}/p/${encodeURIComponent(pid)}/edit">+ Update</a></div>
     <table class="list ben"><thead><tr><th>As of</th><th class="n">Surrender value</th><th class="n">Change</th><th></th></tr></thead><tbody>
     ${svs.map((v, i) => { const prev = svs[i + 1], d = prev ? v['Surrender Value'] - prev['Surrender Value'] : null;
-      return `<tr><td>${esc(fmtDate(v['As Of']))}${i === 0 ? ' <span class="tag">Current</span>' : ''}</td><td class="n">${esc(money(v['Surrender Value']))}</td>
-        <td class="n">${d == null ? '' : `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : '−'}${esc(money(Math.abs(d)))}</span>`}</td>
+      return `<tr><td>${esc(fmtDate(v['As Of']))}${i === 0 ? ' <span class="tag">Current</span>' : ''}</td><td class="n">${esc(mC(v['Surrender Value']))}</td>
+        <td class="n">${d == null ? '' : `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : '−'}${esc(mC(Math.abs(d)))}</span>`}</td>
         <td class="n"><button class="icon" title="Remove this entry" data-sid="${esc(v.ID)}" onclick="delSurrender(this)">✕</button></td></tr>`; }).join('')}
     </tbody></table><p class="muted small" style="margin:8px 0 0">Each update is kept with its date for future reference.</p></section>` : ''}
   ${allocList(p).length || topupsOf(pid).length ? (() => { const fs = allocList(p), t = fs.reduce((a, n) => a + (n.pct || 0), 0), tus = topupsOf(pid), dl = divLines(p);
     return `<section class="card"><h2>Investment allocation</h2>${fs.length ? `<table class="list ben"><thead><tr><th>Fund</th><th class="n">Allocation</th></tr></thead><tbody>${fs.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
       ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Allocations add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}` : ''}
       ${dl.length ? `<div class="divpay" style="margin-top:10px">${dl.map(x => `<div>ⓘ ${esc(x)}</div>`).join('')}</div>` : ''}
-      ${tus.length ? `<h3 class="tu-h">Ad-hoc top-ups</h3><table class="list ben"><thead><tr><th>Date</th><th class="n">Amount</th><th>Funds</th><th>Notes</th></tr></thead><tbody>${tus.map(x => `<tr><td>${esc(x.Date ? fmtDate(x.Date) : '—')}</td><td class="n">${esc(money(+x.Amount || 0))}</td><td>${esc(parseNominees(x['Fund Allocation']).map(f => f.pct != null ? `${f.name} ${f.pct}%` : f.name).join(' · ') || '—')}</td><td>${esc(x.Notes || '')}</td></tr>`).join('')}</tbody></table>
-        <p class="muted small" style="margin:8px 0 0">Total topped up: <b>${esc(money(tus.reduce((a, x) => a + (+x.Amount || 0), 0)))}</b></p>` : ''}</section>`; })() : ''}
+      ${tus.length ? `<h3 class="tu-h">Ad-hoc top-ups</h3><table class="list ben"><thead><tr><th>Date</th><th class="n">Amount</th><th>Funds</th><th>Notes</th></tr></thead><tbody>${tus.map(x => `<tr><td>${esc(x.Date ? fmtDate(x.Date) : '—')}</td><td class="n">${esc(mC(+x.Amount || 0))}</td><td>${esc(parseNominees(x['Fund Allocation']).map(f => f.pct != null ? `${f.name} ${f.pct}%` : f.name).join(' · ') || '—')}</td><td>${esc(x.Notes || '')}</td></tr>`).join('')}</tbody></table>
+        <p class="muted small" style="margin:8px 0 0">Total topped up: <b>${esc(mC(tus.reduce((a, x) => a + (+x.Amount || 0), 0)))}</b></p>` : ''}</section>`; })() : ''}
   <section class="card"><h2>Nomination</h2>${p.Nominated === 'Yes' ? (() => { const ns = parseNominees(p.Nominees), t = ns.reduce((a, n) => a + (n.pct || 0), 0);
       return ns.length ? `<table class="list ben"><thead><tr><th>Nominee</th><th class="n">Share</th></tr></thead><tbody>${ns.map(n => `<tr><td><b>${esc(n.name)}</b></td><td class="n">${n.pct != null ? n.pct + '%' : '—'}</td></tr>`).join('')}</tbody></table>
         ${t && Math.abs(t - 100) > 0.01 ? `<p class="small" style="margin:8px 0 0;color:var(--err)">Shares add up to ${+t.toFixed(2)}%, not 100%.</p>` : ''}` : '<p>Yes <span class="muted">— no names added yet.</span></p>'; })()
@@ -2255,6 +2263,7 @@ const POLICY_SECTIONS = [
     { label: 'Policy Name', show: 'Policy name', type: 'text', required: true, autofill: true },
     { label: 'Policy No', show: 'Policy number', type: 'text', caps: 'characters' },
     { label: 'Policy Type', show: 'Policy type', type: 'select', options: POLICY_TYPES },
+    { custom: 'cur' },
     { label: 'Insurer', type: 'text', autofill: true },
     { custom: 'insured' },
     { custom: 'hsg' },
@@ -2359,7 +2368,7 @@ const ilpRemarks = p => { const out = [];
   out.push(...divLines(p));
   if (SUM_ZH) { const po = parsePayout(p['Dividend Payout']); out.push(...divFundsIn(p).map(d => `${d.abbr}（${d.rate}% 分红）${po[d.abbr] ? ' – ' + (po[d.abbr] === 'Reinvested' ? '再投资' : '领取现金') : ''}`)); }
   for (const t of topupsOf(p.ID)) { const fs = parseNominees(t['Fund Allocation']);
-    out.push(`Top-up ${money(+t.Amount || 0)}${t.Date ? ' on ' + fmtDate(t.Date) : ''}${fs.length ? ': ' + fs.map(f => f.pct != null ? `${divFundOf(f.name) ? divFundOf(f.name).abbr : f.name} ${f.pct}%` : f.name).join(', ') : ''}${t.Notes ? ' (' + t.Notes + ')' : ''}`); }
+    out.push(`Top-up ${moneyC(+t.Amount || 0, curOf(p))}${t.Date ? ' on ' + fmtDate(t.Date) : ''}${fs.length ? ': ' + fs.map(f => f.pct != null ? `${divFundOf(f.name) ? divFundOf(f.name).abbr : f.name} ${f.pct}%` : f.name).join(', ') : ''}${t.Notes ? ' (' + t.Notes + ')' : ''}`); }
   return out; };
 function addNomRow() { const w = $('#nominees'); w.insertAdjacentHTML('beforeend', nomRow()); w.lastElementChild.querySelector('input').focus(); nomTotal(); }
 function ahOnly(form) {
@@ -2447,7 +2456,7 @@ function pagePolicyForm(cid, pid) {
       const last = editing ? svOf(pid)[0] : null;
       return fieldHtml({ label: 'SV Amount', show: 'Current surrender value', type: 'text', inputmode: 'decimal', placeholder: 'e.g. 12,500' }, last ? Number(last['Surrender Value']).toLocaleString('en-US') : '', sugg)
         + fieldHtml({ label: 'SV As Of', show: 'Value as of (blank = today)', type: 'date' }, '', sugg)
-        + `<p class="dhint" style="grid-column:1/-1;margin:0">${last ? `Last recorded: <b>${esc(money(last['Surrender Value']))}</b> as of ${esc(fmtDate(last['As Of']))}. A new amount or date is added to the history — older values are kept.` : 'Each value you enter is saved with its date, so you can look back at how it has grown.'}</p>`;
+        + `<p class="dhint" style="grid-column:1/-1;margin:0">${last ? `Last recorded: <b>${esc(moneyC(last['Surrender Value'], curOf(p)))}</b> as of ${esc(fmtDate(last['As Of']))}. A new amount or date is added to the history — older values are kept.` : 'Each value you enter is saved with its date, so you can look back at how it has grown.'}</p>`;
     }
     if (f.custom === 'hsg') {
       const others = db.policies.filter(x => x['Client ID'] === cid && x.ID !== pid && !x['Rider Of']);
@@ -2471,6 +2480,7 @@ function pagePolicyForm(cid, pid) {
         <div style="grid-column:1/-1"><h3 class="tu-h">Ad-hoc top-ups <em class="muted small">optional</em></h3>
         <div id="topups">${(editing ? topupsOf(pid) : []).map(topupBlock).join('')}</div>
         <button type="button" class="btn small" onclick="addTopup()">+ Add a top-up</button></div>`; }
+    if (f.custom === 'cur') return `<label id="cur-field"><span>Currency</span><select name="currency">${['SGD', 'USD'].map(o => `<option${curOf(p) === o ? ' selected' : ''}>${o}</option>`).join('')}</select><small class="dhint">Premium, coverage and values for this policy are in this currency.</small></label>`;
     if (f.custom === 'hsgprem') return `<div id="hsg-prem" class="hsg-sug" style="grid-column:1/-1" hidden></div>`;
     if (f.custom === 'nom') {
       const noms = parseNominees(p.Nominees), fn = distinct([c.Name, ...fam.map(m => m.c.Name)]);
@@ -2546,6 +2556,8 @@ function wirePolicyForm() {
   const ty = form.querySelector('[name=policy_type]'), ahUpd = () => ahOnly(form);
   ty.addEventListener('input', ahUpd); ty.addEventListener('change', ahUpd);
   ty.addEventListener('input', () => allocUpd(form)); ty.addEventListener('change', () => allocUpd(form)); allocUpd(form); fundTotal();
+  const curUpd = () => { const cs = form.querySelector('[name=currency]'); $('#cur-field').style.display = CURRENCY_TYPES.includes(ty.value) || cs.value === 'USD' ? '' : 'none'; };
+  ty.addEventListener('input', curUpd); ty.addEventListener('change', curUpd); form.querySelector('[name=currency]').addEventListener('change', curUpd); curUpd();
   form.querySelector('[name=hsg_plan]').addEventListener('change', ahUpd); form.querySelector('[name=pa_product]').addEventListener('change', ahUpd);
   ahUpd();
   for (const n of ['insured_id', 'premium_frequency']) form.querySelector(`[name=${n}]`).addEventListener('input', () => hsgHint());
@@ -2604,6 +2616,7 @@ async function savePolicy(e) {
     bens.push({ 'Benefit Name': name || type || 'Benefit', 'Benefit Type': type, 'Coverage Amount': amt, 'Cover Term': term, 'Cover Term Value': term === 'Till age' || term === 'Years' ? tv : null, Notes: notes });
   }
   out['Insured ID'] = g('insured_id') || cid;
+  out.Currency = g('currency') === 'USD' ? 'USD' : '';
   out['HSG Plan'] = g('hsg_plan'); out['Rider Of'] = g('rider_of');
   out['PA Product'] = g('pa_product'); out['PA Plan'] = out['PA Product'] ? g('pa_plan') : ''; out['PA Options'] = '';
   if (out['PA Product']) {
@@ -2844,26 +2857,29 @@ function coverEnd(b, p) {   // { label, age } for how long a benefit lasts
   return { label: '', age: 1000 };
 }
 const sumAmt = v => typeof v === 'number' ? v : null;
-function sumParts(items) {   // items: [{ amt, label, age, text }] -> { total, parts: [[amt,label]], texts }
-  const by = new Map(), texts = []; let total = 0;
+function sumParts(items) {   // items: [{ amt, label, age, text, cur }] -> { total, tot: {SGD, USD}, parts: [[amt,label,cur]], texts }
+  const by = new Map(), texts = [], tot = {}; let total = 0;
   for (const it of items) {
     if (it.amt == null) { if (it.text) texts.push(it.text + (it.label ? ` (${it.label})` : '')); continue; }
-    total += it.amt; const k = it.label; const o = by.get(k) || { amt: 0, age: it.age }; o.amt += it.amt; by.set(k, o);
+    const c = it.cur || 'SGD'; total += it.amt; tot[c] = (tot[c] || 0) + it.amt;
+    const k = it.label + '|' + c; const o = by.get(k) || { amt: 0, age: it.age, label: it.label, cur: c }; o.amt += it.amt; by.set(k, o);
   }
-  const parts = [...by.entries()].sort((a, b) => b[1].age - a[1].age).map(([l, o]) => [o.amt, l]);
-  return { total, parts, texts };
+  const parts = [...by.values()].sort((a, b) => b.age - a.age || (a.cur > b.cur ? 1 : -1)).map(o => [o.amt, o.label, o.cur]);
+  return { total, tot, parts, texts };
 }
-const kShort = n => n >= 1000 && n % 1000 === 0 ? '$' + (n / 1000).toLocaleString('en-US') + 'k' : money(Math.round(n * 100) / 100);
+const spTotal = sp => curSum(Object.entries(sp.tot || {}).map(([c, a]) => [a, c]));
+const kShort = (n, c) => (c === 'USD' ? 'US' : '') + (n >= 1000 && n % 1000 === 0 ? '$' + (n / 1000).toLocaleString('en-US') + 'k' : money(Math.round(n * 100) / 100));
 function partsHtml(sp, compact) {
   const lines = [];
-  if (sp.total) lines.push(`<b>${money(Math.round(sp.total))}</b>`);
-  if (sp.parts.length > 1) lines.push(...sp.parts.map(([a, l]) => `<span class="t">${compact ? kShort(a) : money(a)}${l ? ' ' + esc(l) : ''}</span>`));
+  if (sp.total) lines.push(`<b>${spTotal(sp)}</b>`);
+  if (sp.parts.length > 1) lines.push(...sp.parts.map(([a, l, c]) => `<span class="t">${compact ? kShort(a, c) : moneyC(a, c)}${l ? ' ' + esc(l) : ''}</span>`));
   else if (sp.parts.length === 1 && sp.parts[0][1]) lines.push(`<span class="t">${esc(sp.parts[0][1])}</span>`);
   lines.push(...sp.texts.map(t => `<span class="t2">${esc(t)}</span>`));
   return lines.join('') || '<span class="none">–</span>';
 }
 function premParts(p) {   // yearly premium split into cash / CPF OA / CPF SA / CPF MA / SRS
-  const r = policyCalc(p), ann = r.annual || 0, by = OLD_PAID[p['Paid By']] || p['Paid By'] || 'Cash', out = { Cash: 0, 'CPF OA': 0, 'CPF SA': 0, 'CPF MA': 0, SRS: 0 };
+  const r = policyCalc(p), ann = r.annual || 0, by = OLD_PAID[p['Paid By']] || p['Paid By'] || 'Cash', out = { Cash: 0, 'CPF OA': 0, 'CPF SA': 0, 'CPF MA': 0, SRS: 0, USD: 0 };
+  if (curOf(p) === 'USD') { out.USD = ann; return out; }
   if (by === 'CPF MA + Cash') { const per = FREQ_MONTHS[p['Premium Frequency']] ? 12 / FREQ_MONTHS[p['Premium Frequency']] : 0, cash = Math.min(ann, (+p['Cash Portion'] || 0) * per); out.Cash += cash; out['CPF MA'] += ann - cash; }
   else out[by in out ? by : 'Cash'] += ann;
   return out;
@@ -2888,11 +2904,12 @@ function pageSummary(cid, q) {
       G[k] = out; }
     const noFor = (p, L) => { const ids = new Set(L.map(x => x.ID)); if (p['Rider Of'] && ids.has(p['Rider Of'])) return '';
       return L.filter(x => !(x['Rider Of'] && ids.has(x['Rider Of']))).indexOf(p) + 1; };
-    const ben = (p, types) => allBens(p).filter(b => types.includes(b['Benefit Type'])).map(b => { const e = coverEnd(b, p); return { amt: sumAmt(b['Coverage Amount']), text: typeof b['Coverage Amount'] === 'number' ? '' : String(b['Coverage Amount'] || b['Benefit Name'] || ''), label: e.label, age: e.age }; });
+    const ben = (p, types) => allBens(p).filter(b => types.includes(b['Benefit Type'])).map(b => { const e = coverEnd(b, p); return { amt: sumAmt(b['Coverage Amount']), text: typeof b['Coverage Amount'] === 'number' ? '' : String(b['Coverage Amount'] || b['Benefit Name'] || ''), label: e.label, age: e.age, cur: curOf(p) }; });
     const prem = { prot: {}, ah: {}, inv: {} }; for (const k of ['prot', 'ah', 'inv']) for (const p of G[k]) if (!p.Status || p.Status === 'In force') { const pp = premParts(p); for (const [m, v] of Object.entries(pp)) prem[k][m] = (prem[k][m] || 0) + v; }
     const pr = (k, m) => (prem[k][m] || 0), tot = m => pr('prot', m) + pr('ah', m) + pr('inv', m);
     const nonCash = k => NONCASH.reduce((t, m) => t + pr(k, m), 0);
-    const prow = (label, f, zh) => `<tr><td class="l">${tz(label, zh)}</td><td class="n"><b>${m2(f('all'))}</b></td>${['prot', 'ah', 'inv'].map(k => `<td class="n">${m2(f(k))}</td>`).join('')}</tr>`;
+    const prow = (label, f, zh, fm = m2) => `<tr><td class="l">${tz(label, zh)}</td><td class="n"><b>${fm(f('all'))}</b></td>${['prot', 'ah', 'inv'].map(k => `<td class="n">${fm(f(k))}</td>`).join('')}</tr>`;
+    const mU = v => v ? moneyC(Math.round(v * 100) / 100, 'USD') : '<span class="none">–</span>', usd = k => k === 'all' ? tot('USD') : pr(k, 'USD');
     const cash = k => k === 'all' ? tot('Cash') : pr(k, 'Cash'), nc = k => k === 'all' ? ['prot', 'ah', 'inv'].reduce((t, x) => t + nonCash(x), 0) : nonCash(k);
     const ncLabel = NONCASH.filter(m => tot(m)).join(' / ') || 'CPF / SRS';
     // coverage overview
@@ -2906,27 +2923,27 @@ function pageSummary(cid, q) {
     const wop = livePs.filter(p => allBens(p).some(b => b['Benefit Type'] === 'Waiver of Premium (WOP)'));
     const opai = livePs.flatMap(p => allBens(p).filter(b => b['Benefit Type'] === 'Option to Purchase Additional Insurance (OPAI)').map(b => ({ p, b })));
     const svNow = p => svOf(p.ID)[0], invLive = G.inv.filter(p => !p.Status || p.Status === 'In force');
-    const invSV = invLive.reduce((t, p) => t + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0), invPaid = invLive.reduce((t, p) => t + (policyCalc(p).paid || 0) + topupTotal(p), 0);
-    const ovBreak = sp => [...(sp.parts.length > 1 || (sp.parts[0] && sp.parts[0][1]) ? sp.parts.map(([a, l]) => sp.parts.length > 1 ? `${kShort(a)} ${l || '(term not set)'}` : l) : []), ...sp.texts].map(esc).join(' · ');
-    const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${tz(esc(r.label))}</td><td class="n"><b>${r.sp.total ? money(Math.round(r.sp.total)) : r.label === 'Hospitalisation' ? distinct(livePs.filter(p => hsgOf(p)).map(p => hsgOf(p).short)).join(' · ') : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
+    const invSV = curSum(invLive.map(p => [svNow(p) ? +svNow(p)['Surrender Value'] : 0, curOf(p)])), invPaid = curSum(invLive.map(p => [(policyCalc(p).paid || 0) + topupTotal(p), curOf(p)]));
+    const ovBreak = sp => [...(sp.parts.length > 1 || (sp.parts[0] && sp.parts[0][1]) ? sp.parts.map(([a, l, c]) => sp.parts.length > 1 ? `${kShort(a, c)} ${l || '(term not set)'}` : l) : []), ...sp.texts].map(esc).join(' · ');
+    const coverRows = ovRows.map(r => `<tr class="${r.g}"><td class="l">${tz(esc(r.label))}</td><td class="n"><b>${r.sp.total ? spTotal(r.sp) : r.label === 'Hospitalisation' ? distinct(livePs.filter(p => hsgOf(p)).map(p => hsgOf(p).short)).join(' · ') : ''}</b></td><td class="br">${ovBreak(r.sp)}</td></tr>`).join('')
       + (wop.length ? `<tr class="prot"><td class="l">${tz('Waiver of Premium (WOP)')}</td><td class="n"><b>${tz('Yes')}</b></td><td class="br">${wop.map(p => esc(p['Policy Name'])).join(' · ')}</td></tr>` : '')
-      + (opai.length ? `<tr class="prot"><td class="l">${tz('Option to Purchase Additional Insurance (OPAI)')}</td><td class="n"><b>${(() => { const t = opai.reduce((a, x) => a + (sumAmt(x.b['Coverage Amount']) || 0), 0); return t ? money(Math.round(t)) : 'Yes'; })()}</b></td>
-          <td class="br">${opai.map(({ p, b }) => { const e = coverEnd(b, p); return esc([p['Policy Name'], typeof b['Coverage Amount'] === 'number' && opai.length > 1 ? kShort(b['Coverage Amount']) : (typeof b['Coverage Amount'] === 'string' ? b['Coverage Amount'] : ''), e.label ? 'exercise ' + e.label.replace('till', 'before') : '', b.Notes].filter(Boolean).join(' · ')); }).join('; ')}</td></tr>` : '')
-      + (invLive.length ? `<tr class="inv"><td class="l">${tz('Investments — surrender value')}</td><td class="n"><b>${invSV ? money(Math.round(invSV)) : '–'}</b></td><td class="br">${invPaid ? money(Math.round(invPaid)) + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
+      + (opai.length ? `<tr class="prot"><td class="l">${tz('Option to Purchase Additional Insurance (OPAI)')}</td><td class="n"><b>${(() => { const t = curSum(opai.map(x => [sumAmt(x.b['Coverage Amount']) || 0, curOf(x.p)])); return t || 'Yes'; })()}</b></td>
+          <td class="br">${opai.map(({ p, b }) => { const e = coverEnd(b, p); return esc([p['Policy Name'], typeof b['Coverage Amount'] === 'number' && opai.length > 1 ? kShort(b['Coverage Amount'], curOf(p)) : (typeof b['Coverage Amount'] === 'string' ? b['Coverage Amount'] : ''), e.label ? 'exercise ' + e.label.replace('till', 'before') : '', b.Notes].filter(Boolean).join(' · ')); }).join('; ')}</td></tr>` : '')
+      + (invLive.length ? `<tr class="inv"><td class="l">${tz('Investments — surrender value')}</td><td class="n"><b>${invSV || '–'}</b></td><td class="br">${invPaid ? invPaid + ' paid in so far' : ''}${invLive.some(p => !svNow(p)) ? ' · some values not recorded yet' : ''}</td></tr>` : '');
     // policy tables
     const polCell = p => `<td class="pol">${riderBase(p) ? `<span class="rof">↳ Rider of ${esc(riderBase(p)['Policy Name'] || 'policy')}</span>` : ''}<b>${esc(paOf(p) ? paTitle(p) : p['Policy Name'] || 'Untitled policy')}</b>${paOf(p) && Object.keys(paOpts(p)).length ? `<span>+ ${Object.entries(paOpts(p)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ')}</span>` : ''}<span>${[p.Insurer, p['Policy No']].filter(Boolean).map(esc).join(' · ')}</span>${p['Client ID'] !== id ? `<span>Owner: ${esc(getClient(p['Client ID'])?.Name || '')}</span>` : ''}${p.Status && p.Status !== 'In force' ? `<span class="st">${esc(p.Status)}</span>` : ''}</td>`;
     const premCell = p => { const v = p.Premium; if (v == null || v === '') return '<td><span class="none">–</span></td>';
       const r = policyCalc(p), by = p['Paid By'] || 'Cash', f = p['Premium Frequency'];
-      const main = typeof v === 'number' ? money(v) + (f === 'Single premium' ? ' single' : FREQ_UNIT[f] ? ' / ' + FREQ_UNIT[f] : '') : esc(v);
-      const sub = [f !== 'Annual' && r.annual ? money(Math.round(r.annual * 100) / 100) + ' / year' : '', by === 'CPF MA + Cash' ? `cash ${money(+p['Cash Portion'] || 0)} + CPF MA` : by.toLowerCase() === 'cash' ? 'cash' : by].filter(Boolean).join(' · ');
+      const cu = curOf(p), main = typeof v === 'number' ? moneyC(v, cu) + (f === 'Single premium' ? ' single' : FREQ_UNIT[f] ? ' / ' + FREQ_UNIT[f] : '') : esc(v);
+      const sub = [f !== 'Annual' && r.annual ? moneyC(Math.round(r.annual * 100) / 100, cu) + ' / year' : '', by === 'CPF MA + Cash' ? `cash ${money(+p['Cash Portion'] || 0)} + CPF MA` : by.toLowerCase() === 'cash' ? 'cash' : by].filter(Boolean).join(' · ');
       const rs = ridersOf(p).filter(x => !x.Status || x.Status === 'In force'), withR = rs.length && r.annual ? r.annual + rs.reduce((a, x) => a + (policyCalc(x).annual || 0), 0) : 0;
-      return `<td>${main}${sub ? `<span class="t">${esc(sub)}</span>` : ''}${withR ? `<span class="t wr">with rider${rs.length > 1 ? 's' : ''}: ${money(Math.round(withR * 100) / 100)} / year</span>` : ''}</td>`; };
+      return `<td>${main}${sub ? `<span class="t">${esc(sub)}</span>` : ''}${withR ? `<span class="t wr">with rider${rs.length > 1 ? 's' : ''}: ${moneyC(Math.round(withR * 100) / 100, cu)} / year</span>` : ''}</td>`; };
     const termCell = p => { const r = policyCalc(p), v = +p['Premium Term Value'], t = p['Premium Term'];
       const main = p['Premium Frequency'] === 'Single premium' ? 'Single payment' : t === 'Years' && v ? `${v} years` : t === 'Till age' && v ? `Till age ${v}` : t === 'Perpetual' ? 'Whole life' : '';
       const sub = r.termEnd && t !== 'Perpetual' ? `till ${r.termEnd.getFullYear()}` : '';
       return `<td class="nw">${main ? esc(main) + (sub ? `<span class="t">${sub}</span>` : '') : '<span class="none">–</span>'}</td>`; };
     const dShort = iso => { const d = parseISO(iso); return d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : '–'; };
-    const svCell = p => { const v = svNow(p); return `<td>${v ? money(Math.round(+v['Surrender Value'])) + `<span class="t">as of ${esc(fmtDate(v['As Of']))}</span>` : '<span class="none">–</span>'}</td>`; };
+    const svCell = p => { const v = svNow(p); return `<td>${v ? moneyC(Math.round(+v['Surrender Value']), curOf(p)) + `<span class="t">as of ${esc(fmtDate(v['As Of']))}</span>` : '<span class="none">–</span>'}</td>`; };
     // a plan's notes go after its last rider, so the rider stays directly under the plan
     const notesAfter = (p, L) => { const rs = L.filter(r => r['Rider Of'] === p.ID); if (rs.length) return [];
       const b = riderBase(p), out = [];
@@ -2942,28 +2959,28 @@ function pageSummary(cid, q) {
     const cell = (p, types) => `<td>${partsHtml(sumParts(ben(p, types)), true)}</td>`;
     const otherCell = (p, skip) => { if (paOf(p)) { const n = allBens(p).filter(b => !skip.includes(b['Benefit Type'])).length; return `<td>${n ? `<span class="t2">${n} more benefits — see the table of benefits</span>` : '<span class="none">–</span>'}</td>`; }
       const os = allBens(p).filter(b => !skip.includes(b['Benefit Type']) && b['Benefit Type'] !== 'Savings / Maturity');
-      return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'])) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
+      return `<td>${os.length ? os.map(b => { const e = coverEnd(b, p), short = (b['Benefit Type'] || '').match(/\(([^)]+)\)$/); return `<span class="ob"><span class="tag">${esc(short ? short[1] : b['Benefit Type'] || b['Benefit Name'])}</span> ${covText(b['Coverage Amount']) ? esc(covText(b['Coverage Amount'], curOf(p))) : ''}${e.label ? ` <span class="t1">${esc(e.label)}</span>` : ''}</span>`; }).join('') : '<span class="none">–</span>'}</td>`; };
     const totRow = (ps2, cols) => `<tr class="tot"><td colspan="3">${tz('Total')}</td>${cols.map(f => `<td>${f(ps2)}</td>`).join('')}</tr>`;
-    const yearly = ps2 => { const live2 = ps2.filter(p => !p.Status || p.Status === 'In force'), t = live2.reduce((a, p) => a + (policyCalc(p).annual || 0), 0); return t ? money(Math.round(t * 100) / 100) + ' / year' : ''; };
+    const yearly = ps2 => { const live2 = ps2.filter(p => !p.Status || p.Status === 'In force'), t = curSum(live2.map(p => [policyCalc(p).annual || 0, curOf(p)]), false); return t ? t + ' / year' : ''; };
     const sumCol = types => ps2 => partsHtml(sumParts(ps2.filter(p => !p.Status || p.Status === 'In force').flatMap(p => ben(p, types))), true);
     const PT = { d: ['Death'], tpd: ['Total Permanent Disability (TPD)'], ci: ['Critical Illness (CI)'], eci: ['Early Critical Illness (ECI)'] };
     const AT = { ad: ['Accidental Death (Acc Death)', 'Accidental Death, Dismemberment and Burns (AD&D)'], amr: ['Accidental Medical Reimbursement (Acc MR)'], h: ['Hospitalisation Expenses', 'Medical Reimbursement (MR)', 'Hospital Cash'] };
     const protT = G.prot.length ? `<div class="psec prot"><table><thead><tr><th class="bar" colspan="12">${tzi('PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER')}</th></tr><tr><th>${tz('No')}</th><th>${tz('Policy')}</th><th>${tz('Bought')}</th><th>${tz('Premium')}</th><th>${tz('Premium term')}</th><th>${tz('Death')}</th><th>${tz('TPD')}</th><th>${tz('Critical Illness')}</th><th>${tz('Early CI')}</th><th>${tz('Other benefits')}</th><th>${tz('Surrender value')}</th><th>${tz('Remarks')}</th></tr></thead>
       ${G.prot.map((p, i) => `<tr class="${notesAfter(p, G.prot).length || ridersOf(p).some(r => G.prot.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.prot)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, PT.d)}${cell(p, PT.tpd)}${cell(p, PT.ci)}${cell(p, PT.eci)}${otherCell(p, [...PT.d, ...PT.tpd, ...PT.ci, ...PT.eci])}${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 12, G.prot)}`).join('')}
-      ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
+      ${totRow(G.prot, [yearly, () => '', sumCol(PT.d), sumCol(PT.tpd), sumCol(PT.ci), sumCol(PT.eci), () => '', ps2 => curSum(ps2.map(p => [svNow(p) ? +svNow(p)['Surrender Value'] : 0, curOf(p)])), () => ''])}</table></div>` : '';
     const ahT = G.ah.length ? `<div class="psec ah"><table><thead><tr><th class="bar" colspan="10">${tzi('ACCIDENT &amp; HOSPITALISATION')}</th></tr><tr><th>${tz('No')}</th><th>${tz('Policy')}</th><th>${tz('Bought')}</th><th>${tz('Premium')}</th><th>${tz('Premium term')}</th><th>${tz('Accidental Death')}</th><th>${tz('Accidental Medical')}</th><th>${tz('Hospitalisation')}</th><th>${tz('Other benefits')}</th><th>${tz('Remarks')}</th></tr></thead>
       ${G.ah.map((p, i) => `<tr class="${notesAfter(p, G.ah).length || ridersOf(p).some(r => G.ah.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.ah)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}${cell(p, AT.ad)}${cell(p, AT.amr)}${hsgOf(p) ? `<td><b>${esc(hsgOf(p).short)}</b><span class="t">${esc(hsgOf(p).cover)}</span></td>` : cell(p, AT.h)}${otherCell(p, [...AT.ad, ...AT.amr, ...AT.h])}<td class="rem">${remarks(p)}</td></tr>${noteRow(p, 10, G.ah)}`).join('')}
       ${totRow(G.ah, [yearly, () => '', sumCol(AT.ad), sumCol(AT.amr), () => '', () => '', () => ''])}</table></div>` : '';
     const invT = G.inv.length ? `<div class="psec inv"><table><thead><tr><th class="bar" colspan="8">${tzi('INVESTMENTS &amp; SAVINGS — NO DEATH COVER')}</th></tr><tr><th>${tz('No')}</th><th>${tz('Policy')}</th><th>${tz('Bought')}</th><th>${tz('Premium')}</th><th>${tz('Premium term')}</th><th>${tz('Paid in so far')}</th><th>${tz('Surrender value')}</th><th>${tz('Remarks')}</th></tr></thead>
-      ${G.inv.map((p, i) => `<tr class="${notesAfter(p, G.inv).length || ridersOf(p).some(r => G.inv.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.inv)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${paidIn(p) ? money(Math.round(paidIn(p))) + (topupTotal(p) ? `<span class="t">incl. ${money(Math.round(topupTotal(p)))} top-ups</span>` : '') : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 8, G.inv)}`).join('')}
-      ${totRow(G.inv, [yearly, () => '', ps2 => { const t = ps2.reduce((a, p) => a + paidIn(p), 0); return t ? money(Math.round(t)) : ''; }, ps2 => { const t = ps2.reduce((a, p) => a + (svNow(p) ? +svNow(p)['Surrender Value'] : 0), 0); return t ? money(Math.round(t)) : ''; }, () => ''])}</table></div>` : '';
+      ${G.inv.map((p, i) => `<tr class="${notesAfter(p, G.inv).length || ridersOf(p).some(r => G.inv.includes(r)) ? 'has-note' : ''}${riderBase(p) ? ' rider' : ''}"><td>${noFor(p, G.inv)}</td>${polCell(p)}<td class="nw">${dShort(p['Date Bought'])}</td>${premCell(p)}${termCell(p)}<td>${paidIn(p) ? moneyC(Math.round(paidIn(p)), curOf(p)) + (topupTotal(p) ? `<span class="t">incl. ${moneyC(Math.round(topupTotal(p)), curOf(p))} top-ups</span>` : '') : '<span class="none">–</span>'}</td>${svCell(p)}<td class="rem${ilpRemarks(p).length ? ' ilp' : ''}">${remarks(p)}</td></tr>${noteRow(p, 8, G.inv)}`).join('')}
+      ${totRow(G.inv, [yearly, () => '', ps2 => curSum(ps2.map(p => [paidIn(p), curOf(p)])), ps2 => curSum(ps2.map(p => [svNow(p) ? +svNow(p)['Surrender Value'] : 0, curOf(p)])), () => ''])}</table></div>` : '';
     const age = who ? ageOf(who['Date of Birth']) : null, rel = id === cid ? '' : relTo(cid, id).replace(/<[^>]+>/g, '').replace(/^\s*·\s*/, '');
     return `<div class="sheet psum">
       ${letterhead(me)}
       <div class="ps-top"><div>
         <h1>${tzi('Policy summary')}</h1>
         <table class="ov"><tr><th>${tz('Premiums')}</th><th class="n">${tz('Total')}</th><th class="n">${tz('Protection')}</th><th class="n">${tz('Accident &amp; hospital')}</th><th class="n">${tz('Investments')}</th></tr>
-          ${prow('Annual premium — cash', cash)}${nc('all') ? prow('Annual premium — ' + esc(ncLabel), nc, '年缴保费 — ' + esc(ncLabel)) : ''}${prow('Monthly equivalent (cash)', k => cash(k) / 12)}</table>
+          ${prow('Annual premium — cash', cash)}${nc('all') ? prow('Annual premium — ' + esc(ncLabel), nc, '年缴保费 — ' + esc(ncLabel)) : ''}${prow('Monthly equivalent (cash)', k => cash(k) / 12)}${tot('USD') ? prow('Annual premium — USD', usd, '年缴保费 — 美元', mU) + prow('Monthly equivalent (USD)', k => usd(k) / 12, '折合每月（美元）', mU) : ''}</table>
         ${coverRows ? `<table class="ov cov"><tr><th>${tz('Coverage')}</th><th class="n">${tz('Total')}</th><th>${tz('Breakdown')}</th></tr>${coverRows}</table>` : ''}
       </div>
       <div class="pd"><div class="h">${tzi('PERSONAL DETAILS')}</div><table>
@@ -4253,7 +4270,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.23c';
+const APP_VERSION = '2026.11.23d';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
