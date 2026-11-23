@@ -602,7 +602,9 @@ const INTERACTION_TYPES = ['Meeting', 'Meal / coffee', 'Policy review', 'Event',
 const IN_PERSON = new Set(['Meeting', 'Meal / coffee', 'Policy review', 'Event']);
 const POLICY_STATUS = ['In force', 'Lapsed', 'Surrendered', 'Matured', 'Claimed', 'Terminated'];
 const POLICY_TYPES = ['Whole life', 'Term', 'Investment-linked (ILP)', 'Endowment', 'Accident & health', 'Disability care', 'Universal life'];
-const ACCIDENT_BENEFITS = ['Accidental Death, Dismemberment and Burns (AD&D)', 'Accidental Dismemberment and Burns (Acc D&B)', 'Additional Accidental Dismemberment and Burns (Add Acc D&B)', 'Double Indemnity for Dismemberment and Burns (2x D&B)', 'Accidental Major Dismemberment (AMD)', 'Accidental Permanent Total Disability (APTD)', 'Additional Payout for Accidental Death (Add Acc Death)', 'Aviation Accident (Aviation)', 'Fractures (Frac)', 'Broken Bones (BB)', 'Loss of Activities of Daily Living (Loss of ADL)', 'Extra Accidental Medical Reimbursement – Fractures (Extra Acc MR)', 'TCM / Chiropractic Reimbursement (TCM/Chiro)', 'Complementary Medical Reimbursement (CMR)', 'Ambulance Services (Ambulance)', 'Daily Accidental Hospital Income (DAHI)', 'Daily Accidental ICU (DA ICU)', 'Daily Hospital Income – Accident & Disease (DHI)', 'Double Indemnity for Daily Hospital Income in ICU (2x DHI ICU)', 'Post-Hospitalisation Home Care (PHHC)', 'Recuperation – Dengue Fever and HFMD (Recup)', 'Mobility Aids Reimbursement (MAR)', 'Home Modification Reimbursement (HMR)', 'Mobility Aids and Home Modification (MAHM)', 'Rehabilitation Support (Rehab)', 'Compassionate Visit (CV)', 'Emergency Medical Evacuation and Repatriation (EMER)', 'Weekly Income (WIB)', 'Monthly Support (MS)', 'Monthly Disability Care (MDC)', 'Monthly Catastrophe Cash (MCC)', 'Family Support Fund (FSF)', 'Education Assurance Fund (EAF)', 'Reconstructive Surgery Reimbursement (RSR)', 'National Service Cover (NS Cover)', 'Dementia (Dementia)', 'Dementia Care Reimbursement (DCR)', 'Child Critical Illnesses (Child CI)', 'Payor Benefit (Payor)', 'Renewal Bonus (RB)'];
+const ACCIDENT_BENEFITS = ['Accidental Death, Dismemberment and Burns (AD&D)', 'Accidental Dismemberment and Burns (Acc D&B)', 'Additional Accidental Dismemberment and Burns (Add Acc D&B)', 'Double Indemnity for Dismemberment and Burns (2x D&B)', 'Accidental Major Dismemberment (AMD)', 'Accidental Permanent Total Disability (APTD)', 'Additional Payout for Accidental Death (Add Acc Death)', 'Aviation Accident (Aviation)', 'Fractures (Frac)', 'Broken Bones (BB)', 'Loss of Activities of Daily Living (Loss of ADL)', 'Extra Accidental Medical Reimbursement – Fractures (Extra Acc MR)', 'TCM / Chiropractic Reimbursement (TCM/Chiro)', 'Complementary Medical Reimbursement (CMR)', 'Ambulance Services (Ambulance)', 'Daily Accidental Hospital Income (DAHI)', 'Daily Accidental ICU (DA ICU)', 'Daily Hospital Income – Accident & Disease (DHI)', 'Double Indemnity for Daily Hospital Income in ICU (2x DHI ICU)', 'Post-Hospitalisation Home Care (PHHC)', 'Recuperation – Dengue Fever and HFMD (Recup)', 'Mobility Aids Reimbursement (MAR)', 'Home Modification Reimbursement (HMR)', 'Mobility Aids and Home Modification (MAHM)', 'Rehabilitation Support (Rehab)', 'Compassionate Visit (CV)', 'Emergency Medical Evacuation and Repatriation (EMER)', 'Weekly Income (WIB)', 'Monthly Support (MS)', 'Monthly Disability Care (MDC)', 'Monthly Catastrophe Cash (MCC)', 'Family Support Fund (FSF)', 'Education Assurance Fund (EAF)', 'Reconstructive Surgery Reimbursement (RSR)', 'National Service Cover (NS Cover)', 'Dementia (Dementia)', 'Dementia Care Reimbursement (DCR)', 'Child Critical Illnesses (Child CI)', 'Payor Benefit (Payor)', 'Renewal Bonus (RB)',
+  // AIA Pink of Health
+  'Hospital Expense Reimbursement (HER)', 'ICU Benefit (ICU)', 'Get Well Benefit (GWB)', 'Pre-Hospitalisation Tests & Services (Pre-Hosp)', 'Post-Hospitalisation Tests & Services (Post-Hosp)', 'Emergency Outpatient Treatment – Accident (EOT)', 'Day Surgery Reimbursement (DSR)'];
 const BENEFIT_TYPES = ['Death', 'Total Permanent Disability (TPD)', 'Terminal Illness (TI)', 'Early Critical Illness (ECI)', 'Critical Illness (CI)',
   'Accidental Death (Acc Death)', 'Accidental Medical Reimbursement (Acc MR)', 'Weekly Indemnity (WI)', 'Medical Reimbursement (MR)', 'Disability Income (DI)',
   'Long-Term Care (LTC)', 'Hospitalisation Expenses', 'Hospital Cash', 'Savings / Maturity', 'Waiver of Premium (WOP)', 'Option to Purchase Additional Insurance (OPAI)',
@@ -685,7 +687,7 @@ const ZH = {
   'Other benefits': '其他保障', 'Surrender value': '退保价值', 'Remarks': '备注', 'Accidental Medical': '意外医疗', 'Paid in so far': '至今已缴',
   'PROTECTION — DEATH, TPD, CRITICAL ILLNESS &amp; WAIVER': '保障 — 死亡、残缺、晚期疾病及保费豁免', 'ACCIDENT &amp; HOSPITALISATION': '意外与住院',
   'INVESTMENTS &amp; SAVINGS — NO DEATH COVER': '投资与储蓄 — 无死亡保障', 'Hospital Plan — Premiums and Deductible': '住院保险 — 保费与自付额',
-  'DEDUCTIBLE AND CO-INSURANCE': '自付额与共同保险', 'Accident plan — table of benefits': '意外保险计划 — 保障一览表',
+  'DEDUCTIBLE AND CO-INSURANCE': '自付额与共同保险', 'Accident & Health Plan — Table of Benefits': '意外与健康保险 — 保障一览表',
   'Male': '男', 'Female': '女',
 };
 const NOTE_ZH = { 'A deductible based on the ward class and 10% co-insurance apply to each claim, unless covered by a rider.': '每次索赔须承担按病房等级而定的自付额及10%共同保险，除非附加保单已涵盖。' };
@@ -776,6 +778,39 @@ const PA_PRODUCTS = {
         ['Renewal Bonus', 'Renewal Bonus (RB)', ['5% a year, up to 5', '5% a year, up to 5', '5% a year, up to 5']] ] },
       { name: 'Optional: Child Critical Illnesses Benefit', optional: true, plans: ['Option 1', 'Option 2', 'Option 3'], rows: [
         ['Child Critical Illnesses Benefit', 'Child Critical Illnesses (Child CI)', [30000, 50000, 100000]] ] } ] },
+  'AIA Pink of Health (Classic)': { plans: ['Plan 1', 'Plan 2', 'Plan 3', 'Plan 4'], note: '',
+    groups: [
+      { name: 'Benefits', rows: [
+        ['Hospital Expense Reimbursement', 'Hospital Expense Reimbursement (HER)', [1500, 2500, 4000, 5000]],
+        ['Daily Hospital Income Benefit', 'Daily Hospital Income – Accident & Disease (DHI)', [50, 100, 150, 200]],
+        ['Daily Accident Hospital Income Benefit', 'Daily Accidental Hospital Income (DAHI)', [100, 200, 300, 400]],
+        ['Intensive Care Unit (ICU) Benefit', 'ICU Benefit (ICU)', [150, 300, 450, 600]],
+        ['Get Well Benefit', 'Get Well Benefit (GWB)', [50, 100, 150, 200]] ] },
+    ] },
+  'AIA Pink of Health (Enhanced)': { plans: ['Plan 1', 'Plan 2', 'Plan 3', 'Plan 4'], note: '',
+    groups: [
+      { name: 'Benefits', rows: [
+        ['Hospital Expense Reimbursement', 'Hospital Expense Reimbursement (HER)', [1500, 2500, 4000, 5000]],
+        ['Daily Hospital Income Benefit', 'Daily Hospital Income – Accident & Disease (DHI)', [50, 100, 150, 200]],
+        ['Daily Accidental Hospital Income Benefit', 'Daily Accidental Hospital Income (DAHI)', [100, 200, 300, 400]],
+        ['ICU Benefit', 'ICU Benefit (ICU)', [150, 300, 450, 600]],
+        ['Get Well Benefit', 'Get Well Benefit (GWB)', [50, 100, 150, 200]],
+        ['Pre-Hospitalisation Tests & Services', 'Pre-Hospitalisation Tests & Services (Pre-Hosp)', [250, 500, 600, 800]],
+        ['Post-Hospitalisation Tests & Services', 'Post-Hospitalisation Tests & Services (Post-Hosp)', [500, 1000, 1200, 1600]] ] },
+    ] },
+  'AIA Pink of Health (New)': { plans: ['Plan 1', 'Plan 2', 'Plan 3'], note: '',
+    groups: [
+      { name: 'Benefits', rows: [
+        ['Daily Hospital Income Benefit', 'Daily Hospital Income – Accident & Disease (DHI)', [50, 100, 250]],
+        ['Daily Accidental Hospital Income Benefit', 'Daily Accidental Hospital Income (DAHI)', [100, 200, 500]],
+        ['Intensive Care Unit Benefit', 'ICU Benefit (ICU)', [150, 300, 750]],
+        ['Hospital Expense Reimbursement', 'Hospital Expense Reimbursement (HER)', [2000, 3000, 6000]],
+        ['Get Well Benefit', 'Get Well Benefit (GWB)', [50, 100, 250]],
+        ['Pre-Hospitalisation Test & Services Reimbursement', 'Pre-Hospitalisation Tests & Services (Pre-Hosp)', [250, 500, 1000]],
+        ['Post-Hospitalisation Test & Services Reimbursement', 'Post-Hospitalisation Tests & Services (Post-Hosp)', [500, 1000, 2000]],
+        ['Emergency Outpatient Treatment (Accident) Reimbursement', 'Emergency Outpatient Treatment – Accident (EOT)', [200, 400, 1000]],
+        ['Day Surgery Reimbursement', 'Day Surgery Reimbursement (DSR)', [200, 400, 1000]] ] },
+    ] },
 };
 
 const paOf = p => PA_PRODUCTS[p['PA Product']] || null;
@@ -2467,7 +2502,7 @@ function pagePolicyForm(cid, pid) {
         ${others.map(x => `<option value="${esc(x.ID)}"${p['Rider Of'] === x.ID ? ' selected' : ''}>${esc(x['Policy Name'] || 'Untitled policy')}${x['HSG Plan'] ? '' : x['Policy No'] ? ' · ' + esc(x['Policy No']) : ''}</option>`).join('')}</select>
         <small class="dhint">For a rider bought as its own policy, e.g. a HealthShield rider — pick the plan it belongs to.</small></label>`;
     }
-    if (f.custom === 'pa') return `<label class="ah-only"><span>Accident plan <em>optional</em></span><select name="pa_product" onchange="paForm(true)"><option value="">— not one of these accident plans</option>
+    if (f.custom === 'pa') return `<label class="ah-only"><span>Accident &amp; health plan <em>optional</em></span><select name="pa_product" onchange="paForm(true)"><option value="">— not one of these plans</option>
         ${Object.keys(PA_PRODUCTS).map(k => `<option${p['PA Product'] === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select><small class="dhint">Pick the plan and options — the benefits fill in automatically.</small></label>
       <label id="pa-plan-w" class="ah-only"><span>Plan</span><select name="pa_plan" data-v="${esc(p['PA Plan'] || '')}"></select></label>
       <div id="pa-opts" class="pa-opts ah-only" style="grid-column:1/-1" data-v="${esc(p['PA Options'] || '')}"></div>`;
@@ -2828,7 +2863,7 @@ function paTables(p, cls) {
 function paPage(x, who, me) {
   const P = paOf(x);
   return `<div class="sheet psum hsg-page pa-page">${letterhead(me)}
-    <h1>${tzi('Accident plan — table of benefits')}</h1>
+    <h1>${tzi('Accident & Health Plan — Table of Benefits')}</h1>
     <p class="hp-sub"><b>${esc(paTitle(x))}</b> · insured: <b>${esc(who ? who.Name : '')}</b>${Object.keys(paOpts(x)).length ? ' · optional: ' + Object.entries(paOpts(x)).map(([g, v]) => esc(g.replace(/^Optional:\s*/, '') + ' (' + v + ')')).join(', ') : ''}</p>
     <div class="psec ah hsg-sum"><table><thead><tr><th class="bar">${tzi(`INSURED AMOUNTS (S$) FOR EVERY PLAN — ${esc(who ? who.Name : '').toUpperCase()}’S PLAN IS HIGHLIGHTED`, `各计划保额（新元）— 已标示${esc(who ? who.Name : '')}的计划`)}</th></tr></thead></table>${paTables(x, 'hsgt pat')}</div>
     <div class="foot">${esc(P.note)} This table is a summary of the benefits; please refer to the policy contract for the full terms and exclusions.</div>
@@ -4270,7 +4305,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.23d';
+const APP_VERSION = '2026.11.23e';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
