@@ -2935,7 +2935,7 @@ function pageSummary(cid, q) {
     const noteRow = (p, n, L) => notesAfter(p, L).map(t => `<tr class="note-row"><td></td><td colspan="${n - 1}">ⓘ ${esc(t)}</td></tr>`).join('');
     // accident plans: just name the optional benefits taken, not every benefit inside them
     const paRem = p => { const P = paOf(p); if (!P) return []; return Object.entries(paOpts(p)).map(([gn, v]) => { const g = P.groups.find(x => x.name === gn) || {};
-      const nm = gn.replace(/^Optional:\s*/, '').replace(/Benefits Group$/, 'Benefit'); return g.sameOrLower || /Group$/.test(gn) ? nm : `${nm} (${v})`; }); };
+      const nm = gn.replace(/^Optional:\s*/, '').replace(/Benefits Group$/, 'Benefit'); return `${nm} ${v}`; }); };
     const remarks = p => { const base = esc([hsgOf(p) ? `${p['HSG Plan']}: ${hsgOf(p).ward}. ${hsgOf(p).limits}` : '', ...paRem(p), p.Notes, ...(paOf(p) ? benefitsOf(p.ID) : allBens(p)).map(b => b.Notes ? `${b['Benefit Name']}: ${b.Notes}` : '')].filter(Boolean).join(' · '));
       const il = ilpRemarks(p); return il.length ? il.map(x => `<span class="rl">${esc(x)}</span>`).join('') + (base ? `<span class="rl">${base}</span>` : '') : base; };
     const paidIn = p => (policyCalc(p).paid || 0) + topupTotal(p);
@@ -4253,7 +4253,7 @@ window.addEventListener('hashchange', render);
 /* =========================================================================
    Refresh: pull down from the top (or "Check for updates") to load the newest version
    ========================================================================= */
-const APP_VERSION = '2026.11.23b';
+const APP_VERSION = '2026.11.23c';
 async function refreshApp(fromButton) {
   const ptr = $('#ptr'); ptr.classList.add('spin'); ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
   ptr.style.transition = 'transform .2s, opacity .2s'; ptr.style.transform = 'translate(-50%, 0)'; ptr.style.opacity = 1;
